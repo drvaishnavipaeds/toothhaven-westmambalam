@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Menu, X, Phone } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Menu, X, Phone, UserCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logo from "@/assets/tooth-haven-logo.png";
 
@@ -43,6 +44,14 @@ const Navbar = () => {
             {lang === "en" ? "தமிழ்" : "English"}
           </button>
 
+          <Link
+            to="/patient-portal"
+            className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+          >
+            <UserCircle className="w-4 h-4" />
+            Patient Portal
+          </Link>
+
           <a
             href="#appointment"
             className="hidden md:inline-flex items-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
@@ -72,6 +81,14 @@ const Navbar = () => {
               {t(item.key)}
             </a>
           ))}
+          <Link
+            to="/patient-portal"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            <UserCircle className="w-4 h-4" />
+            Patient Portal
+          </Link>
           <a
             href="#appointment"
             onClick={() => setIsOpen(false)}

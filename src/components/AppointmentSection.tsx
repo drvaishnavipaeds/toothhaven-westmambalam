@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Calendar, User, Phone, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const AppointmentSection = () => {
   const { t } = useLanguage();
   const [form, setForm] = useState({ name: "", phone: "", date: "", service: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const services = [
     "General Dentistry", "Dental Implants", "Root Canal", "Orthodontics",
@@ -13,10 +15,44 @@ const AppointmentSection = () => {
     "Crowns & Bridges", "Digital Smile Design", "Home Visit"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Appointment request submitted! We'll contact you shortly.");
-    setForm({ name: "", phone: "", date: "", service: "", message: "" });
+    setSubmitting(true);
+
+    try {
+      // Check if patient exists by phone
+      const { data: existingPatients } = await supabase
+        .from("patients")
+        .select("id")
+        .eq("phone", form.phone.trim());
+
+      let patientId: string | null = null;
+
+      if (existingPatients && existingPatients.length > 0) {
+        patientId = existingPatients[0].id;
+      }
+
+      // Create appointment
+      const { error } = await supabase.from("appointments").insert({
+        patient_id: patientId,
+        patient_name: form.name,
+        patient_phone: form.phone,
+        appointment_date: form.date,
+        appointment_time: "11:00",
+        treatment_type: form.service,
+        notes: form.message || null,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      toast.success("Appointment request submitted! We'll contact you shortly. / முன்பதிவு கோரிக்கை சமர்ப்பிக்கப்பட்டது!");
+      setForm({ name: "", phone: "", date: "", service: "", message: "" });
+    } catch (err) {
+      toast.error("Failed to submit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -82,10 +118,11 @@ const AppointmentSection = () => {
             </div>
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
+              disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               <Send className="w-5 h-5" />
-              {t("appointment.submit")}
+              {submitting ? "Submitting..." : t("appointment.submit")}
             </button>
           </form>
         </div>
