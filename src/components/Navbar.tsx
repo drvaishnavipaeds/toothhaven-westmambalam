@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Menu, X, Phone } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Menu, X, Phone, UserCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logo from "@/assets/tooth-haven-logo.png";
 
