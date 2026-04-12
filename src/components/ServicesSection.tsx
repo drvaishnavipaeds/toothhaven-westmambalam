@@ -1,17 +1,22 @@
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Smile, Scan, ShieldCheck, Sparkles, Baby, Wrench, Crown, Scissors, HeartPulse, Zap } from "lucide-react";
+import { Smile, Scan, ShieldCheck, Sparkles, Baby, Wrench, Crown, Scissors, HeartPulse, Zap, Search, CircleDot, Gem, Stethoscope, Syringe, Eye } from "lucide-react";
 
 const services = [
-  { icon: Smile, en: "General Dentistry", ta: "பொது பல் மருத்துவம்", descEn: "Comprehensive check-ups, fillings, and preventive care", descTa: "முழுமையான பரிசோதனை, அடைப்பு மற்றும் தடுப்பு சிகிச்சை" },
-  { icon: Crown, en: "Crowns & Bridges", ta: "கிரீடங்கள் & பாலங்கள்", descEn: "Custom-made restorations for damaged teeth", descTa: "சேதமடைந்த பற்களுக்கான தனிப்பயன் மறுசீரமைப்பு" },
-  { icon: Scan, en: "CBCT Imaging", ta: "CBCT படமெடுப்பு", descEn: "3D cone beam computed tomography for precise diagnosis", descTa: "துல்லியமான நோயறிதலுக்கான 3D CBCT படமெடுப்பு" },
-  { icon: Sparkles, en: "Cosmetic Dentistry", ta: "அழகு பல் மருத்துவம்", descEn: "Teeth whitening, veneers, and smile makeovers", descTa: "பற்கள் வெண்மையாக்கல், வினீர்கள் மற்றும் புன்னகை மாற்றம்" },
-  { icon: ShieldCheck, en: "Dental Implants", ta: "பல் பொருத்துதல்", descEn: "Permanent tooth replacement with titanium implants", descTa: "டைட்டானியம் இம்ப்ளான்ட்களுடன் நிரந்தர பல் மாற்றம்" },
-  { icon: Scissors, en: "Oral Surgery", ta: "வாய் அறுவை சிகிச்சை", descEn: "Wisdom tooth extraction and surgical procedures", descTa: "ஞான பல் அகற்றல் மற்றும் அறுவை சிகிச்சைகள்" },
-  { icon: Baby, en: "Pediatric Dentistry", ta: "குழந்தை பல் மருத்துவம்", descEn: "Gentle dental care for children of all ages", descTa: "அனைத்து வயது குழந்தைகளுக்கும் மென்மையான பல் சிகிச்சை" },
-  { icon: Wrench, en: "Orthodontics", ta: "பல் சீரமைப்பு", descEn: "Braces, aligners, and teeth straightening solutions", descTa: "பிரேஸ்கள், அலைனர்கள் மற்றும் பல் நேராக்குதல்" },
-  { icon: HeartPulse, en: "Root Canal Treatment", ta: "வேர் கால்வாய் சிகிச்சை", descEn: "Pain-free endodontic treatment to save teeth", descTa: "பற்களைக் காப்பாற்ற வலியில்லா சிகிச்சை" },
-  { icon: Zap, en: "Digital Smile Design", ta: "டிஜிட்டல் புன்னகை வடிவமைப்பு", descEn: "Computer-aided smile planning and preview", descTa: "கணினி உதவியுடன் புன்னகை திட்டமிடல்" },
+  { icon: Smile, en: "General Dentistry", ta: "பொது பல் மருத்துவம்", descEn: "Check-ups, consultation, scaling and polishing", descTa: "பரிசோதனை, ஆலோசனை, ஸ்கேலிங் மற்றும் பாலிஷிங்" },
+  { icon: ShieldCheck, en: "Dental Implants", ta: "பல் பொருத்துதல்", descEn: "Digital dental implantology and maxillofacial implants", descTa: "டிஜிட்டல் டென்டல் இம்ப்ளான்டாலஜி" },
+  { icon: HeartPulse, en: "Root Canal", ta: "வேர் கால்வாய் சிகிச்சை", descEn: "Endodontics and conservative dentistry", descTa: "எண்டோடான்டிக்ஸ் மற்றும் கன்சர்வேடிவ் டென்டிஸ்ட்ரி" },
+  { icon: Wrench, en: "Orthodontics", ta: "பல் சீரமைப்பு", descEn: "Braces, retainers, space maintainers and aligners", descTa: "பிரேஸ்கள், ரிடெய்னர்கள், அலைனர்கள்" },
+  { icon: Sparkles, en: "Cosmetic Dentistry", ta: "அழகு பல் மருத்துவம்", descEn: "Teeth whitening, bleaching, veneers and smile makeovers", descTa: "பற்கள் வெண்மையாக்கல், வினீர்கள், புன்னகை மாற்றம்" },
+  { icon: Crown, en: "Crowns & Bridges", ta: "கிரீடங்கள் & பாலங்கள்", descEn: "Ceramic crowns, zirconia, dental crowns and bridges", descTa: "செராமிக் கிரீடங்கள், ஜிர்கோனியா, பாலங்கள்" },
+  { icon: Zap, en: "Digital Smile Design", ta: "டிஜிட்டல் புன்னகை வடிவமைப்பு", descEn: "Computer-aided smile planning and facial esthetics", descTa: "கணினி புன்னகை திட்டமிடல் மற்றும் முக அழகியல்" },
+  { icon: Scan, en: "CBCT Imaging", ta: "CBCT படமெடுப்பு", descEn: "3D cone beam CT, RVG dental X-ray", descTa: "3D CBCT, RVG டென்டல் எக்ஸ்-ரே" },
+  { icon: Scissors, en: "Oral Surgery", ta: "வாய் அறுவை சிகிச்சை", descEn: "Wisdom teeth extraction, minor oral surgery", descTa: "ஞான பல் அகற்றல், சிறு அறுவை சிகிச்சை" },
+  { icon: Baby, en: "Pediatric Dentistry", ta: "குழந்தை பல் மருத்துவம்", descEn: "Child dentistry, anterior teeth, space maintainers", descTa: "குழந்தை பல் மருத்துவம், ஸ்பேஸ் மெயின்டெய்னர்கள்" },
+  { icon: CircleDot, en: "Dentures", ta: "செயற்கை பற்கள்", descEn: "Artificial teeth, full mouth rehabilitation", descTa: "செயற்கை பற்கள், முழு வாய் மறுவாழ்வு" },
+  { icon: Gem, en: "Tooth Jewellery", ta: "பல் நகை", descEn: "Cosmetic tooth jewellery and accessories", descTa: "அழகு பல் நகைகள்" },
+  { icon: Search, en: "Oral Cancer Screening", ta: "வாய் புற்றுநோய் பரிசோதனை", descEn: "Oral cancer screening and surgical intervention", descTa: "வாய் புற்றுநோய் பரிசோதனை மற்றும் அறுவை சிகிச்சை" },
+  { icon: Syringe, en: "Gum Surgery", ta: "ஈறு அறுவை சிகிச்சை", descEn: "Post and core, filling and restoration", descTa: "ஈறு சிகிச்சை, நிரப்புதல் மற்றும் மறுசீரமைப்பு" },
+  { icon: Eye, en: "Geriatric Dentistry", ta: "முதியோர் பல் மருத்துவம்", descEn: "Specialized dental care for elderly patients", descTa: "முதியோருக்கான சிறப்பு பல் சிகிச்சை" },
 ];
 
 const ServicesSection = () => {
@@ -33,8 +38,8 @@ const ServicesSection = () => {
               <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <s.icon className="w-6 h-6 text-accent-foreground group-hover:text-primary-foreground transition-colors" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">{lang === "en" ? s.en : s.ta}</h3>
-              <p className="text-sm text-muted-foreground">{lang === "en" ? s.descEn : s.descTa}</p>
+              <h3 className="font-semibold text-foreground mb-2 text-sm">{lang === "en" ? s.en : s.ta}</h3>
+              <p className="text-xs text-muted-foreground">{lang === "en" ? s.descEn : s.descTa}</p>
             </div>
           ))}
         </div>
