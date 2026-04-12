@@ -1,5 +1,6 @@
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Home, CheckCircle, Phone } from "lucide-react";
+import { CheckCircle, Phone } from "lucide-react";
+import homeVisitImg from "@/assets/home-visit.jpg";
 
 const HomeVisitSection = () => {
   const { t } = useLanguage();
@@ -13,16 +14,18 @@ const HomeVisitSection = () => {
   return (
     <section id="home-visit" className="py-20 bg-muted">
       <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="bg-card rounded-2xl shadow-elevated border border-border overflow-hidden">
-            <div className="bg-gradient-primary p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center mx-auto mb-4">
-                <Home className="w-8 h-8 text-primary-foreground" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-2">{t("homeVisit.title")}</h2>
-              <p className="text-primary-foreground/80">{t("homeVisit.subtitle")}</p>
+            <div className="relative">
+              <img
+                src={homeVisitImg}
+                alt="Smile on the Go - Geriatric doorstep dental care by Tooth Haven"
+                className="w-full h-64 md:h-80 object-cover"
+              />
             </div>
             <div className="p-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{t("homeVisit.title")}</h2>
+              <p className="text-muted-foreground mb-6">{t("homeVisit.subtitle")}</p>
               <h3 className="font-semibold text-foreground mb-5">{t("homeVisit.eligible")}</h3>
               <ul className="space-y-4 mb-8">
                 {criteria.map((c, i) => (
