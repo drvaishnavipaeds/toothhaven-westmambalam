@@ -1,0 +1,89 @@
+import { useState } from "react";
+import { Menu, X, Phone } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import logo from "@/assets/tooth-haven-logo.png";
+
+const Navbar = () => {
+  const { lang, setLang, t } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const navItems = [
+    { key: "nav.home", href: "#home" },
+    { key: "nav.services", href: "#services" },
+    { key: "nav.about", href: "#about" },
+    { key: "nav.homeVisit", href: "#home-visit" },
+    { key: "nav.testimonials", href: "#testimonials" },
+    { key: "nav.contact", href: "#contact" },
+  ];
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
+      <div className="container mx-auto px-4 flex items-center justify-between h-16 md:h-20">
+        <a href="#home" className="flex items-center gap-2">
+          <img src={logo} alt="Tooth Haven" className="h-10 md:h-14" />
+        </a>
+
+        <div className="hidden lg:flex items-center gap-6">
+          {navItems.map((item) => (
+            <a
+              key={item.key}
+              href={item.href}
+              className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
+            >
+              {t(item.key)}
+            </a>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLang(lang === "en" ? "ta" : "en")}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+          >
+            {lang === "en" ? "தமிழ்" : "English"}
+          </button>
+
+          <a
+            href="#appointment"
+            className="hidden md:inline-flex items-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Phone className="w-4 h-4" />
+            {t("nav.bookAppointment")}
+          </a>
+
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="lg:hidden p-2 text-foreground"
+          >
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="lg:hidden bg-background border-b border-border px-4 pb-4">
+          {navItems.map((item) => (
+            <a
+              key={item.key}
+              href={item.href}
+              onClick={() => setIsOpen(false)}
+              className="block py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
+            >
+              {t(item.key)}
+            </a>
+          ))}
+          <a
+            href="#appointment"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            <Phone className="w-4 h-4" />
+            {t("nav.bookAppointment")}
+          </a>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+export default Navbar;
