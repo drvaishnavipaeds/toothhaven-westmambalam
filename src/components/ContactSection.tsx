@@ -3,7 +3,7 @@ import { MapPin, Clock, Mail, Phone, ExternalLink } from "lucide-react";
 import logo from "@/assets/tooth-haven-logo.png";
 
 const ContactSection = () => {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   return (
     <section id="contact" className="py-20 bg-muted">
@@ -18,7 +18,10 @@ const ContactSection = () => {
 
             <div className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <p className="text-foreground/80">{t("contact.address")}</p>
+              <p className="text-foreground/80">
+                24/23, Postal Colony Cross Street,<br />
+                {lang === "en" ? "West Mambalam, Chennai - 600033" : "மேற்கு மாம்பலம், சென்னை - 600033"}
+              </p>
             </div>
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
@@ -29,14 +32,16 @@ const ContactSection = () => {
             </div>
             <div className="flex items-start gap-3">
               <Mail className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-              <a href="mailto:karthiktoothhaven25@gmail.com" className="text-primary hover:underline">
+              <a href="mailto:karthiktoothhaven25@gmail.com" className="text-primary hover:underline text-sm">
                 karthiktoothhaven25@gmail.com
               </a>
             </div>
           </div>
 
           <div className="bg-card rounded-2xl p-8 shadow-card border border-border">
-            <h3 className="font-semibold text-foreground mb-6">Find Us Online</h3>
+            <h3 className="font-semibold text-foreground mb-6">
+              {lang === "en" ? "Find Us Online" : "ஆன்லைனில் எங்களைக் கண்டறியுங்கள்"}
+            </h3>
             <div className="space-y-4">
               {[
                 { label: "JustDial", url: "https://www.justdial.com/Chennai/Tooth-Haven-West-Mambalam/044PXX44-XX44-180411011501-B7F3_BZDET" },
