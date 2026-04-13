@@ -8,6 +8,8 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import AppointmentSection from "@/components/AppointmentSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
+import PaymentSection from "@/components/PaymentSection";
+import HavenAIChatbot from "@/components/HavenAIChatbot";
 
 const Index = () => {
   return (
@@ -20,9 +22,11 @@ const Index = () => {
         <HomeVisitSection />
         <TestimonialsSection />
         <AppointmentSection />
+        <PaymentSection />
         <ContactSection />
       </main>
       <Footer />
+      <HavenAIChatbot />
     </LanguageProvider>
   );
 };
