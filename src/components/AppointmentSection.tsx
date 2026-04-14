@@ -46,6 +46,21 @@ const AppointmentSection = () => {
 
       if (error) throw error;
 
+      // Send WhatsApp notification
+      try {
+        await supabase.functions.invoke("appointment-notification", {
+          body: {
+            patientName: form.name,
+            patientPhone: form.phone,
+            appointmentDate: form.date,
+            service: form.service,
+            message: form.message,
+          },
+        });
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
+      }
+
       toast.success("Appointment request submitted! We'll contact you shortly. / முன்பதிவு கோரிக்கை சமர்ப்பிக்கப்பட்டது!");
       setForm({ name: "", phone: "", date: "", service: "", message: "" });
     } catch (err) {
