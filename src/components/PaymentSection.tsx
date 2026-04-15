@@ -62,10 +62,18 @@ const PaymentSection = () => {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
     }
-    const link = generateUpiLink(amount);
-    window.open(link, "_blank");
+    const phonepeLink = generateUpiLink(amount);
+    const genericLink = generateGenericUpiLink(amount);
+    // Try PhonePe first, fallback to generic UPI
+    const newWindow = window.open(phonepeLink, "_blank");
+    setTimeout(() => {
+      // If PhonePe didn't open, try generic UPI link
+      if (!newWindow || newWindow.closed) {
+        window.open(genericLink, "_blank");
+      }
+    }, 1500);
     sendNotification("UPI", amount);
-    toast.success(lang === "ta" ? "UPI ஆப் திறக்கப்படுகிறது..." : "Opening UPI app...");
+    toast.success(lang === "ta" ? "PhonePe ஆப் திறக்கப்படுகிறது..." : "Opening PhonePe app...");
   };
 
   const handleRazorpayPay = () => {
