@@ -254,13 +254,13 @@ const PaymentSection = () => {
                 >
                   <Smartphone className="w-5 h-5" />
                   {lang === "ta"
-                    ? amount ? `₹${amount} UPI மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
-                    : amount ? `Pay ₹${amount} via UPI App` : "Enter amount first"}
+                    ? amount ? `₹${amount} PhonePe மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
+                    : amount ? `Pay ₹${amount} via PhonePe` : "Enter amount first"}
                 </button>
                 <p className="text-xs text-muted-foreground">
                   {lang === "ta"
-                    ? "GPay, PhonePe, Paytm போன்ற எந்த UPI ஆப்பிலும் செலுத்தலாம்"
-                    : "Opens GPay, PhonePe, Paytm or any UPI app on your phone"}
+                    ? "PhonePe ஆப் மூலம் நேரடியாக செலுத்தலாம். மற்ற UPI ஆப்களுக்கும் ஆதரவு உள்ளது"
+                    : "Opens PhonePe directly. Also supports other UPI apps as fallback"}
                 </p>
               </div>
             )}
