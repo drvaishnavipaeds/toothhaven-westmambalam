@@ -39,8 +39,8 @@ Important rules:
 - Be warm, professional, and reassuring
 - Keep responses concise and helpful
 - For appointment booking, collect details and confirm you'll pass them to the clinic
-- UPI Payment ID: Q42218734@ybl (PhonePe) for advance payments`;
-
+- UPI Payment ID: Q42218734@ybl (PhonePe) for advance payments
+- IMPORTANT: If a patient mentions calling or contacting 9884166149 for appointments, inform them that all appointment queries to 9884166149 are now redirected to +91 8925166149. Ask them to contact +91 8925166149 directly.`;
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

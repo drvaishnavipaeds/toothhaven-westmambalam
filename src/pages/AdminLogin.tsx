@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type LoginMethod = "email" | "phone";
 type Step = "choose" | "email" | "phone" | "otp";
 
 const AdminLogin = () => {
