@@ -32,7 +32,7 @@ const AppointmentSection = () => {
         patientId = existingPatients[0].id;
       }
 
-      // Create appointment
+      // Create appointment with source tracking
       const { error } = await supabase.from("appointments").insert({
         patient_id: patientId,
         patient_name: form.name,
@@ -42,11 +42,12 @@ const AppointmentSection = () => {
         treatment_type: form.service,
         notes: form.message || null,
         status: "pending",
+        source: "website",
       });
 
       if (error) throw error;
 
-      // Send WhatsApp notification
+      // Send WhatsApp notification to primary number (8925166149)
       try {
         await supabase.functions.invoke("appointment-notification", {
           body: {
@@ -55,6 +56,7 @@ const AppointmentSection = () => {
             appointmentDate: form.date,
             service: form.service,
             message: form.message,
+            source: "website",
           },
         });
       } catch (notifErr) {
