@@ -7,7 +7,7 @@ import upiQrCode from "@/assets/upi-qr-code.jpg";
 
 const UPI_ID = "Q42218734@ybl";
 const PAYEE_NAME = "Tooth Haven Dental";
-const RAZORPAY_KEY = "rzp_test_DUMMY123456789";
+const RAZORPAY_KEY = "rzp_test_SdQ7562mMWoVkM";
 
 const PaymentSection = () => {
   const { lang } = useLanguage();
