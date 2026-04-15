@@ -69,10 +69,32 @@ const HavenAIChatbot = () => {
   const speakText = useCallback((text: string) => {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_`]/g, ""));
+    const cleanText = text.replace(/[#*_`]/g, "");
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const targetLang = lang === "ta" ? "ta" : "en";
     utterance.lang = lang === "ta" ? "ta-IN" : "en-IN";
     utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+
+    // Try to find a matching voice explicitly
+    const findAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const exactVoice = voices.find(v => v.lang.startsWith(targetLang));
+      if (exactVoice) {
+        utterance.voice = exactVoice;
+      }
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Voices may load asynchronously
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        findAndSpeak();
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    } else {
+      findAndSpeak();
+    }
   }, [lang]);
 
   const sendMessage = async () => {
