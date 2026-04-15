@@ -26,6 +26,18 @@ const PaymentSection = () => {
       cu: "INR",
       tn: `Tooth Haven - ${purpose}`,
     });
+    // PhonePe deep link format
+    return `phonepe://pay?${params.toString()}`;
+  };
+
+  const generateGenericUpiLink = (amt: string) => {
+    const params = new URLSearchParams({
+      pa: UPI_ID,
+      pn: PAYEE_NAME,
+      am: amt,
+      cu: "INR",
+      tn: `Tooth Haven - ${purpose}`,
+    });
     return `upi://pay?${params.toString()}`;
   };
 
