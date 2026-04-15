@@ -7,7 +7,7 @@ import upiQrCode from "@/assets/upi-qr-code.jpg";
 
 const UPI_ID = "Q42218734@ybl";
 const PAYEE_NAME = "Tooth Haven Dental";
-const RAZORPAY_KEY = "rzp_test_DUMMY123456789";
+const RAZORPAY_KEY = "rzp_test_SdQ7562mMWoVkM";
 
 const PaymentSection = () => {
   const { lang } = useLanguage();
@@ -19,6 +19,18 @@ const PaymentSection = () => {
   const [processing, setProcessing] = useState(false);
 
   const generateUpiLink = (amt: string) => {
+    const params = new URLSearchParams({
+      pa: UPI_ID,
+      pn: PAYEE_NAME,
+      am: amt,
+      cu: "INR",
+      tn: `Tooth Haven - ${purpose}`,
+    });
+    // PhonePe deep link format
+    return `phonepe://pay?${params.toString()}`;
+  };
+
+  const generateGenericUpiLink = (amt: string) => {
     const params = new URLSearchParams({
       pa: UPI_ID,
       pn: PAYEE_NAME,
@@ -50,10 +62,18 @@ const PaymentSection = () => {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
     }
-    const link = generateUpiLink(amount);
-    window.open(link, "_blank");
+    const phonepeLink = generateUpiLink(amount);
+    const genericLink = generateGenericUpiLink(amount);
+    // Try PhonePe first, fallback to generic UPI
+    const newWindow = window.open(phonepeLink, "_blank");
+    setTimeout(() => {
+      // If PhonePe didn't open, try generic UPI link
+      if (!newWindow || newWindow.closed) {
+        window.open(genericLink, "_blank");
+      }
+    }, 1500);
     sendNotification("UPI", amount);
-    toast.success(lang === "ta" ? "UPI ஆப் திறக்கப்படுகிறது..." : "Opening UPI app...");
+    toast.success(lang === "ta" ? "PhonePe ஆப் திறக்கப்படுகிறது..." : "Opening PhonePe app...");
   };
 
   const handleRazorpayPay = () => {
@@ -234,13 +254,13 @@ const PaymentSection = () => {
                 >
                   <Smartphone className="w-5 h-5" />
                   {lang === "ta"
-                    ? amount ? `₹${amount} UPI மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
-                    : amount ? `Pay ₹${amount} via UPI App` : "Enter amount first"}
+                    ? amount ? `₹${amount} PhonePe மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
+                    : amount ? `Pay ₹${amount} via PhonePe` : "Enter amount first"}
                 </button>
                 <p className="text-xs text-muted-foreground">
                   {lang === "ta"
-                    ? "GPay, PhonePe, Paytm போன்ற எந்த UPI ஆப்பிலும் செலுத்தலாம்"
-                    : "Opens GPay, PhonePe, Paytm or any UPI app on your phone"}
+                    ? "PhonePe ஆப் மூலம் நேரடியாக செலுத்தலாம். மற்ற UPI ஆப்களுக்கும் ஆதரவு உள்ளது"
+                    : "Opens PhonePe directly. Also supports other UPI apps as fallback"}
                 </p>
               </div>
             )}
