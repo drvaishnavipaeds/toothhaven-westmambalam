@@ -8,6 +8,7 @@ interface AdminAuthContextType {
   isLoading: boolean;
   signInWithPhone: (phone: string) => Promise<{ error: string | null }>;
   verifyOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -18,7 +19,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkAdmin = async (phone: string) => {
+  const checkAdminByPhone = async (phone: string) => {
     const { data } = await supabase
       .from("admin_phones")
       .select("id")
@@ -27,12 +28,31 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return !!data;
   };
 
+  const checkAdminByEmail = async (email: string) => {
+    const { data } = await supabase
+      .from("admin_phones")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    return !!data;
+  };
+
+  const checkAdmin = async (currentUser: User) => {
+    if (currentUser.phone) {
+      return await checkAdminByPhone(currentUser.phone);
+    }
+    if (currentUser.email) {
+      return await checkAdminByEmail(currentUser.email);
+    }
+    return false;
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser?.phone) {
-        const admin = await checkAdmin(currentUser.phone);
+      if (currentUser) {
+        const admin = await checkAdmin(currentUser);
         setIsAdmin(admin);
       } else {
         setIsAdmin(false);
@@ -43,8 +63,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser?.phone) {
-        const admin = await checkAdmin(currentUser.phone);
+      if (currentUser) {
+        const admin = await checkAdmin(currentUser);
         setIsAdmin(admin);
       }
       setIsLoading(false);
@@ -54,7 +74,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const signInWithPhone = async (phone: string) => {
-    const admin = await checkAdmin(phone);
+    const admin = await checkAdminByPhone(phone);
     if (!admin) return { error: "This phone number is not authorized as admin." };
     const { error } = await supabase.auth.signInWithOtp({ phone });
     if (error) return { error: error.message };
@@ -67,6 +87,14 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return { error: null };
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    const admin = await checkAdminByEmail(email);
+    if (!admin) return { error: "This email is not authorized as admin." };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -74,7 +102,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signOut }}>
+    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signInWithEmail, signOut }}>
       {children}
     </AdminAuthContext.Provider>
   );

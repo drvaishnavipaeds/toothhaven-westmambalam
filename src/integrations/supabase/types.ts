@@ -17,6 +17,7 @@ export type Database = {
       admin_phones: {
         Row: {
           created_at: string
+          email: string | null
           id: string
           name: string | null
           phone: string
@@ -24,6 +25,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string | null
           id?: string
           name?: string | null
           phone: string
@@ -31,6 +33,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string | null
           id?: string
           name?: string | null
           phone?: string
@@ -48,6 +51,7 @@ export type Database = {
           patient_id: string | null
           patient_name: string
           patient_phone: string
+          source: string
           status: string
           treatment_type: string | null
           updated_at: string
@@ -61,6 +65,7 @@ export type Database = {
           patient_id?: string | null
           patient_name: string
           patient_phone: string
+          source?: string
           status?: string
           treatment_type?: string | null
           updated_at?: string
@@ -74,6 +79,7 @@ export type Database = {
           patient_id?: string | null
           patient_name?: string
           patient_phone?: string
+          source?: string
           status?: string
           treatment_type?: string | null
           updated_at?: string
