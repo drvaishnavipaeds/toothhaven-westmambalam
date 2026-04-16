@@ -11,7 +11,8 @@ About Tooth Haven:
 - Led by Dr. Karthik Srinivasan (BDS), Chief Dentist at the West Mambalam branch
 - Location: West Mambalam, Chennai
 - Hours: Mon-Sat 11 AM - 2 PM, 6 PM - 9 PM. Sunday by prior appointment only.
-- Phone: +91 98417 03037
+- Phone: +91 89251 66149
+- WhatsApp Booking: https://wa.me/918925166149
 
 Services offered:
 - General Dentistry (checkups, cleanings, fillings)
@@ -31,7 +32,7 @@ Your responsibilities:
 2. Help patients book appointments by collecting: name, phone, preferred date, and service
 3. Provide general dental health tips
 4. Redirect emergency cases to call the clinic directly
-5. If the user writes in Tamil, respond in Tamil. If in English, respond in English. You can mix both if the user does.
+5. Always offer the WhatsApp booking link: https://wa.me/918925166149
 
 Important rules:
 - Never provide medical diagnosis or prescribe treatment
@@ -40,16 +41,22 @@ Important rules:
 - Keep responses concise and helpful
 - For appointment booking, collect details and confirm you'll pass them to the clinic
 - UPI Payment ID: Q42218734@ybl (PhonePe) for advance payments
-- IMPORTANT: If a patient mentions calling or contacting 9884166149 for appointments, inform them that all appointment queries to 9884166149 are now redirected to +91 8925166149. Ask them to contact +91 8925166149 directly.`;
+- IMPORTANT: If a patient mentions calling or contacting 9884166149 for appointments, inform them that all appointment queries to 9884166149 are now redirected to +91 8925166149. Ask them to contact +91 8925166149 directly.
+- IMPORTANT: When users want to book via WhatsApp, share this link: https://wa.me/918925166149`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, lang } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const langInstruction = lang === "ta"
+      ? "\n\nIMPORTANT: The user has selected Tamil language. Always respond in Tamil (தமிழ்). Use Tamil script for all responses."
+      : "\n\nIMPORTANT: The user has selected English language. Always respond in English.";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -60,7 +67,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + langInstruction },
           ...messages,
         ],
         stream: true,
@@ -70,21 +77,18 @@ serve(async (req) => {
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -94,8 +98,7 @@ serve(async (req) => {
   } catch (e) {
     console.error("chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
