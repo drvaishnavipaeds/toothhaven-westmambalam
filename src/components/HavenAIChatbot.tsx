@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Mic, MicOff, Volume2, Globe } from "lucide-react";
+import { X, Send, Mic, MicOff, Volume2, Globe } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import drKarthikAvatar from "@/assets/dr-karthik-avatar.png";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type ChatLang = "en" | "ta";
