@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send, Mic, MicOff, Volume2, Globe } from "lucide-react";
+import { X, Send, Mic, MicOff, Volume2, Globe } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import drKarthikAvatar from "@/assets/dr-karthik-avatar.png";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type ChatLang = "en" | "ta";
@@ -200,10 +201,10 @@ const HavenAIChatbot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-primary text-primary-foreground shadow-elevated flex items-center justify-center hover:scale-105 transition-transform animate-bounce"
+          className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full shadow-elevated flex items-center justify-center hover:scale-105 transition-transform animate-bounce overflow-hidden"
           aria-label="Open Haven AI Chat"
         >
-          <MessageCircle className="w-6 h-6" />
+          <img src={drKarthikAvatar} alt="Dr. Karthik" className="w-full h-full object-cover" />
         </button>
       )}
 
@@ -212,7 +213,7 @@ const HavenAIChatbot = () => {
           {/* Header */}
           <div className="bg-gradient-primary text-primary-foreground p-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary-foreground/20 flex items-center justify-center text-lg">🦷</div>
+              <img src={drKarthikAvatar} alt="Dr. Karthik" className="w-9 h-9 rounded-full object-cover" />
               <div>
                 <h3 className="font-semibold text-sm">Haven AI</h3>
                 <p className="text-xs opacity-80">
