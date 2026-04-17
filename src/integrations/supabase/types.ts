@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          achieved_on: string | null
+          badge_type: string
+          created_at: string
+          description: string | null
+          description_ta: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          sort_order: number
+          title: string
+          title_ta: string | null
+          updated_at: string
+        }
+        Insert: {
+          achieved_on?: string | null
+          badge_type?: string
+          created_at?: string
+          description?: string | null
+          description_ta?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          sort_order?: number
+          title: string
+          title_ta?: string | null
+          updated_at?: string
+        }
+        Update: {
+          achieved_on?: string | null
+          badge_type?: string
+          created_at?: string
+          description?: string | null
+          description_ta?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          title_ta?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_phones: {
         Row: {
           created_at: string
@@ -94,6 +139,109 @@ export type Database = {
           },
         ]
       }
+      case_studies: {
+        Row: {
+          anonymization_level: string
+          category: string
+          consent_id: string | null
+          created_at: string
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          patient_id: string | null
+          summary: string | null
+          summary_ta: string | null
+          title: string
+          title_ta: string | null
+          treatment_duration: string | null
+          updated_at: string
+        }
+        Insert: {
+          anonymization_level?: string
+          category?: string
+          consent_id?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          patient_id?: string | null
+          summary?: string | null
+          summary_ta?: string | null
+          title: string
+          title_ta?: string | null
+          treatment_duration?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anonymization_level?: string
+          category?: string
+          consent_id?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          patient_id?: string | null
+          summary?: string | null
+          summary_ta?: string | null
+          title?: string
+          title_ta?: string | null
+          treatment_duration?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_studies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_study_media: {
+        Row: {
+          caption: string | null
+          caption_ta: string | null
+          case_study_id: string
+          created_at: string
+          id: string
+          media_type: string
+          sort_order: number
+          stage: string
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          caption_ta?: string | null
+          case_study_id: string
+          created_at?: string
+          id?: string
+          media_type?: string
+          sort_order?: number
+          stage?: string
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          caption_ta?: string | null
+          case_study_id?: string
+          created_at?: string
+          id?: string
+          media_type?: string
+          sort_order?: number
+          stage?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_study_media_case_study_id_fkey"
+            columns: ["case_study_id"]
+            isOneToOne: false
+            referencedRelation: "case_studies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_content: {
         Row: {
           content: string | null
@@ -132,6 +280,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      patient_consents: {
+        Row: {
+          created_at: string
+          granted: boolean
+          granted_at: string
+          id: string
+          notes: string | null
+          patient_id: string
+          revoked_at: string | null
+          scope: string
+          signature_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          granted?: boolean
+          granted_at?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          revoked_at?: string | null
+          scope: string
+          signature_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          granted?: boolean
+          granted_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          revoked_at?: string | null
+          scope?: string
+          signature_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_consents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patients: {
         Row: {
@@ -225,6 +420,95 @@ export type Database = {
           },
           {
             foreignKeyName: "payments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          category: string
+          consent_id: string | null
+          created_at: string
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          patient_id: string | null
+          patient_name: string
+          patient_name_ta: string | null
+          quote: string
+          quote_ta: string | null
+          rating: number
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          category?: string
+          consent_id?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          patient_id?: string | null
+          patient_name: string
+          patient_name_ta?: string | null
+          quote: string
+          quote_ta?: string | null
+          rating?: number
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          category?: string
+          consent_id?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          patient_id?: string | null
+          patient_name?: string
+          patient_name_ta?: string | null
+          quote?: string
+          quote_ta?: string | null
+          rating?: number
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testimonials_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
