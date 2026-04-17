@@ -1,20 +1,24 @@
-import { LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote, Award, ShieldCheck } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
 
-type Tab = "overview" | "patients" | "appointments" | "financials" | "content";
+export type Tab = "overview" | "patients" | "appointments" | "financials" | "content" | "case_studies" | "testimonials" | "achievements" | "consents";
 
 interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
 }
 
-const tabs = [
-  { id: "overview" as Tab, label: "Dashboard", icon: LayoutDashboard },
-  { id: "patients" as Tab, label: "Patients", icon: Users },
-  { id: "appointments" as Tab, label: "Appointments", icon: Calendar },
-  { id: "financials" as Tab, label: "Financials", icon: IndianRupee },
-  { id: "content" as Tab, label: "Content", icon: FileText },
+const tabs: { id: Tab; label: string; icon: any }[] = [
+  { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+  { id: "patients", label: "Patients", icon: Users },
+  { id: "appointments", label: "Appointments", icon: Calendar },
+  { id: "financials", label: "Financials", icon: IndianRupee },
+  { id: "content", label: "Content", icon: FileText },
+  { id: "case_studies", label: "Success Stories", icon: Sparkles },
+  { id: "testimonials", label: "Testimonials", icon: MessageSquareQuote },
+  { id: "achievements", label: "Achievements", icon: Award },
+  { id: "consents", label: "Consents", icon: ShieldCheck },
 ];
 
 const AdminSidebar = ({ activeTab, onTabChange }: Props) => {

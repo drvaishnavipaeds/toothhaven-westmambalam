@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminSidebar, { Tab } from "@/components/admin/AdminSidebar";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import PatientsList from "@/components/admin/PatientsList";
 import AppointmentsList from "@/components/admin/AppointmentsList";
 import FinancialDashboard from "@/components/admin/FinancialDashboard";
 import ContentManager from "@/components/admin/ContentManager";
-
-type Tab = "overview" | "patients" | "appointments" | "financials" | "content";
+import CaseStudiesManager from "@/components/admin/CaseStudiesManager";
+import TestimonialsManager from "@/components/admin/TestimonialsManager";
+import AchievementsManager from "@/components/admin/AchievementsManager";
+import ConsentManager from "@/components/admin/ConsentManager";
 
 const AdminDashboard = () => {
   const { user, isAdmin, isLoading } = useAdminAuth();
@@ -31,6 +33,10 @@ const AdminDashboard = () => {
         {activeTab === "appointments" && <AppointmentsList />}
         {activeTab === "financials" && <FinancialDashboard />}
         {activeTab === "content" && <ContentManager />}
+        {activeTab === "case_studies" && <CaseStudiesManager />}
+        {activeTab === "testimonials" && <TestimonialsManager />}
+        {activeTab === "achievements" && <AchievementsManager />}
+        {activeTab === "consents" && <ConsentManager />}
       </main>
     </div>
   );
