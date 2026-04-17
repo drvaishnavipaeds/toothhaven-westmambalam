@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,66 @@ Important rules:
 - For appointment booking, collect details and confirm you'll pass them to the clinic
 - UPI Payment ID: Q42218734@ybl (PhonePe) for advance payments
 - IMPORTANT: If a patient mentions calling or contacting 9884166149 for appointments, inform them that all appointment queries to 9884166149 are now redirected to +91 8925166149. Ask them to contact +91 8925166149 directly.
-- IMPORTANT: When users want to book via WhatsApp, share this link: https://wa.me/918925166149`;
+- IMPORTANT: When users want to book via WhatsApp, share this link: https://wa.me/918925166149
+- SUCCESS STORIES: When patients ask about results, before/after, treatment outcomes, success stories, or want to see examples of work for any treatment (orthodontics, implants, RCT, cosmetic, smile design, pediatric), use the get_success_stories tool to fetch real cases. Then describe them and offer to share more.
+- TESTIMONIALS: When patients ask about reviews, what other patients say, or trust signals, use get_testimonials tool.`;
+
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "get_success_stories",
+      description: "Fetch published before/after case studies for a category. Use when the patient asks to see results, examples, or success stories.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["orthodontics", "implants", "cosmetic", "rct", "pediatric", "smile_design", "general", "all"],
+            description: "Treatment category to filter by, or 'all'.",
+          },
+          limit: { type: "number", description: "Max stories to return (default 3, max 5)." },
+        },
+        required: ["category"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_testimonials",
+      description: "Fetch published patient testimonials. Use when the patient asks about reviews or what others say.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["orthodontics", "implants", "cosmetic", "rct", "pediatric", "smile_design", "home_visit", "general", "all"],
+          },
+          limit: { type: "number", description: "Max testimonials (default 3, max 5)." },
+        },
+        required: ["category"],
+      },
+    },
+  },
+];
+
+async function runTool(name: string, args: any, supabase: any) {
+  const limit = Math.min(args.limit || 3, 5);
+  if (name === "get_success_stories") {
+    let q = supabase.from("case_studies").select("id,category,title,summary,treatment_duration").eq("is_published", true).order("is_featured", { ascending: false }).limit(limit);
+    if (args.category && args.category !== "all") q = q.eq("category", args.category);
+    const { data } = await q;
+    return data || [];
+  }
+  if (name === "get_testimonials") {
+    let q = supabase.from("testimonials").select("patient_name,category,quote,rating,video_url").eq("is_published", true).order("is_featured", { ascending: false }).limit(limit);
+    if (args.category && args.category !== "all") q = q.eq("category", args.category);
+    const { data } = await q;
+    return data || [];
+  }
+  return { error: "Unknown tool" };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
