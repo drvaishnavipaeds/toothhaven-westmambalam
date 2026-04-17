@@ -119,8 +119,6 @@ const HavenAIChatbot = () => {
     setInput("");
     setIsLoading(true);
 
-    let assistantSoFar = "";
-
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
@@ -134,48 +132,12 @@ const HavenAIChatbot = () => {
         }),
       });
 
-      if (!resp.ok || !resp.body) throw new Error("Failed to get response");
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantSoFar += content;
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "assistant" && prev.length > updatedMessages.length) {
-                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
-                }
-                return [...prev.slice(0, updatedMessages.length), { role: "assistant", content: assistantSoFar }];
-              });
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data?.error || "Failed to get response");
       }
+      const reply: string = data.content || (chatLang === "ta" ? "மன்னிக்கவும், பதில் கிடைக்கவில்லை." : "Sorry, no response.");
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (e) {
       console.error(e);
       setMessages((prev) => [
