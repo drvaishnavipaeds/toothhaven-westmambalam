@@ -3,7 +3,8 @@ import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Calendar, User, Clock, FileText, ChevronRight, Shield, LogOut } from "lucide-react";
+import { Phone, Calendar, User, Clock, FileText, ChevronRight, Shield, LogOut, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import SuccessStoriesSection from "@/components/portal/SuccessStoriesSection";
 import PortalTestimonials from "@/components/portal/PortalTestimonials";
@@ -121,6 +122,13 @@ const PatientPortalContent = () => {
       <Navbar />
       <main className="min-h-screen bg-background pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-2xl">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {lang === "en" ? "Back to Home" : "முகப்புக்குத் திரும்பு"}
+          </Link>
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-primary mb-2">
               {lang === "en" ? "Patient Portal" : "நோயாளி போர்டல்"}
