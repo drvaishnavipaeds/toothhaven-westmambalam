@@ -50,23 +50,32 @@ const PaymentSection = () => {
     }
   };
 
-  const handleUpiPay = () => {
+  const handleUpiPay = (app: "any" | "phonepe" | "gpay" | "paytm" = "any") => {
     if (!amount || !patientName || !patientPhone) {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
     }
-    const phonepeLink = generateUpiLink(amount);
-    const genericLink = generateGenericUpiLink(amount);
-    // Try PhonePe first, fallback to generic UPI
-    const newWindow = window.open(phonepeLink, "_blank");
-    setTimeout(() => {
-      // If PhonePe didn't open, try generic UPI link
-      if (!newWindow || newWindow.closed) {
-        window.open(genericLink, "_blank");
-      }
-    }, 1500);
+
+    const link =
+      app === "phonepe"
+        ? generatePhonePeLink(amount)
+        : app === "gpay"
+          ? generateGPayLink(amount)
+          : app === "paytm"
+            ? generatePaytmLink(amount)
+            : generateGenericUpiLink(amount);
+
     sendNotification("UPI", amount);
-    toast.success(lang === "ta" ? "PhonePe ஆப் திறக்கப்படுகிறது..." : "Opening PhonePe app...");
+    toast.success(lang === "ta" ? "UPI ஆப் திறக்கப்படுகிறது..." : "Opening UPI app...");
+
+    // Use location.href so the OS intercepts the scheme and shows the app chooser.
+    // window.open is unreliable for custom schemes (popup blockers / blank tabs).
+    try {
+      window.location.href = link;
+    } catch (e) {
+      console.error("UPI launch failed:", e);
+      window.location.href = generateGenericUpiLink(amount);
+    }
   };
 
   const handleRazorpayPay = () => {
