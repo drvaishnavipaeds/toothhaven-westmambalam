@@ -18,7 +18,7 @@ const PaymentSection = () => {
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card">("upi");
   const [processing, setProcessing] = useState(false);
 
-  const generateUpiLink = (amt: string) => {
+  const buildUpiParams = (amt: string) => {
     const params = new URLSearchParams({
       pa: UPI_ID,
       pn: PAYEE_NAME,
@@ -26,20 +26,13 @@ const PaymentSection = () => {
       cu: "INR",
       tn: `Tooth Haven - ${purpose}`,
     });
-    // PhonePe deep link format
-    return `phonepe://pay?${params.toString()}`;
+    return params.toString();
   };
 
-  const generateGenericUpiLink = (amt: string) => {
-    const params = new URLSearchParams({
-      pa: UPI_ID,
-      pn: PAYEE_NAME,
-      am: amt,
-      cu: "INR",
-      tn: `Tooth Haven - ${purpose}`,
-    });
-    return `upi://pay?${params.toString()}`;
-  };
+  const generateGenericUpiLink = (amt: string) => `upi://pay?${buildUpiParams(amt)}`;
+  const generatePhonePeLink = (amt: string) => `phonepe://pay?${buildUpiParams(amt)}`;
+  const generateGPayLink = (amt: string) => `tez://upi/pay?${buildUpiParams(amt)}`;
+  const generatePaytmLink = (amt: string) => `paytmmp://pay?${buildUpiParams(amt)}`;
 
   const sendNotification = async (method: string, amt: string) => {
     try {
