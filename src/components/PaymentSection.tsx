@@ -81,11 +81,28 @@ const PaymentSection = () => {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
     }
+
+    if (typeof (window as any).Razorpay !== "function") {
+      toast.error(
+        lang === "ta"
+          ? "Razorpay ஏற்றப்படவில்லை. பக்கத்தை புதுப்பிக்கவும்."
+          : "Razorpay failed to load. Please refresh and try again."
+      );
+      console.error("Razorpay SDK not available on window");
+      return;
+    }
+
+    const amt = parseInt(amount, 10);
+    if (isNaN(amt) || amt < 1) {
+      toast.error(lang === "ta" ? "சரியான தொகையை உள்ளிடவும்" : "Enter a valid amount");
+      return;
+    }
+
     setProcessing(true);
 
     const options = {
       key: RAZORPAY_KEY,
-      amount: parseInt(amount) * 100,
+      amount: amt * 100,
       currency: "INR",
       name: "Tooth Haven Dental",
       description: `Payment for ${purpose}`,
@@ -106,24 +123,36 @@ const PaymentSection = () => {
       modal: {
         ondismiss: () => setProcessing(false),
       },
-      // Only show card & netbanking, no UPI (UPI is handled via deep link)
-      config: {
-        display: {
-          blocks: {
-            banks: { name: "Pay via Card or Netbanking", instruments: [{ method: "card" }, { method: "netbanking" }] },
-          },
-          sequence: ["block.banks"],
-          preferences: { show_default_blocks: false },
-        },
+      method: {
+        card: true,
+        netbanking: true,
+        wallet: false,
+        upi: false,
+        emi: false,
       },
     };
 
-    const rzp = new (window as any).Razorpay(options);
-    rzp.on("payment.failed", (response: any) => {
-      toast.error(lang === "ta" ? "கட்டணம் தோல்வி" : "Payment failed. Please try again.");
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
+        console.error("Razorpay payment failed:", response?.error);
+        toast.error(
+          lang === "ta"
+            ? `கட்டணம் தோல்வி: ${response?.error?.description || ""}`
+            : `Payment failed: ${response?.error?.description || "Please try again."}`
+        );
+        setProcessing(false);
+      });
+      rzp.open();
+    } catch (e: any) {
+      console.error("Razorpay open error:", e);
+      toast.error(
+        lang === "ta"
+          ? "கட்டண சாளரம் திறக்க முடியவில்லை"
+          : `Could not open payment window: ${e?.message || "Unknown error"}`
+      );
       setProcessing(false);
-    });
-    rzp.open();
+    }
   };
 
   const presetAmounts = [500, 1000, 2000, 5000];
