@@ -18,7 +18,7 @@ const PaymentSection = () => {
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card">("upi");
   const [processing, setProcessing] = useState(false);
 
-  const generateUpiLink = (amt: string) => {
+  const buildUpiParams = (amt: string) => {
     const params = new URLSearchParams({
       pa: UPI_ID,
       pn: PAYEE_NAME,
@@ -26,20 +26,13 @@ const PaymentSection = () => {
       cu: "INR",
       tn: `Tooth Haven - ${purpose}`,
     });
-    // PhonePe deep link format
-    return `phonepe://pay?${params.toString()}`;
+    return params.toString();
   };
 
-  const generateGenericUpiLink = (amt: string) => {
-    const params = new URLSearchParams({
-      pa: UPI_ID,
-      pn: PAYEE_NAME,
-      am: amt,
-      cu: "INR",
-      tn: `Tooth Haven - ${purpose}`,
-    });
-    return `upi://pay?${params.toString()}`;
-  };
+  const generateGenericUpiLink = (amt: string) => `upi://pay?${buildUpiParams(amt)}`;
+  const generatePhonePeLink = (amt: string) => `phonepe://pay?${buildUpiParams(amt)}`;
+  const generateGPayLink = (amt: string) => `tez://upi/pay?${buildUpiParams(amt)}`;
+  const generatePaytmLink = (amt: string) => `paytmmp://pay?${buildUpiParams(amt)}`;
 
   const sendNotification = async (method: string, amt: string) => {
     try {
@@ -57,23 +50,32 @@ const PaymentSection = () => {
     }
   };
 
-  const handleUpiPay = () => {
+  const handleUpiPay = (app: "any" | "phonepe" | "gpay" | "paytm" = "any") => {
     if (!amount || !patientName || !patientPhone) {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
     }
-    const phonepeLink = generateUpiLink(amount);
-    const genericLink = generateGenericUpiLink(amount);
-    // Try PhonePe first, fallback to generic UPI
-    const newWindow = window.open(phonepeLink, "_blank");
-    setTimeout(() => {
-      // If PhonePe didn't open, try generic UPI link
-      if (!newWindow || newWindow.closed) {
-        window.open(genericLink, "_blank");
-      }
-    }, 1500);
+
+    const link =
+      app === "phonepe"
+        ? generatePhonePeLink(amount)
+        : app === "gpay"
+          ? generateGPayLink(amount)
+          : app === "paytm"
+            ? generatePaytmLink(amount)
+            : generateGenericUpiLink(amount);
+
     sendNotification("UPI", amount);
-    toast.success(lang === "ta" ? "PhonePe ஆப் திறக்கப்படுகிறது..." : "Opening PhonePe app...");
+    toast.success(lang === "ta" ? "UPI ஆப் திறக்கப்படுகிறது..." : "Opening UPI app...");
+
+    // Use location.href so the OS intercepts the scheme and shows the app chooser.
+    // window.open is unreliable for custom schemes (popup blockers / blank tabs).
+    try {
+      window.location.href = link;
+    } catch (e) {
+      console.error("UPI launch failed:", e);
+      window.location.href = generateGenericUpiLink(amount);
+    }
   };
 
   const handleRazorpayPay = () => {
@@ -277,19 +279,46 @@ const PaymentSection = () => {
                 </p>
                 <button
                   type="button"
-                  onClick={handleUpiPay}
+                  onClick={() => handleUpiPay("any")}
                   disabled={!amount}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <Smartphone className="w-5 h-5" />
                   {lang === "ta"
-                    ? amount ? `₹${amount} PhonePe மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
-                    : amount ? `Pay ₹${amount} via PhonePe` : "Enter amount first"}
+                    ? amount ? `₹${amount} UPI மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
+                    : amount ? `Pay ₹${amount} via UPI` : "Enter amount first"}
                 </button>
+
+                {amount && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("phonepe")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      PhonePe
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("gpay")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      GPay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("paytm")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      Paytm
+                    </button>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground">
                   {lang === "ta"
-                    ? "PhonePe ஆப் மூலம் நேரடியாக செலுத்தலாம். மற்ற UPI ஆப்களுக்கும் ஆதரவு உள்ளது"
-                    : "Opens PhonePe directly. Also supports other UPI apps as fallback"}
+                    ? "எந்த UPI ஆப் மூலமும் (PhonePe, GPay, Paytm, BHIM) செலுத்தலாம். டெஸ்க்டாப்பில் QR கோடை ஸ்கேன் செய்யவும்."
+                    : "Pays with any installed UPI app (PhonePe, GPay, Paytm, BHIM). On desktop, scan the QR code above."}
                 </p>
               </div>
             )}
