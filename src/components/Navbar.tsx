@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone, UserCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import logo from "@/assets/tooth-haven-logo.png";
 
 const Navbar = () => {
   const { lang, setLang, t } = useLanguage();
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+  const hrefFor = (anchor: string) => (isHome ? anchor : `/${anchor}`);
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
@@ -20,15 +23,15 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
       <div className="container mx-auto px-4 flex items-center justify-between h-16 md:h-20">
-        <a href="#home" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="Tooth Haven" className="h-10 md:h-14" />
-        </a>
+        </Link>
 
         <div className="hidden lg:flex items-center gap-6">
           {navItems.map((item) => (
             <a
               key={item.key}
-              href={item.href}
+              href={hrefFor(item.href)}
               className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
             >
               {t(item.key)}
@@ -53,7 +56,7 @@ const Navbar = () => {
           </Link>
 
           <a
-            href="#appointment"
+            href={hrefFor("#appointment")}
             className="hidden md:inline-flex items-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
           >
             <Phone className="w-4 h-4" />
@@ -74,7 +77,7 @@ const Navbar = () => {
           {navItems.map((item) => (
             <a
               key={item.key}
-              href={item.href}
+              href={hrefFor(item.href)}
               onClick={() => setIsOpen(false)}
               className="block py-2 text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
             >
@@ -90,7 +93,7 @@ const Navbar = () => {
             Patient Portal
           </Link>
           <a
-            href="#appointment"
+            href={hrefFor("#appointment")}
             onClick={() => setIsOpen(false)}
             className="mt-2 flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold"
           >
