@@ -279,19 +279,46 @@ const PaymentSection = () => {
                 </p>
                 <button
                   type="button"
-                  onClick={handleUpiPay}
+                  onClick={() => handleUpiPay("any")}
                   disabled={!amount}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <Smartphone className="w-5 h-5" />
                   {lang === "ta"
-                    ? amount ? `₹${amount} PhonePe மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
-                    : amount ? `Pay ₹${amount} via PhonePe` : "Enter amount first"}
+                    ? amount ? `₹${amount} UPI மூலம் செலுத்துங்கள்` : "தொகையை உள்ளிடவும்"
+                    : amount ? `Pay ₹${amount} via UPI` : "Enter amount first"}
                 </button>
+
+                {amount && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("phonepe")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      PhonePe
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("gpay")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      GPay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUpiPay("paytm")}
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-xs font-medium hover:bg-accent transition-colors"
+                    >
+                      Paytm
+                    </button>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground">
                   {lang === "ta"
-                    ? "PhonePe ஆப் மூலம் நேரடியாக செலுத்தலாம். மற்ற UPI ஆப்களுக்கும் ஆதரவு உள்ளது"
-                    : "Opens PhonePe directly. Also supports other UPI apps as fallback"}
+                    ? "எந்த UPI ஆப் மூலமும் (PhonePe, GPay, Paytm, BHIM) செலுத்தலாம். டெஸ்க்டாப்பில் QR கோடை ஸ்கேன் செய்யவும்."
+                    : "Pays with any installed UPI app (PhonePe, GPay, Paytm, BHIM). On desktop, scan the QR code above."}
                 </p>
               </div>
             )}
