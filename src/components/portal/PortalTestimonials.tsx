@@ -41,11 +41,27 @@ const PortalTestimonials = () => {
 
   if (items.length === 0) return null;
 
+  const avgRating = items.reduce((sum, t) => sum + (t.rating || 0), 0) / items.length;
+  const fullStars = Math.round(avgRating);
+
   return (
     <section className="bg-card rounded-2xl p-5 shadow-elevated">
-      <div className="flex items-center gap-2 mb-4">
-        <Quote className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-bold text-foreground">{lang === "en" ? "Patient Voices" : "நோயாளி குரல்கள்"}</h3>
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Quote className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-bold text-foreground">{lang === "en" ? "Patient Voices" : "நோயாளி குரல்கள்"}</h3>
+        </div>
+        <div className="flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1">
+          <div className="flex">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className={`w-3.5 h-3.5 ${i < fullStars ? "fill-secondary text-secondary" : "text-muted-foreground/40"}`} />
+            ))}
+          </div>
+          <span className="text-xs font-semibold text-foreground">{avgRating.toFixed(1)}</span>
+          <span className="text-xs text-muted-foreground">
+            ({items.length} {lang === "en" ? "reviews" : "மதிப்புரைகள்"})
+          </span>
+        </div>
       </div>
       <div className="flex gap-3 overflow-x-auto -mx-1 px-1 pb-2 snap-x snap-mandatory">
         {items.map(t => (

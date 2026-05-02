@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Sparkles, Clock, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Sparkles, Clock, X, Share2, Star } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CATEGORIES = [
   { id: "all", en: "All", ta: "அனைத்தும்" },
@@ -31,7 +32,7 @@ const SuccessStoriesSection = () => {
   const [stories, setStories] = useState<CaseStudy[]>([]);
   const [mediaMap, setMediaMap] = useState<Record<string, Media[]>>({});
   const [selected, setSelected] = useState<{ story: CaseStudy; media: Media[] } | null>(null);
-  const [stageIndex, setStageIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const fetchStories = async () => {
     const { data: cs } = await supabase
@@ -40,10 +41,10 @@ const SuccessStoriesSection = () => {
       .eq("is_published", true)
       .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false });
-    if (!cs) return;
+    if (!cs) { setLoading(false); return; }
     setStories(cs);
     const ids = cs.map(c => c.id);
-    if (ids.length === 0) return;
+    if (ids.length === 0) { setLoading(false); return; }
     const { data: m } = await supabase
       .from("case_study_media")
       .select("*")
@@ -57,6 +58,7 @@ const SuccessStoriesSection = () => {
       });
       setMediaMap(map);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -70,6 +72,8 @@ const SuccessStoriesSection = () => {
   }, []);
 
   const filtered = filter === "all" ? stories : stories.filter(s => s.category === filter);
+  const featured = stories.find(s => s.is_featured);
+  const gridStories = filtered.filter(s => !featured || s.id !== featured.id || filter !== "all");
 
   const cover = (id: string) => {
     const m = mediaMap[id] || [];
@@ -78,7 +82,14 @@ const SuccessStoriesSection = () => {
 
   const open = (story: CaseStudy) => {
     setSelected({ story, media: mediaMap[story.id] || [] });
-    setStageIndex(0);
+  };
+
+  const shareWhatsApp = (story: CaseStudy) => {
+    const title = lang === "en" ? story.title : (story.title_ta || story.title);
+    const text = lang === "en"
+      ? `Check out this smile transformation at Tooth Haven: ${title}\n${window.location.origin}/portal`
+      : `டூத் ஹேவனில் இந்த புன்னகை மாற்றத்தைப் பாருங்கள்: ${title}\n${window.location.origin}/portal`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   return (
@@ -87,6 +98,36 @@ const SuccessStoriesSection = () => {
         <Sparkles className="w-5 h-5 text-primary" />
         <h3 className="text-lg font-bold text-foreground">{lang === "en" ? "Success Stories" : "வெற்றிக் கதைகள்"}</h3>
       </div>
+
+      {/* Featured hero */}
+      {!loading && featured && filter === "all" && (() => {
+        const c = cover(featured.id);
+        return (
+          <button
+            onClick={() => open(featured)}
+            className="w-full text-left rounded-xl overflow-hidden border border-border bg-background mb-4 hover:shadow-elevated transition-shadow group"
+          >
+            <div className="relative aspect-[16/10] bg-muted">
+              {c && (c.media_type === "video"
+                ? <video src={c.url} className="w-full h-full object-cover" />
+                : <img src={c.url} alt={featured.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+              <span className="absolute top-3 left-3 text-[10px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground font-bold flex items-center gap-1">
+                <Star className="w-3 h-3 fill-current" /> {lang === "en" ? "FEATURED STORY" : "சிறப்புக் கதை"}
+              </span>
+              <div className="absolute bottom-3 left-3 right-3 text-background">
+                <p className="font-bold text-base leading-tight line-clamp-2">{lang === "en" ? featured.title : (featured.title_ta || featured.title)}</p>
+                {featured.treatment_duration && (
+                  <p className="text-xs opacity-90 flex items-center gap-1 mt-1">
+                    <Clock className="w-3 h-3" /> {featured.treatment_duration}
+                  </p>
+                )}
+              </div>
+            </div>
+          </button>
+        );
+      })()}
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1">
         {CATEGORIES.map(c => (
@@ -102,13 +143,25 @@ const SuccessStoriesSection = () => {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl overflow-hidden border border-border">
+              <Skeleton className="w-full aspect-square" />
+              <div className="p-2 space-y-1">
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-2 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : gridStories.length === 0 ? (
         <p className="text-center text-muted-foreground text-sm py-8">
           {lang === "en" ? "No stories yet in this category." : "இந்த வகையில் கதைகள் இல்லை."}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {filtered.map(story => {
+          {gridStories.map(story => {
             const c = cover(story.id);
             return (
               <button
@@ -150,16 +203,25 @@ const SuccessStoriesSection = () => {
       {selected && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelected(null)}>
           <div className="bg-card rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-card flex items-center justify-between p-4 border-b border-border">
+            <div className="sticky top-0 bg-card flex items-center justify-between p-4 border-b border-border z-10">
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-foreground truncate">{lang === "en" ? selected.story.title : (selected.story.title_ta || selected.story.title)}</h4>
                 {selected.story.treatment_duration && (
                   <p className="text-xs text-muted-foreground">{selected.story.treatment_duration}</p>
                 )}
               </div>
-              <button onClick={() => setSelected(null)} className="p-1.5 rounded hover:bg-muted shrink-0">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => shareWhatsApp(selected.story)}
+                  className="p-1.5 rounded hover:bg-muted text-primary"
+                  title={lang === "en" ? "Share on WhatsApp" : "WhatsApp இல் பகிர்"}
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => setSelected(null)} className="p-1.5 rounded hover:bg-muted">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
             </div>
             <div className="p-4">
               {selected.media.length > 0 ? (
@@ -193,6 +255,13 @@ const SuccessStoriesSection = () => {
                   {lang === "en" ? selected.story.summary : (selected.story.summary_ta || selected.story.summary)}
                 </p>
               )}
+              <button
+                onClick={() => shareWhatsApp(selected.story)}
+                className="mt-4 w-full bg-[#25D366] text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 hover:opacity-90"
+              >
+                <Share2 className="w-4 h-4" />
+                {lang === "en" ? "Share on WhatsApp" : "WhatsApp இல் பகிர்"}
+              </button>
             </div>
           </div>
         </div>
