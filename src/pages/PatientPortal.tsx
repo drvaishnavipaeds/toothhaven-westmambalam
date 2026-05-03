@@ -10,6 +10,7 @@ import SuccessStoriesSection from "@/components/portal/SuccessStoriesSection";
 import PortalTestimonials from "@/components/portal/PortalTestimonials";
 import AchievementsWall from "@/components/portal/AchievementsWall";
 import ClinicFeed from "@/components/portal/ClinicFeed";
+import InvestigationsViewer from "@/components/portal/InvestigationsViewer";
 
 const SESSION_KEY = "portal_session_v1";
 
@@ -314,6 +315,8 @@ const PatientPortalContent = () => {
                   </div>
                 )}
               </section>
+
+              {patient && <InvestigationsViewer patientId={patient.id} />}
 
               <SuccessStoriesSection />
               <PortalTestimonials />
