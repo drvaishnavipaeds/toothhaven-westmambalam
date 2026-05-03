@@ -179,8 +179,10 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
       return;
     }
     setSaving(true);
-    const url = await upload(file, `investigations/${patientId}`);
-    if (!url) { setSaving(false); return; }
+    const ext = file.name.split(".").pop();
+    const path = `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("patient-media").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (upErr) { toast.error(upErr.message); setSaving(false); return; }
     const mediaType = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
     const { error } = await supabase.from("patient_investigations").insert({
       patient_id: patientId,
@@ -191,7 +193,7 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
       tooth_number: form.tooth_number || null,
       taken_on: form.taken_on || null,
       is_visible_to_patient: form.is_visible_to_patient,
-      url,
+      url: path,
       media_type: mediaType,
     });
     setSaving(false);
@@ -202,6 +204,20 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
     setForm({ title: "", description: "", investigation_type: "clinical", procedure_category: "general", tooth_number: "", taken_on: "", is_visible_to_patient: true });
     fetchAll();
   };
+
+  const [signed, setSigned] = useState<Record<string, string>>({});
+  useEffect(() => {
+    (async () => {
+      const need = items.filter(i => !signed[i.id]);
+      if (!need.length) return;
+      const next: Record<string, string> = {};
+      await Promise.all(need.map(async i => {
+        const { data } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
+        if (data?.signedUrl) next[i.id] = data.signedUrl;
+      }));
+      setSigned(s => ({ ...s, ...next }));
+    })();
+  }, [items]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this investigation?")) return;
