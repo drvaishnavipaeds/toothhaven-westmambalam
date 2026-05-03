@@ -238,8 +238,8 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
         {items.map(it => (
           <div key={it.id} className="bg-card rounded-xl border border-border overflow-hidden">
             <div className="aspect-square bg-muted relative">
-              {it.media_type === "image" ? (
-                <img src={it.thumbnail_url || it.url} alt={it.title} className="w-full h-full object-cover" />
+              {it.media_type === "image" && signed[it.id] ? (
+                <img src={signed[it.id]} alt={it.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs uppercase">{it.media_type}</div>
               )}
