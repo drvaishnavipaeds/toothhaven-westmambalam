@@ -122,6 +122,161 @@ const PatientDetail = ({ patient, onBack }: { patient: Patient; onBack: () => vo
           </form>
         </DialogContent>
       </Dialog>
+
+      <InvestigationsAdmin patientId={patient.id} />
+    </div>
+  );
+};
+
+interface Investigation {
+  id: string;
+  investigation_type: string;
+  procedure_category: string;
+  title: string;
+  description: string | null;
+  url: string;
+  thumbnail_url: string | null;
+  media_type: string;
+  tooth_number: string | null;
+  taken_on: string | null;
+  is_visible_to_patient: boolean;
+}
+
+const TYPES = ["clinical", "intraoral", "cbct", "xray", "opg"];
+const CATEGORIES = ["general", "orthodontics", "implants", "rct", "cosmetic", "pediatric", "surgery"];
+
+const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
+  const [items, setItems] = useState<Investigation[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    investigation_type: "clinical",
+    procedure_category: "general",
+    tooth_number: "",
+    taken_on: "",
+    is_visible_to_patient: true,
+  });
+  const { upload, uploading } = useMediaUpload("patient-media");
+
+  const fetchAll = async () => {
+    const { data } = await supabase
+      .from("patient_investigations")
+      .select("*")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false });
+    if (data) setItems(data);
+  };
+
+  useEffect(() => { fetchAll(); }, [patientId]);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error("Please choose a file to upload");
+      return;
+    }
+    setSaving(true);
+    const url = await upload(file, `investigations/${patientId}`);
+    if (!url) { setSaving(false); return; }
+    const mediaType = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
+    const { error } = await supabase.from("patient_investigations").insert({
+      patient_id: patientId,
+      title: form.title,
+      description: form.description || null,
+      investigation_type: form.investigation_type,
+      procedure_category: form.procedure_category,
+      tooth_number: form.tooth_number || null,
+      taken_on: form.taken_on || null,
+      is_visible_to_patient: form.is_visible_to_patient,
+      url,
+      media_type: mediaType,
+    });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Investigation added");
+    setShowAdd(false);
+    setFile(null);
+    setForm({ title: "", description: "", investigation_type: "clinical", procedure_category: "general", tooth_number: "", taken_on: "", is_visible_to_patient: true });
+    fetchAll();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this investigation?")) return;
+    await supabase.from("patient_investigations").delete().eq("id", id);
+    fetchAll();
+  };
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-bold text-foreground flex items-center gap-2">
+          <ScanLine className="w-4 h-4 text-primary" /> Investigations & Imaging
+        </h3>
+        <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-1" /> Upload</Button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {items.map(it => (
+          <div key={it.id} className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="aspect-square bg-muted relative">
+              {it.media_type === "image" ? (
+                <img src={it.thumbnail_url || it.url} alt={it.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs uppercase">{it.media_type}</div>
+              )}
+              <button
+                onClick={() => handleDelete(it.id)}
+                className="absolute top-1 right-1 p-1 rounded-md bg-background/90 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="p-2">
+              <p className="text-xs font-medium truncate">{it.title}</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">{it.investigation_type}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted capitalize">{it.procedure_category}</span>
+                {!it.is_visible_to_patient && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">hidden</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-muted-foreground text-sm col-span-full text-center py-4">No investigations yet.</p>}
+      </div>
+
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
+          <form onSubmit={handleAdd} className="space-y-3">
+            <Input type="file" accept="image/*,video/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} required />
+            <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+            <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+            <div className="grid grid-cols-2 gap-2">
+              <select className="border border-input bg-background rounded-md px-3 py-2 text-sm" value={form.investigation_type} onChange={e => setForm({ ...form, investigation_type: e.target.value })}>
+                {TYPES.map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+              </select>
+              <select className="border border-input bg-background rounded-md px-3 py-2 text-sm" value={form.procedure_category} onChange={e => setForm({ ...form, procedure_category: e.target.value })}>
+                {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Tooth #" value={form.tooth_number} onChange={e => setForm({ ...form, tooth_number: e.target.value })} />
+              <Input type="date" value={form.taken_on} onChange={e => setForm({ ...form, taken_on: e.target.value })} />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_visible_to_patient} onChange={e => setForm({ ...form, is_visible_to_patient: e.target.checked })} />
+              Visible to patient in portal
+            </label>
+            <Button type="submit" className="w-full" disabled={saving || uploading}>
+              {saving || uploading ? "Uploading..." : "Upload"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
