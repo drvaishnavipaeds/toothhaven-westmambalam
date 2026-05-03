@@ -4,6 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileImage, ScanLine, Camera, X, Calendar, Hash, Download } from "lucide-react";
+import DicomViewer from "./DicomViewer";
 
 interface Investigation {
   id: string;
@@ -220,15 +221,22 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
                   )}
                 </div>
               </DialogHeader>
-              <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
-                {selected.media_type === "image" ? (
-                  <img src={signed[selected.id]} alt={selected.title} className="max-w-full max-h-[70vh] object-contain" />
-                ) : selected.media_type === "video" ? (
-                  <video src={signed[selected.id]} controls className="max-w-full max-h-[70vh]" />
-                ) : (
-                  <iframe src={signed[selected.id]} className="w-full h-[70vh] bg-white" title={selected.title} />
-                )}
-              </div>
+              {(() => {
+                const url = signed[selected.id];
+                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct";
+                if (isDicom && url) return <DicomViewer url={url} />;
+                return (
+                  <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
+                    {selected.media_type === "image" ? (
+                      <img src={url} alt={selected.title} className="max-w-full max-h-[70vh] object-contain" />
+                    ) : selected.media_type === "video" ? (
+                      <video src={url} controls className="max-w-full max-h-[70vh]" />
+                    ) : (
+                      <iframe src={url} className="w-full h-[70vh] bg-white" title={selected.title} />
+                    )}
+                  </div>
+                );
+              })()}
               {(selected.description || signed[selected.id]) && (
                 <div className="p-4 space-y-3">
                   {selected.description && (
