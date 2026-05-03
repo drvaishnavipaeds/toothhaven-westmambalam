@@ -39,6 +39,8 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selected, setSelected] = useState<Investigation | null>(null);
 
+  const [signed, setSigned] = useState<Record<string, string>>({});
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -49,7 +51,15 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
         .eq("is_visible_to_patient", true)
         .order("taken_on", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
-      setItems(data || []);
+      const list = data || [];
+      setItems(list);
+      const urls: Record<string, string> = {};
+      await Promise.all(list.map(async (i) => {
+        if (i.url.startsWith("http")) { urls[i.id] = i.url; return; }
+        const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
+        if (s?.signedUrl) urls[i.id] = s.signedUrl;
+      }));
+      setSigned(urls);
       setLoading(false);
     })();
   }, [patientId]);
