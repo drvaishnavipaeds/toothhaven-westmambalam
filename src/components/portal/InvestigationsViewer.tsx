@@ -170,7 +170,7 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
                         >
                           {isImage ? (
                             <img
-                              src={item.thumbnail_url || item.url}
+                              src={signed[item.id] || item.thumbnail_url || ""}
                               alt={item.title}
                               loading="lazy"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
@@ -222,20 +222,20 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
               </DialogHeader>
               <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
                 {selected.media_type === "image" ? (
-                  <img src={selected.url} alt={selected.title} className="max-w-full max-h-[70vh] object-contain" />
+                  <img src={signed[selected.id]} alt={selected.title} className="max-w-full max-h-[70vh] object-contain" />
                 ) : selected.media_type === "video" ? (
-                  <video src={selected.url} controls className="max-w-full max-h-[70vh]" />
+                  <video src={signed[selected.id]} controls className="max-w-full max-h-[70vh]" />
                 ) : (
-                  <iframe src={selected.url} className="w-full h-[70vh] bg-white" title={selected.title} />
+                  <iframe src={signed[selected.id]} className="w-full h-[70vh] bg-white" title={selected.title} />
                 )}
               </div>
-              {(selected.description || selected.url) && (
+              {(selected.description || signed[selected.id]) && (
                 <div className="p-4 space-y-3">
                   {selected.description && (
                     <p className="text-sm text-muted-foreground">{selected.description}</p>
                   )}
                   <a
-                    href={selected.url}
+                    href={signed[selected.id]}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
