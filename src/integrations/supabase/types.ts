@@ -328,6 +328,63 @@ export type Database = {
           },
         ]
       }
+      patient_investigations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          investigation_type: string
+          is_visible_to_patient: boolean
+          media_type: string
+          patient_id: string
+          procedure_category: string
+          sort_order: number
+          taken_on: string | null
+          thumbnail_url: string | null
+          title: string
+          tooth_number: string | null
+          treatment_id: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          investigation_type?: string
+          is_visible_to_patient?: boolean
+          media_type?: string
+          patient_id: string
+          procedure_category?: string
+          sort_order?: number
+          taken_on?: string | null
+          thumbnail_url?: string | null
+          title: string
+          tooth_number?: string | null
+          treatment_id?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          investigation_type?: string
+          is_visible_to_patient?: boolean
+          media_type?: string
+          patient_id?: string
+          procedure_category?: string
+          sort_order?: number
+          taken_on?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          tooth_number?: string | null
+          treatment_id?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
