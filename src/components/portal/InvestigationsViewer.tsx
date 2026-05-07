@@ -58,12 +58,26 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
       const list = data || [];
       setItems(list);
       const urls: Record<string, string> = {};
-      await Promise.all(list.map(async (i) => {
-        if (i.url.startsWith("http")) { urls[i.id] = i.url; return; }
-        const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
-        if (s?.signedUrl) urls[i.id] = s.signedUrl;
+      const sUrls: Record<string, string[]> = {};
+      await Promise.all(list.map(async (i: Investigation) => {
+        if (i.url?.startsWith("http")) { urls[i.id] = i.url; }
+        else if (i.url) {
+          const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
+          if (s?.signedUrl) urls[i.id] = s.signedUrl;
+        }
+        if (i.is_series && i.series_paths && i.series_paths.length > 0) {
+          const signedList = await Promise.all(
+            i.series_paths.map(async (p) => {
+              if (p.startsWith("http")) return p;
+              const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(p, 3600);
+              return s?.signedUrl || "";
+            })
+          );
+          sUrls[i.id] = signedList.filter(Boolean);
+        }
       }));
       setSigned(urls);
+      setSeriesUrls(sUrls);
       setLoading(false);
     })();
   }, [patientId]);
