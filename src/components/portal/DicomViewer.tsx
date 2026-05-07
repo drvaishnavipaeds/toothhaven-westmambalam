@@ -17,107 +17,55 @@ const initCornerstone = () => {
 };
 
 interface Props {
-  url?: string;
-  urls?: string[]; // multi-file DICOM series
+  url: string;
 }
 
-interface Slice {
-  imageId: string;
-  instanceNumber: number;
-  sliceLocation: number;
-}
-
-const DicomViewer = ({ url, urls }: Props) => {
+const DicomViewer = ({ url }: Props) => {
   const elRef = useRef<HTMLDivElement>(null);
   const [frame, setFrame] = useState(0);
   const [numFrames, setNumFrames] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadProgress, setLoadProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
   const [ww, setWw] = useState<number | null>(null);
   const [wc, setWc] = useState<number | null>(null);
   const baseRef = useRef<{ ww: number; wc: number } | null>(null);
-  const slicesRef = useRef<Slice[]>([]);
 
-  // Load DICOM(s) and detect frames / order series
+  // Load DICOM and detect frames
   useEffect(() => {
     initCornerstone();
     const el = elRef.current;
     if (!el) return;
     setLoading(true);
     setError(null);
-    setFrame(0);
-    slicesRef.current = [];
     cornerstone.enable(el);
-
-    const sources = urls && urls.length > 0 ? urls : url ? [url] : [];
-    if (sources.length === 0) {
-      setError("No DICOM source provided");
-      setLoading(false);
-      return;
-    }
 
     (async () => {
       try {
-        if (sources.length > 1) {
-          // Multi-file series: fetch each, parse header for ordering, then sort
-          setLoadProgress({ done: 0, total: sources.length });
-          const slices: Slice[] = [];
-          for (let i = 0; i < sources.length; i++) {
-            const src = sources[i];
-            const res = await fetch(src);
-            const buf = await res.arrayBuffer();
-            const byteArray = new Uint8Array(buf);
-            const dataset = dicomParser.parseDicom(byteArray);
-            const instanceNumber = parseInt(dataset.string("x00200013") || "0", 10) || 0;
-            const sliceLocation = parseFloat(dataset.string("x00201041") || "0") || 0;
-            const blob = new Blob([buf], { type: "application/dicom" });
-            const fileUrl = URL.createObjectURL(blob);
-            slices.push({
-              imageId: `wadouri:${fileUrl}`,
-              instanceNumber,
-              sliceLocation,
-            });
-            setLoadProgress({ done: i + 1, total: sources.length });
-          }
-          // Sort by InstanceNumber, fallback to SliceLocation
-          slices.sort((a, b) => {
-            if (a.instanceNumber !== b.instanceNumber) return a.instanceNumber - b.instanceNumber;
-            return a.sliceLocation - b.sliceLocation;
-          });
-          slicesRef.current = slices;
-          setNumFrames(slices.length);
-          const image = await cornerstone.loadAndCacheImage(slices[0].imageId);
-          cornerstone.displayImage(el, image);
-          baseRef.current = { ww: image.windowWidth, wc: image.windowCenter };
-          setWw(image.windowWidth);
-          setWc(image.windowCenter);
-        } else {
-          // Single file (possibly multi-frame)
-          const res = await fetch(sources[0]);
-          const buf = await res.arrayBuffer();
-          const byteArray = new Uint8Array(buf);
-          const dataset = dicomParser.parseDicom(byteArray);
-          const frames = parseInt(dataset.string("x00280008") || "1", 10) || 1;
-          const fileObj = new Blob([buf], { type: "application/dicom" });
-          const fileUrl = URL.createObjectURL(fileObj);
-          const baseImageId = `wadouri:${fileUrl}`;
-          const slices: Slice[] = [];
-          for (let f = 0; f < frames; f++) {
-            slices.push({
-              imageId: frames > 1 ? `${baseImageId}?frame=${f}` : baseImageId,
-              instanceNumber: f,
-              sliceLocation: f,
-            });
-          }
-          slicesRef.current = slices;
-          setNumFrames(frames);
-          const image = await cornerstone.loadAndCacheImage(slices[0].imageId);
-          cornerstone.displayImage(el, image);
-          baseRef.current = { ww: image.windowWidth, wc: image.windowCenter };
-          setWw(image.windowWidth);
-          setWc(image.windowCenter);
-        }
+        const res = await fetch(url);
+        const buf = await res.arrayBuffer();
+        const byteArray = new Uint8Array(buf);
+        const dataset = dicomParser.parseDicom(byteArray);
+        const frames = parseInt(dataset.string("x00280008") || "1", 10) || 1;
+        // Register the file so wado loader can read it
+        const fileObj = new Blob([buf], { type: "application/dicom" });
+        const fileUrl = URL.createObjectURL(fileObj);
+        // Store the url with the loader using its file scheme
+        const baseImageId = `wadouri:${fileUrl}`;
+        // Cache file mapping
+        (cornerstoneWADOImageLoader as any).wadouri.fileManager.add &&
+          undefined;
+        setNumFrames(frames);
+        setFrame(0);
+        // Load first frame
+        const imageId = frames > 1 ? `${baseImageId}?frame=0` : baseImageId;
+        const image = await cornerstone.loadAndCacheImage(imageId);
+        cornerstone.displayImage(el, image);
+        baseRef.current = { ww: image.windowWidth, wc: image.windowCenter };
+        setWw(image.windowWidth);
+        setWc(image.windowCenter);
+        // Stash baseImageId on element
+        (el as any).__baseImageId = baseImageId;
+        (el as any).__numFrames = frames;
         setLoading(false);
       } catch (e: any) {
         console.error(e);
@@ -129,14 +77,14 @@ const DicomViewer = ({ url, urls }: Props) => {
     return () => {
       try { cornerstone.disable(el); } catch {}
     };
-  }, [url, JSON.stringify(urls)]);
+  }, [url]);
 
   // Frame change
   useEffect(() => {
     const el = elRef.current as any;
-    const slice = slicesRef.current[frame];
-    if (!el || !slice) return;
-    cornerstone.loadAndCacheImage(slice.imageId).then((img: any) => {
+    if (!el || !el.__baseImageId) return;
+    const imageId = el.__numFrames > 1 ? `${el.__baseImageId}?frame=${frame}` : el.__baseImageId;
+    cornerstone.loadAndCacheImage(imageId).then((img: any) => {
       const viewport = cornerstone.getViewport(el);
       if (viewport && ww != null && wc != null) {
         viewport.voi.windowWidth = ww;
@@ -146,6 +94,7 @@ const DicomViewer = ({ url, urls }: Props) => {
     }).catch((e: any) => console.error(e));
   }, [frame, ww, wc]);
 
+  // Scroll wheel to navigate slices
   const onWheel = (e: React.WheelEvent) => {
     if (numFrames <= 1) return;
     e.preventDefault();
@@ -169,13 +118,8 @@ const DicomViewer = ({ url, urls }: Props) => {
         style={{ touchAction: "none" }}
       >
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-2">
+          <div className="absolute inset-0 flex items-center justify-center text-white">
             <Loader2 className="w-6 h-6 animate-spin" />
-            {loadProgress.total > 1 && (
-              <p className="text-xs opacity-80">
-                Loading series… {loadProgress.done}/{loadProgress.total}
-              </p>
-            )}
           </div>
         )}
         {error && (

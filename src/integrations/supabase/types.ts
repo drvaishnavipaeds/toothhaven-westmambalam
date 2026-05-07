@@ -334,12 +334,10 @@ export type Database = {
           description: string | null
           id: string
           investigation_type: string
-          is_series: boolean
           is_visible_to_patient: boolean
           media_type: string
           patient_id: string
           procedure_category: string
-          series_paths: string[] | null
           sort_order: number
           taken_on: string | null
           thumbnail_url: string | null
@@ -354,12 +352,10 @@ export type Database = {
           description?: string | null
           id?: string
           investigation_type?: string
-          is_series?: boolean
           is_visible_to_patient?: boolean
           media_type?: string
           patient_id: string
           procedure_category?: string
-          series_paths?: string[] | null
           sort_order?: number
           taken_on?: string | null
           thumbnail_url?: string | null
@@ -374,12 +370,10 @@ export type Database = {
           description?: string | null
           id?: string
           investigation_type?: string
-          is_series?: boolean
           is_visible_to_patient?: boolean
           media_type?: string
           patient_id?: string
           procedure_category?: string
-          series_paths?: string[] | null
           sort_order?: number
           taken_on?: string | null
           thumbnail_url?: string | null
