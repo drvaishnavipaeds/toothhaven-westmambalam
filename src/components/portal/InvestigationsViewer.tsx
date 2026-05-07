@@ -20,6 +20,8 @@ interface Investigation {
   taken_on: string | null;
   is_visible_to_patient: boolean;
   created_at: string;
+  is_series?: boolean | null;
+  series_paths?: string[] | null;
 }
 
 const TYPE_META: Record<string, { en: string; ta: string; icon: any }> = {
@@ -41,6 +43,7 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
   const [selected, setSelected] = useState<Investigation | null>(null);
 
   const [signed, setSigned] = useState<Record<string, string>>({});
+  const [seriesUrls, setSeriesUrls] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     (async () => {
@@ -55,12 +58,26 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
       const list = data || [];
       setItems(list);
       const urls: Record<string, string> = {};
-      await Promise.all(list.map(async (i) => {
-        if (i.url.startsWith("http")) { urls[i.id] = i.url; return; }
-        const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
-        if (s?.signedUrl) urls[i.id] = s.signedUrl;
+      const sUrls: Record<string, string[]> = {};
+      await Promise.all(list.map(async (i: Investigation) => {
+        if (i.url?.startsWith("http")) { urls[i.id] = i.url; }
+        else if (i.url) {
+          const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
+          if (s?.signedUrl) urls[i.id] = s.signedUrl;
+        }
+        if (i.is_series && i.series_paths && i.series_paths.length > 0) {
+          const signedList = await Promise.all(
+            i.series_paths.map(async (p) => {
+              if (p.startsWith("http")) return p;
+              const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(p, 3600);
+              return s?.signedUrl || "";
+            })
+          );
+          sUrls[i.id] = signedList.filter(Boolean);
+        }
       }));
       setSigned(urls);
+      setSeriesUrls(sUrls);
       setLoading(false);
     })();
   }, [patientId]);
@@ -223,8 +240,12 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
               </DialogHeader>
               {(() => {
                 const url = signed[selected.id];
-                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct";
-                if (isDicom && url) return <DicomViewer url={url} />;
+                const series = seriesUrls[selected.id];
+                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url || "") || selected.investigation_type === "cbct" || selected.is_series;
+                if (isDicom) {
+                  if (series && series.length > 0) return <DicomViewer urls={series} />;
+                  if (url) return <DicomViewer url={url} />;
+                }
                 return (
                   <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
                     {selected.media_type === "image" ? (

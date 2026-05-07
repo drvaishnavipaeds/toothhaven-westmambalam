@@ -149,7 +149,8 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
   const [items, setItems] = useState<Investigation[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<FileList | null>(null);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -174,16 +175,45 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
-      toast.error("Please choose a file to upload");
+    const list = files ? Array.from(files) : [];
+    if (list.length === 0) {
+      toast.error("Please choose file(s) to upload");
       return;
     }
     setSaving(true);
-    const ext = file.name.split(".").pop();
-    const path = `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("patient-media").upload(path, file, { cacheControl: "3600", upsert: false });
-    if (upErr) { toast.error(upErr.message); setSaving(false); return; }
-    const mediaType = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
+    const isSeries = list.length > 1;
+    const seriesId = crypto.randomUUID();
+    const paths: string[] = [];
+
+    setUploadProgress({ done: 0, total: list.length });
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      const ext = f.name.split(".").pop();
+      const path = isSeries
+        ? `investigations/${patientId}/${seriesId}/${String(i).padStart(5, "0")}_${f.name}`
+        : `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("patient-media")
+        .upload(path, f, { cacheControl: "3600", upsert: false });
+      if (upErr) {
+        toast.error(`${f.name}: ${upErr.message}`);
+        setSaving(false);
+        return;
+      }
+      paths.push(path);
+      setUploadProgress({ done: i + 1, total: list.length });
+    }
+
+    const first = list[0];
+    const isDicom = isSeries || /\.dcm$/i.test(first.name) || form.investigation_type === "cbct";
+    const mediaType = isDicom
+      ? "dicom"
+      : first.type.startsWith("video")
+      ? "video"
+      : first.type.startsWith("image")
+      ? "image"
+      : "pdf";
+
     const { error } = await supabase.from("patient_investigations").insert({
       patient_id: patientId,
       title: form.title,
@@ -193,14 +223,17 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
       tooth_number: form.tooth_number || null,
       taken_on: form.taken_on || null,
       is_visible_to_patient: form.is_visible_to_patient,
-      url: path,
+      url: paths[0],
       media_type: mediaType,
+      is_series: isSeries,
+      series_paths: isSeries ? paths : null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Investigation added");
+    toast.success(isSeries ? `Series uploaded (${paths.length} files)` : "Investigation added");
     setShowAdd(false);
-    setFile(null);
+    setFiles(null);
+    setUploadProgress({ done: 0, total: 0 });
     setForm({ title: "", description: "", investigation_type: "clinical", procedure_category: "general", tooth_number: "", taken_on: "", is_visible_to_patient: true });
     fetchAll();
   };
@@ -268,7 +301,21 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input type="file" accept="image/*,video/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} required />
+            <div className="space-y-1">
+              <Input
+                type="file"
+                multiple
+                accept="image/*,video/*,application/pdf,.dcm,application/dicom"
+                onChange={e => setFiles(e.target.files)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Select multiple .dcm files to upload as a single CBCT series (slices auto-ordered).
+              </p>
+              {files && files.length > 1 && (
+                <p className="text-[11px] text-primary">{files.length} files selected — will upload as series</p>
+              )}
+            </div>
             <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
@@ -288,7 +335,11 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
               Visible to patient in portal
             </label>
             <Button type="submit" className="w-full" disabled={saving || uploading}>
-              {saving || uploading ? "Uploading..." : "Upload"}
+              {saving || uploading
+                ? uploadProgress.total > 1
+                  ? `Uploading ${uploadProgress.done}/${uploadProgress.total}...`
+                  : "Uploading..."
+                : "Upload"}
             </Button>
           </form>
         </DialogContent>
