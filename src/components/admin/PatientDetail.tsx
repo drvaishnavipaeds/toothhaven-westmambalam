@@ -301,7 +301,21 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input type="file" accept="image/*,video/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} required />
+            <div className="space-y-1">
+              <Input
+                type="file"
+                multiple
+                accept="image/*,video/*,application/pdf,.dcm,application/dicom"
+                onChange={e => setFiles(e.target.files)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Select multiple .dcm files to upload as a single CBCT series (slices auto-ordered).
+              </p>
+              {files && files.length > 1 && (
+                <p className="text-[11px] text-primary">{files.length} files selected — will upload as series</p>
+              )}
+            </div>
             <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
@@ -321,7 +335,11 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
               Visible to patient in portal
             </label>
             <Button type="submit" className="w-full" disabled={saving || uploading}>
-              {saving || uploading ? "Uploading..." : "Upload"}
+              {saving || uploading
+                ? uploadProgress.total > 1
+                  ? `Uploading ${uploadProgress.done}/${uploadProgress.total}...`
+                  : "Uploading..."
+                : "Upload"}
             </Button>
           </form>
         </DialogContent>
