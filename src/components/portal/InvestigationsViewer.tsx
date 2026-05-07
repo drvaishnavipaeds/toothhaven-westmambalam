@@ -240,8 +240,12 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
               </DialogHeader>
               {(() => {
                 const url = signed[selected.id];
-                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct";
-                if (isDicom && url) return <DicomViewer url={url} />;
+                const series = seriesUrls[selected.id];
+                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url || "") || selected.investigation_type === "cbct" || selected.is_series;
+                if (isDicom) {
+                  if (series && series.length > 0) return <DicomViewer urls={series} />;
+                  if (url) return <DicomViewer url={url} />;
+                }
                 return (
                   <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
                     {selected.media_type === "image" ? (
