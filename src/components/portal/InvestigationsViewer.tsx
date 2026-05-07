@@ -20,6 +20,8 @@ interface Investigation {
   taken_on: string | null;
   is_visible_to_patient: boolean;
   created_at: string;
+  is_series?: boolean | null;
+  series_paths?: string[] | null;
 }
 
 const TYPE_META: Record<string, { en: string; ta: string; icon: any }> = {
