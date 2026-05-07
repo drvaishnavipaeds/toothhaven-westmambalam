@@ -43,6 +43,7 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
   const [selected, setSelected] = useState<Investigation | null>(null);
 
   const [signed, setSigned] = useState<Record<string, string>>({});
+  const [seriesUrls, setSeriesUrls] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     (async () => {
