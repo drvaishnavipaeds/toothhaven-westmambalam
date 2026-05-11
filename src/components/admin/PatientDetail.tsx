@@ -179,11 +179,12 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
       return;
     }
     setSaving(true);
-    const ext = file.name.split(".").pop();
+    const ext = file.name.split(".").pop()?.toLowerCase();
     const path = `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("patient-media").upload(path, file, { cacheControl: "3600", upsert: false });
     if (upErr) { toast.error(upErr.message); setSaving(false); return; }
-    const mediaType = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
+    const isDicom = file.type === "application/dicom" || ext === "dcm" || ext === "dicom";
+    const mediaType = isDicom ? "dicom" : file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
     const { error } = await supabase.from("patient_investigations").insert({
       patient_id: patientId,
       title: form.title,
@@ -268,7 +269,7 @@ const InvestigationsAdmin = ({ patientId }: { patientId: string }) => {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input type="file" accept="image/*,video/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} required />
+            <Input type="file" accept="image/*,video/*,application/pdf,.dcm,.dicom,application/dicom" onChange={e => setFile(e.target.files?.[0] || null)} required />
             <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
