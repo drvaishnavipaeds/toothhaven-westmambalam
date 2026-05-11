@@ -10,9 +10,10 @@ import * as dicomParser from "dicom-parser";
 let initialized = false;
 const initCornerstone = () => {
   if (initialized) return;
-  cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-  cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
-  cornerstoneWADOImageLoader.configure({ useWebWorkers: false });
+  const loader = (cornerstoneWADOImageLoader as any).default ?? cornerstoneWADOImageLoader;
+  loader.external.cornerstone = cornerstone;
+  loader.external.dicomParser = dicomParser;
+  loader.configure({ useWebWorkers: false });
   initialized = true;
 };
 
@@ -29,6 +30,7 @@ const DicomViewer = ({ url }: Props) => {
   const [ww, setWw] = useState<number | null>(null);
   const [wc, setWc] = useState<number | null>(null);
   const baseRef = useRef<{ ww: number; wc: number } | null>(null);
+  const fileImageIdRef = useRef<string | null>(null);
 
   // Load DICOM and detect frames
   useEffect(() => {
@@ -41,22 +43,19 @@ const DicomViewer = ({ url }: Props) => {
 
     (async () => {
       try {
+        const loader = (cornerstoneWADOImageLoader as any).default ?? cornerstoneWADOImageLoader;
         const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch DICOM file (${res.status})`);
         const buf = await res.arrayBuffer();
         const byteArray = new Uint8Array(buf);
         const dataset = dicomParser.parseDicom(byteArray);
         const frames = parseInt(dataset.string("x00280008") || "1", 10) || 1;
-        // Register the file so wado loader can read it
-        const fileObj = new Blob([buf], { type: "application/dicom" });
-        const fileUrl = URL.createObjectURL(fileObj);
-        // Store the url with the loader using its file scheme
-        const baseImageId = `wadouri:${fileUrl}`;
-        // Cache file mapping
-        (cornerstoneWADOImageLoader as any).wadouri.fileManager.add &&
-          undefined;
+        const ext = url.split("?")[0].split(".").pop()?.toLowerCase();
+        const fileObj = new File([buf], `cbct.${ext || "dcm"}`, { type: "application/dicom" });
+        const baseImageId = loader.wadouri.fileManager.add(fileObj);
+        fileImageIdRef.current = baseImageId;
         setNumFrames(frames);
         setFrame(0);
-        // Load first frame
         const imageId = frames > 1 ? `${baseImageId}?frame=0` : baseImageId;
         const image = await cornerstone.loadAndCacheImage(imageId);
         cornerstone.displayImage(el, image);
@@ -75,6 +74,11 @@ const DicomViewer = ({ url }: Props) => {
     })();
 
     return () => {
+      const loader = (cornerstoneWADOImageLoader as any).default ?? cornerstoneWADOImageLoader;
+      if (fileImageIdRef.current && loader?.wadouri?.fileManager?.remove) {
+        try { loader.wadouri.fileManager.remove(fileImageIdRef.current); } catch {}
+        fileImageIdRef.current = null;
+      }
       try { cornerstone.disable(el); } catch {}
     };
   }, [url]);
