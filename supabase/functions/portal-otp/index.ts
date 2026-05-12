@@ -138,7 +138,12 @@ serve(async (req) => {
       const expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
       await supabase.from("portal_otp_codes").insert({ phone: cleanPhone, code_hash, expires_at });
-      await sendWhatsApp(cleanPhone, otp);
+      const sendResult = await sendWhatsApp(cleanPhone, otp);
+      if (!sendResult.ok) {
+        return new Response(JSON.stringify({ error: `Failed to send OTP: ${sendResult.error}` }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       return new Response(JSON.stringify({ ok: true, message: "OTP sent via WhatsApp" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
