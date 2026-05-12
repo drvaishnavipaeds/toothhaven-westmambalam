@@ -6,8 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CALLMEBOT_API_KEY = Deno.env.get("CALLMEBOT_API_KEY");
-const CALLMEBOT_PHONE = Deno.env.get("CALLMEBOT_PHONE");
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+const WHATSAPP_TEMPLATE_NAME = Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "otp_verification";
+const WHATSAPP_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_LANG") ?? "en";
+const DEFAULT_COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
 
 async function hashCode(code: string): Promise<string> {
   const data = new TextEncoder().encode(code);
@@ -15,17 +18,72 @@ async function hashCode(code: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function sendWhatsApp(phone: string, code: string) {
-  if (!CALLMEBOT_API_KEY || !CALLMEBOT_PHONE) {
-    console.log("CallMeBot not configured. OTP for", phone, ":", code);
-    return;
+function toE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `${DEFAULT_COUNTRY_CODE}${digits}`;
+  return digits;
+}
+
+async function sendWhatsApp(phone: string, code: string): Promise<{ ok: boolean; error?: string }> {
+  if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+    console.log("WhatsApp not configured. OTP for", phone, ":", code);
+    return { ok: false, error: "WhatsApp not configured" };
   }
-  const message = encodeURIComponent(`Your Tooth Haven verification code is ${code}. Valid for 5 minutes.`);
-  const url = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${message}&apikey=${CALLMEBOT_API_KEY}`;
+  const to = toE164(phone);
+  const url = `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: WHATSAPP_TEMPLATE_NAME,
+      language: { code: WHATSAPP_TEMPLATE_LANG },
+      components: [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: code }],
+        },
+        {
+          type: "button",
+          sub_type: "url",
+          index: "0",
+          parameters: [{ type: "text", text: code }],
+        },
+      ],
+    },
+  };
   try {
-    await fetch(url);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("WhatsApp send failed:", res.status, JSON.stringify(data));
+      // Retry without button component (in case template has no URL button)
+      const simple = { ...payload, template: { ...payload.template, components: [payload.template.components[0]] } };
+      const res2 = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify(simple),
+      });
+      const data2 = await res2.json();
+      if (!res2.ok) {
+        console.error("WhatsApp retry failed:", res2.status, JSON.stringify(data2));
+        return { ok: false, error: data2?.error?.message || `HTTP ${res2.status}` };
+      }
+      console.log("WhatsApp sent (body-only) to", to, data2);
+      return { ok: true };
+    }
+    console.log("WhatsApp sent to", to, data);
+    return { ok: true };
   } catch (e) {
-    console.error("CallMeBot send failed:", e);
+    console.error("WhatsApp send exception:", e);
+    return { ok: false, error: e instanceof Error ? e.message : "send failed" };
   }
 }
 
