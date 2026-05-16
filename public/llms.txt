@@ -1,0 +1,8 @@
+# Tooth Haven Multispeciality Dental Care
+
+> Multispeciality dental clinic in West Mambalam, Chennai, led by Dr. Karthik Srinivasan. Offers full-spectrum dental care including a "Smile on the Go" home-visit service for elderly and mobility-restricted patients.
+
+## Pages
+
+- [Home](/): Clinic overview, services, doctor profile, testimonials, and appointment booking.
+- [Patient Portal](/patient-portal): Phone-based patient login to view appointment history, treatment plans, investigations (including CBCT viewer), and clinic updates.
