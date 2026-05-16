@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Phone, ShieldCheck, ArrowLeft, Mail, Lock } from "lucide-react";
@@ -67,6 +68,12 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Helmet>
+        <title>Admin Sign In | Tooth Haven</title>
+        <meta name="description" content="Staff sign-in for the Tooth Haven clinic administration dashboard." />
+        <meta name="robots" content="noindex,nofollow" />
+        <link rel="canonical" href="https://toothhaven-westmambalam.lovable.app/admin" />
+      </Helmet>
       <div className="w-full max-w-sm">
         <button onClick={() => navigate("/")} className="flex items-center gap-1 text-muted-foreground hover:text-foreground mb-8 text-sm">
           <ArrowLeft className="w-4 h-4" /> Back to website

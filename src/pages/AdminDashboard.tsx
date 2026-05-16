@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Navigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import AdminSidebar, { Tab } from "@/components/admin/AdminSidebar";
@@ -26,6 +27,11 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      <Helmet>
+        <title>Admin Dashboard | Tooth Haven</title>
+        <meta name="description" content="Clinic administration: patients, appointments, financials and content management for Tooth Haven." />
+        <meta name="robots" content="noindex,nofollow" />
+      </Helmet>
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 p-4 md:p-6 overflow-y-auto">
         {activeTab === "overview" && <DashboardOverview />}

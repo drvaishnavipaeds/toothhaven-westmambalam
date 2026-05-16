@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -120,6 +121,14 @@ const PatientPortalContent = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Patient Portal | Tooth Haven Dental Care</title>
+        <meta name="description" content="Sign in to your Tooth Haven patient portal to view appointments, treatment plans, investigations and clinic updates." />
+        <link rel="canonical" href="https://toothhaven-westmambalam.lovable.app/patient-portal" />
+        <meta property="og:title" content="Patient Portal | Tooth Haven" />
+        <meta property="og:description" content="Access your appointments, treatment plans and investigations at Tooth Haven." />
+        <meta property="og:url" content="https://toothhaven-westmambalam.lovable.app/patient-portal" />
+      </Helmet>
       <Navbar />
       <main className="min-h-screen bg-background pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-2xl">
