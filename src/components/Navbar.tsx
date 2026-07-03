@@ -63,6 +63,30 @@ const Navbar = () => {
             Patient Portal
           </Link>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">
+              <LogIn className="w-4 h-4" />
+              Login
+              <ChevronDown className="w-3 h-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+              <DropdownMenuLabel>Sign in as</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/patient-portal" className="cursor-pointer">
+                  <UserCircle className="w-4 h-4 mr-2" />
+                  Patient Portal
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/admin" className="cursor-pointer">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin / Staff
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <a
             href={hrefFor("#appointment")}
             className="hidden md:inline-flex items-center gap-2 bg-gradient-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
