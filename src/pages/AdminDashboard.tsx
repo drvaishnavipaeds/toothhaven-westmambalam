@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
+import { Home, LogOut, UserCircle } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import AdminSidebar, { Tab } from "@/components/admin/AdminSidebar";
 import DashboardOverview from "@/components/admin/DashboardOverview";
