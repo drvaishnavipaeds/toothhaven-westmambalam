@@ -143,6 +143,19 @@ const AppointmentSection = () => {
               {submitting ? "Submitting..." : t("appointment.submit")}
             </button>
           </form>
+
+          <div className="mt-6 text-center">
+            <Link
+              to="/patient-portal"
+              className="inline-flex items-center gap-2 text-sm text-primary-foreground/90 hover:text-white underline underline-offset-4 transition-colors"
+            >
+              <Lock className="w-4 h-4" />
+              {t("appointment.patientLogin")}
+            </Link>
+            <p className="mt-2 text-xs text-primary-foreground/70 max-w-sm mx-auto leading-relaxed">
+              {t("appointment.dataPreservation")}
+            </p>
+          </div>
         </div>
       </div>
     </section>
