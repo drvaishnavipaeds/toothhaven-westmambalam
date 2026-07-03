@@ -115,7 +115,15 @@ const Navbar = () => {
             className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
           >
             <UserCircle className="w-4 h-4" />
-            Patient Portal
+            Patient Login
+          </Link>
+          <Link
+            to="/admin"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            <Shield className="w-4 h-4" />
+            Admin Login
           </Link>
           <a
             href={hrefFor("#appointment")}
