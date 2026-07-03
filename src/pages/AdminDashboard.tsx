@@ -69,6 +69,7 @@ const AdminDashboard = () => {
         {activeTab === "consents" && <ConsentManager />}
         {activeTab === "audit_logs" && <AuditLogsManager />}
         {activeTab === "settings" && <SettingsManager />}
+        </div>
       </main>
     </div>
   );
