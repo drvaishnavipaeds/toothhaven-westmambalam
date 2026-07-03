@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone, UserCircle } from "lucide-react";
+import { Menu, X, Phone, UserCircle, LogIn, Shield, ChevronDown } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logo from "@/assets/tooth-haven-logo.png";
 
 const Navbar = () => {
@@ -47,13 +55,30 @@ const Navbar = () => {
             {lang === "en" ? "தமிழ்" : "English"}
           </button>
 
-          <Link
-            to="/patient-portal"
-            className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
-          >
-            <UserCircle className="w-4 h-4" />
-            Patient Portal
-          </Link>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">
+              <LogIn className="w-4 h-4" />
+              Login
+              <ChevronDown className="w-3 h-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-background z-50">
+              <DropdownMenuLabel>Sign in as</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/patient-portal" className="cursor-pointer">
+                  <UserCircle className="w-4 h-4 mr-2" />
+                  Patient Portal
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/admin" className="cursor-pointer">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin / Staff
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <a
             href={hrefFor("#appointment")}
@@ -90,7 +115,15 @@ const Navbar = () => {
             className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
           >
             <UserCircle className="w-4 h-4" />
-            Patient Portal
+            Patient Login
+          </Link>
+          <Link
+            to="/admin"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            <Shield className="w-4 h-4" />
+            Admin Login
           </Link>
           <a
             href={hrefFor("#appointment")}
