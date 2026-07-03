@@ -48,6 +48,8 @@ const translations: Record<string, Record<Language, string>> = {
   "appointment.service": { en: "Select Service", ta: "சேவையைத் தேர்ந்தெடுக்கவும்" },
   "appointment.submit": { en: "Request Appointment", ta: "முன்பதிவு கோரிக்கை" },
   "appointment.message": { en: "Message (Optional)", ta: "செய்தி (விருப்பம்)" },
+  "appointment.patientLogin": { en: "Patient Login", ta: "நோயாளி உள்நுழைவு" },
+  "appointment.dataPreservation": { en: "Want your treatment history preserved and accessible anytime? Log in to your patient portal for comprehensive records, investigations, and follow-ups.", ta: "உங்கள் சிகிச்சை வரலாற்றை பாதுகாக்கவும் எப்போது வேண்டுமானாலும் அணுகவும் விரும்புகிறீர்களா? விரிவான பதிவுகள், பரிசோதனைகள், மற்றும் தொடர்வுகளுக்கு உங்கள் நோயாளி போர்ட்டலுக்கு உள்நுழையுங்கள்." },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

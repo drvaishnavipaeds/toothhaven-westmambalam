@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Calendar, User, Phone, MessageSquare, Send } from "lucide-react";
+import { Calendar, User, Phone, MessageSquare, Send, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
