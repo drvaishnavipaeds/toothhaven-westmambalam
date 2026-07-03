@@ -55,13 +55,6 @@ const Navbar = () => {
             {lang === "en" ? "தமிழ்" : "English"}
           </button>
 
-          <Link
-            to="/patient-portal"
-            className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
-          >
-            <UserCircle className="w-4 h-4" />
-            Patient Portal
-          </Link>
 
           <DropdownMenu>
             <DropdownMenuTrigger className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">
