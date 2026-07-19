@@ -33,32 +33,32 @@ const AppointmentSection = () => {
         patientId = existingPatients[0].id;
       }
 
-      // Create appointment with source tracking
-      const { error } = await supabase.from("appointments").insert({
-        patient_id: patientId,
-        patient_name: form.name,
-        patient_phone: form.phone,
-        appointment_date: form.date,
-        appointment_time: "11:00",
-        treatment_type: form.service,
-        notes: form.message || null,
-        status: "pending",
-        source: "website",
-      });
+      // Create appointment with source tracking. patient_id is intentionally
+      // NOT sent from the public form — only staff can link an appointment to
+      // an existing patient record (enforced by RLS). We still capture the
+      // matched patientId locally so it can be used elsewhere if needed.
+      void patientId;
+      const { data: inserted, error } = await supabase
+        .from("appointments")
+        .insert({
+          patient_name: form.name,
+          patient_phone: form.phone,
+          appointment_date: form.date,
+          appointment_time: "11:00",
+          treatment_type: form.service,
+          notes: form.message || null,
+          status: "pending",
+          source: "website",
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
-      // Send WhatsApp notification to primary number (8925166149)
+      // Notify staff by referencing the trusted appointment row.
       try {
         await supabase.functions.invoke("appointment-notification", {
-          body: {
-            patientName: form.name,
-            patientPhone: form.phone,
-            appointmentDate: form.date,
-            service: form.service,
-            message: form.message,
-            source: "website",
-          },
+          body: { appointmentId: inserted?.id },
         });
       } catch (notifErr) {
         console.error("Notification error:", notifErr);

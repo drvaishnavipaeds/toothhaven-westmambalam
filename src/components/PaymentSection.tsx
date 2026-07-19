@@ -34,20 +34,12 @@ const PaymentSection = () => {
   const generateGPayLink = (amt: string) => `tez://upi/pay?${buildUpiParams(amt)}`;
   const generatePaytmLink = (amt: string) => `paytmmp://pay?${buildUpiParams(amt)}`;
 
-  const sendNotification = async (method: string, amt: string) => {
-    try {
-      await supabase.functions.invoke("payment-notification", {
-        body: {
-          patientName,
-          patientPhone,
-          amount: amt,
-          purpose,
-          paymentMethod: method,
-        },
-      });
-    } catch (e) {
-      console.error("Notification failed:", e);
-    }
+  // Client-side "payment succeeded" notifications are not trustworthy and can
+  // be spoofed, so we no longer call payment-notification directly from the
+  // browser. Staff verify the transaction and record it in the payments table;
+  // the notification is emitted from that verified server-side record.
+  const sendNotification = async (_method: string, _amt: string) => {
+    /* intentionally no-op — see payment-notification edge function */
   };
 
   const handleUpiPay = (app: "any" | "phonepe" | "gpay" | "paytm" = "any") => {
