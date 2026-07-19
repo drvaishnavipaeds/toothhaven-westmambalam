@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
-  BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight,
+  BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +11,7 @@ export type Tab =
   | "overview" | "patients" | "appointments" | "treatments" | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "settings" | "financials" | "content" | "case_studies"
-  | "testimonials" | "achievements" | "consents";
+  | "testimonials" | "achievements" | "consents" | "approvals";
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; }
 
@@ -40,6 +40,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "communication", label: "Communication", icon: Send },
   ]},
   { label: "Marketing", items: [
+    { id: "approvals", label: "Approvals", icon: Inbox },
     { id: "content", label: "Content", icon: FileText },
     { id: "case_studies", label: "Success Stories", icon: Sparkles },
     { id: "testimonials", label: "Testimonials", icon: MessageSquareQuote },

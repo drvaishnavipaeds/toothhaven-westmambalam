@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Image as ImageIcon, Star, Eye, EyeOff, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, Image as ImageIcon, Star, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { WorkflowBadge, WorkflowActions, WorkflowStatus } from "./WorkflowControls";
 
 const CATEGORIES = ["orthodontics", "implants", "cosmetic", "rct", "pediatric", "smile_design", "general"];
 
@@ -21,6 +22,7 @@ interface CaseStudy {
   anonymization_level: string;
   is_featured: boolean;
   is_published: boolean;
+  workflow_status: WorkflowStatus;
 }
 
 interface Media {
@@ -97,10 +99,8 @@ const CaseStudiesManager = () => {
     toast({ title: editing ? "Case study updated" : "Case study created" });
   };
 
-  const togglePublish = async (it: CaseStudy) => {
-    await supabase.from("case_studies").update({ is_published: !it.is_published }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const toggleFeatured = async (it: CaseStudy) => {
     await supabase.from("case_studies").update({ is_featured: !it.is_featured }).eq("id", it.id);
@@ -159,19 +159,15 @@ const CaseStudiesManager = () => {
                   <p className="font-medium text-sm text-foreground">{it.title}</p>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{it.category.replace("_", " ")}</span>
                   {it.is_featured && <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground flex items-center gap-1"><Star className="w-3 h-3" /> Featured</span>}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${it.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                    {it.is_published ? "Published" : "Draft"}
-                  </span>
+                  <WorkflowBadge status={it.workflow_status} />
                   <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{it.anonymization_level === "full_face" ? "Full Face" : "Anonymized"}</span>
                 </div>
                 {it.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{it.summary}</p>}
               </div>
               <div className="flex gap-1 shrink-0">
+                <WorkflowActions table="case_studies" id={it.id} status={it.workflow_status} onChanged={fetchAll} />
                 <button onClick={() => openMedia(it)} className="p-1.5 rounded hover:bg-muted" title="Manage media"><ImageIcon className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => toggleFeatured(it)} className="p-1.5 rounded hover:bg-muted" title="Toggle featured"><Star className={`w-3.5 h-3.5 ${it.is_featured ? "fill-secondary text-secondary" : "text-muted-foreground"}`} /></button>
-                <button onClick={() => togglePublish(it)} className="p-1.5 rounded hover:bg-muted" title="Publish/unpublish">
-                  {it.is_published ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-                </button>
                 <button onClick={() => openEdit(it)} className="p-1.5 rounded hover:bg-muted"><Edit className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => remove(it.id)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
               </div>

@@ -9,6 +9,7 @@ import AppointmentsList from "@/components/admin/AppointmentsList";
 import FinancialDashboard from "@/components/admin/FinancialDashboard";
 import ContentManager from "@/components/admin/ContentManager";
 import CaseStudiesManager from "@/components/admin/CaseStudiesManager";
+import ApprovalsManager from "@/components/admin/ApprovalsManager";
 import TestimonialsManager from "@/components/admin/TestimonialsManager";
 import AchievementsManager from "@/components/admin/AchievementsManager";
 import ConsentManager from "@/components/admin/ConsentManager";
@@ -63,6 +64,7 @@ const AdminDashboard = () => {
         {activeTab === "tutorials" && <TutorialsManager />}
         {activeTab === "communication" && <CommunicationManager />}
         {activeTab === "content" && <ContentManager />}
+        {activeTab === "approvals" && <ApprovalsManager />}
         {activeTab === "case_studies" && <CaseStudiesManager />}
         {activeTab === "testimonials" && <TestimonialsManager />}
         {activeTab === "achievements" && <AchievementsManager />}

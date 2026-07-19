@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Star, Eye, EyeOff, Upload, Video } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { WorkflowBadge, WorkflowActions, WorkflowStatus } from "./WorkflowControls";
 
 const CATEGORIES = ["orthodontics", "implants", "cosmetic", "rct", "pediatric", "smile_design", "home_visit", "general"];
 
@@ -21,6 +22,7 @@ interface Testimonial {
   rating: number;
   is_featured: boolean;
   is_published: boolean;
+  workflow_status: WorkflowStatus;
 }
 
 const empty = { patient_name: "", patient_name_ta: "", category: "general", quote: "", quote_ta: "", video_url: "", rating: 5 };
@@ -80,10 +82,8 @@ const TestimonialsManager = () => {
     toast({ title: editing ? "Testimonial updated" : "Testimonial created" });
   };
 
-  const togglePublish = async (it: Testimonial) => {
-    await supabase.from("testimonials").update({ is_published: !it.is_published }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const toggleFeatured = async (it: Testimonial) => {
     await supabase.from("testimonials").update({ is_featured: !it.is_featured }).eq("id", it.id);
@@ -125,17 +125,13 @@ const TestimonialsManager = () => {
                   <div className="flex">{Array.from({ length: it.rating }).map((_, i) => <Star key={i} className="w-3 h-3 fill-secondary text-secondary" />)}</div>
                   {it.video_url && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1"><Video className="w-3 h-3" /> Video</span>}
                   {it.is_featured && <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground">Featured</span>}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${it.is_published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                    {it.is_published ? "Published" : "Draft"}
-                  </span>
+                  <WorkflowBadge status={it.workflow_status} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2 italic">"{it.quote}"</p>
               </div>
               <div className="flex gap-1 shrink-0">
+                <WorkflowActions table="testimonials" id={it.id} status={it.workflow_status} onChanged={fetchAll} />
                 <button onClick={() => toggleFeatured(it)} className="p-1.5 rounded hover:bg-muted"><Star className={`w-3.5 h-3.5 ${it.is_featured ? "fill-secondary text-secondary" : "text-muted-foreground"}`} /></button>
-                <button onClick={() => togglePublish(it)} className="p-1.5 rounded hover:bg-muted">
-                  {it.is_published ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-                </button>
                 <button onClick={() => openEdit(it)} className="p-1.5 rounded hover:bg-muted"><Edit className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => remove(it.id)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
               </div>

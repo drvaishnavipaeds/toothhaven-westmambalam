@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Eye, EyeOff, Upload, Award } from "lucide-react";
+import { Plus, Edit, Trash2, Upload, Award } from "lucide-react";
+import { WorkflowBadge, WorkflowActions, WorkflowStatus } from "./WorkflowControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,7 @@ interface Achievement {
   achieved_on: string | null;
   image_url: string | null;
   is_active: boolean;
+  workflow_status: WorkflowStatus;
   sort_order: number;
 }
 
@@ -82,10 +84,8 @@ const AchievementsManager = () => {
     toast({ title: editing ? "Achievement updated" : "Achievement created" });
   };
 
-  const toggleActive = async (it: Achievement) => {
-    await supabase.from("achievements").update({ is_active: !it.is_active }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const remove = async (id: string) => {
     if (!confirm("Delete this achievement?")) return;
@@ -125,18 +125,14 @@ const AchievementsManager = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm text-foreground">{it.title}</p>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{it.badge_type}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${it.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {it.is_active ? "Active" : "Hidden"}
-                    </span>
+                    <WorkflowBadge status={it.workflow_status} />
                   </div>
                   {it.achieved_on && <p className="text-xs text-muted-foreground">{new Date(it.achieved_on).toLocaleDateString()}</p>}
                   {it.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{it.description}</p>}
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => toggleActive(it)} className="p-1.5 rounded hover:bg-muted">
-                  {it.is_active ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-                </button>
+                <WorkflowActions table="achievements" id={it.id} status={it.workflow_status} onChanged={fetchAll} />
                 <button onClick={() => openEdit(it)} className="p-1.5 rounded hover:bg-muted"><Edit className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => remove(it.id)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
               </div>
