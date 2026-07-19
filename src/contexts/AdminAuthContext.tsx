@@ -20,13 +20,19 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAdminByPhone = async (phone: string) => {
-    const { data } = await supabase.rpc("is_admin_identifier", { _phone: phone, _email: null });
-    return !!data;
+    const { data, error } = await supabase.functions.invoke("check-admin", {
+      body: { phone },
+    });
+    if (error) return false;
+    return !!data?.authorized;
   };
 
   const checkAdminByEmail = async (email: string) => {
-    const { data } = await supabase.rpc("is_admin_identifier", { _phone: null, _email: email });
-    return !!data;
+    const { data, error } = await supabase.functions.invoke("check-admin", {
+      body: { email },
+    });
+    if (error) return false;
+    return !!data?.authorized;
   };
 
   const checkAdmin = async (currentUser: User) => {
