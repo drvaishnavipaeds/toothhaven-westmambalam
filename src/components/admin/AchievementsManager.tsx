@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Eye, EyeOff, Upload, Award } from "lucide-react";
+import { Plus, Edit, Trash2, Upload, Award } from "lucide-react";
+import { WorkflowBadge, WorkflowActions, WorkflowStatus } from "./WorkflowControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
