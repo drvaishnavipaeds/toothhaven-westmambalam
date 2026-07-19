@@ -40,6 +40,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "communication", label: "Communication", icon: Send },
   ]},
   { label: "Marketing", items: [
+    { id: "approvals", label: "Approvals", icon: Inbox },
     { id: "content", label: "Content", icon: FileText },
     { id: "case_studies", label: "Success Stories", icon: Sparkles },
     { id: "testimonials", label: "Testimonials", icon: MessageSquareQuote },
