@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PatientPortal from "./pages/PatientPortal.tsx";
 import AdminLogin from "./pages/AdminLogin.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import OAuthConsent from "./pages/OAuthConsent.tsx";
 
 const queryClient = new QueryClient();
 
