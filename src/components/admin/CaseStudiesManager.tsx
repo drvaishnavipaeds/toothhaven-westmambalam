@@ -22,6 +22,7 @@ interface CaseStudy {
   anonymization_level: string;
   is_featured: boolean;
   is_published: boolean;
+  workflow_status: WorkflowStatus;
 }
 
 interface Media {
