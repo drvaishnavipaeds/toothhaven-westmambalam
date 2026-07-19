@@ -85,19 +85,19 @@ const AdminLogin = () => {
 
           {step === "choose" && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground mb-4">Choose your login method</p>
+              <p className="text-sm text-muted-foreground mb-4">Sign in with your authorized admin email</p>
               <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("email")}>
                 <Mail className="w-5 h-5 text-primary" />
                 <div className="text-left">
                   <p className="text-sm font-medium">Email & Password</p>
                 </div>
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("phone")}>
-                <Phone className="w-5 h-5 text-primary" />
-                <div className="text-left">
-                  <p className="text-sm font-medium">Phone OTP</p>
-                </div>
-              </Button>
+              <div className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground mb-1 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" /> Phone OTP temporarily unavailable
+                </p>
+                <p>SMS OTP is being upgraded. Please use email login for now — your phone number remains authorized.</p>
+              </div>
             </div>
           )}
 
