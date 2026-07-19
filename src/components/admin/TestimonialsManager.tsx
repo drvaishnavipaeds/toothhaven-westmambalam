@@ -82,10 +82,8 @@ const TestimonialsManager = () => {
     toast({ title: editing ? "Testimonial updated" : "Testimonial created" });
   };
 
-  const togglePublish = async (it: Testimonial) => {
-    await supabase.from("testimonials").update({ is_published: !it.is_published }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const toggleFeatured = async (it: Testimonial) => {
     await supabase.from("testimonials").update({ is_featured: !it.is_featured }).eq("id", it.id);
