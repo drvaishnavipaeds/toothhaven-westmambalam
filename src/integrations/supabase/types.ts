@@ -24,10 +24,16 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sort_order: number
+          submitted_at: string | null
+          submitted_by: string | null
           title: string
           title_ta: string | null
           updated_at: string
+          workflow_status: Database["public"]["Enums"]["content_workflow_status"]
         }
         Insert: {
           achieved_on?: string | null
@@ -38,10 +44,16 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sort_order?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
           title: string
           title_ta?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Update: {
           achieved_on?: string | null
@@ -52,10 +64,16 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sort_order?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
           title?: string
           title_ta?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Relationships: []
       }
@@ -225,12 +243,18 @@ export type Database = {
           is_featured: boolean
           is_published: boolean
           patient_id: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           summary: string | null
           summary_ta: string | null
           title: string
           title_ta: string | null
           treatment_duration: string | null
           updated_at: string
+          workflow_status: Database["public"]["Enums"]["content_workflow_status"]
         }
         Insert: {
           anonymization_level?: string
@@ -241,12 +265,18 @@ export type Database = {
           is_featured?: boolean
           is_published?: boolean
           patient_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           summary?: string | null
           summary_ta?: string | null
           title: string
           title_ta?: string | null
           treatment_duration?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Update: {
           anonymization_level?: string
@@ -257,12 +287,18 @@ export type Database = {
           is_featured?: boolean
           is_published?: boolean
           patient_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           summary?: string | null
           summary_ta?: string | null
           title?: string
           title_ta?: string | null
           treatment_duration?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Relationships: [
           {
@@ -327,9 +363,15 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           title: string
           title_ta: string | null
           updated_at: string
+          workflow_status: Database["public"]["Enums"]["content_workflow_status"]
         }
         Insert: {
           content?: string | null
@@ -339,9 +381,15 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           title: string
           title_ta?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Update: {
           content?: string | null
@@ -351,9 +399,15 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           title?: string
           title_ta?: string | null
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Relationships: []
       }
@@ -1075,8 +1129,14 @@ export type Database = {
           quote: string
           quote_ta: string | null
           rating: number
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           updated_at: string
           video_url: string | null
+          workflow_status: Database["public"]["Enums"]["content_workflow_status"]
         }
         Insert: {
           category?: string
@@ -1091,8 +1151,14 @@ export type Database = {
           quote: string
           quote_ta?: string | null
           rating?: number
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           updated_at?: string
           video_url?: string | null
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Update: {
           category?: string
@@ -1107,8 +1173,14 @@ export type Database = {
           quote?: string
           quote_ta?: string | null
           rating?: number
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           updated_at?: string
           video_url?: string | null
+          workflow_status?: Database["public"]["Enums"]["content_workflow_status"]
         }
         Relationships: [
           {
@@ -1247,7 +1319,11 @@ export type Database = {
       is_staff: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      content_workflow_status:
+        | "draft"
+        | "pending_review"
+        | "approved"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1374,6 +1450,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      content_workflow_status: [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+      ],
+    },
   },
 } as const
