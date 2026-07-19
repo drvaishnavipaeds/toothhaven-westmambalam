@@ -84,17 +84,13 @@ const ContentManager = () => {
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-sm text-foreground">{item.title}</p>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{item.content_type}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${item.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                    {item.is_active ? "Active" : "Inactive"}
-                  </span>
+                  <WorkflowBadge status={item.workflow_status} />
                 </div>
                 {item.title_ta && <p className="text-xs text-muted-foreground">{item.title_ta}</p>}
                 {item.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.content}</p>}
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => toggleActive(item)} className="p-1.5 rounded hover:bg-muted text-xs text-muted-foreground">
-                  {item.is_active ? "Hide" : "Show"}
-                </button>
+                <WorkflowActions table="clinic_content" id={item.id} status={item.workflow_status} onChanged={fetchContent} />
                 <button onClick={() => openEdit(item)} className="p-1.5 rounded hover:bg-muted"><Edit className="w-3.5 h-3.5 text-muted-foreground" /></button>
                 <button onClick={() => deleteItem(item.id)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
               </div>
