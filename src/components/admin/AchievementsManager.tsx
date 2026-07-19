@@ -21,6 +21,7 @@ interface Achievement {
   achieved_on: string | null;
   image_url: string | null;
   is_active: boolean;
+  workflow_status: WorkflowStatus;
   sort_order: number;
 }
 
