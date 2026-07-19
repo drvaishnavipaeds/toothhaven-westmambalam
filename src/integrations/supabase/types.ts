@@ -1316,6 +1316,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_admin_identifier: {
+        Args: { _email?: string; _phone?: string }
+        Returns: boolean
+      }
       is_staff: { Args: never; Returns: boolean }
     }
     Enums: {
