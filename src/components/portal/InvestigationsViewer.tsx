@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileImage, ScanLine, Camera, X, Calendar, Hash, Download } from "lucide-react";
-import DicomViewer from "./DicomViewer";
+import { FileImage, ScanLine, Camera, X, Calendar, Hash, Download, Loader2 } from "lucide-react";
+const DicomViewer = lazy(() => import("./DicomViewer"));
 
 interface Investigation {
   id: string;
@@ -224,7 +224,11 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
               {(() => {
                 const url = signed[selected.id];
                 const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct";
-                if (isDicom && url) return <DicomViewer url={url} />;
+                if (isDicom && url) return (
+                  <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
+                    <DicomViewer url={url} />
+                  </Suspense>
+                );
                 return (
                   <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
                     {selected.media_type === "image" ? (
