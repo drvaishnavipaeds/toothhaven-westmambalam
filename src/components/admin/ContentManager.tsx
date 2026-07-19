@@ -17,6 +17,7 @@ interface Content {
   content_type: string;
   is_active: boolean;
   image_url: string | null;
+  workflow_status: WorkflowStatus;
 }
 
 const ContentManager = () => {
