@@ -58,10 +58,8 @@ const ContentManager = () => {
     toast({ title: editing ? "Content updated" : "Content added" });
   };
 
-  const toggleActive = async (item: Content) => {
-    await supabase.from("clinic_content").update({ is_active: !item.is_active }).eq("id", item.id);
-    fetchContent();
-  };
+
+
 
   const deleteItem = async (id: string) => {
     await supabase.from("clinic_content").delete().eq("id", id);
