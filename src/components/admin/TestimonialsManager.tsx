@@ -22,6 +22,7 @@ interface Testimonial {
   rating: number;
   is_featured: boolean;
   is_published: boolean;
+  workflow_status: WorkflowStatus;
 }
 
 const empty = { patient_name: "", patient_name_ta: "", category: "general", quote: "", quote_ta: "", video_url: "", rating: 5 };
