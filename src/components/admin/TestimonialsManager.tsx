@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Star, Eye, EyeOff, Upload, Video } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Upload, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { WorkflowBadge, WorkflowActions, WorkflowStatus } from "./WorkflowControls";
 
 const CATEGORIES = ["orthodontics", "implants", "cosmetic", "rct", "pediatric", "smile_design", "home_visit", "general"];
 
