@@ -84,10 +84,8 @@ const AchievementsManager = () => {
     toast({ title: editing ? "Achievement updated" : "Achievement created" });
   };
 
-  const toggleActive = async (it: Achievement) => {
-    await supabase.from("achievements").update({ is_active: !it.is_active }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const remove = async (id: string) => {
     if (!confirm("Delete this achievement?")) return;
