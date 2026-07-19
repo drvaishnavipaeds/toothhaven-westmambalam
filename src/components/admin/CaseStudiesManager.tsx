@@ -99,10 +99,8 @@ const CaseStudiesManager = () => {
     toast({ title: editing ? "Case study updated" : "Case study created" });
   };
 
-  const togglePublish = async (it: CaseStudy) => {
-    await supabase.from("case_studies").update({ is_published: !it.is_published }).eq("id", it.id);
-    fetchAll();
-  };
+
+
 
   const toggleFeatured = async (it: CaseStudy) => {
     await supabase.from("case_studies").update({ is_featured: !it.is_featured }).eq("id", it.id);
