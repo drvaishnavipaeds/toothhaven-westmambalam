@@ -36,10 +36,14 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const checkAdmin = async (currentUser: User) => {
+    const metaPhone = (currentUser.user_metadata as any)?.admin_phone as string | undefined;
+    if (metaPhone) {
+      return await checkAdminByPhone(metaPhone);
+    }
     if (currentUser.phone) {
       return await checkAdminByPhone(currentUser.phone);
     }
-    if (currentUser.email) {
+    if (currentUser.email && !currentUser.email.endsWith("@toothhaven.internal")) {
       return await checkAdminByEmail(currentUser.email);
     }
     return false;
@@ -72,16 +76,34 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const signInWithPhone = async (phone: string) => {
-    const admin = await checkAdminByPhone(phone);
-    if (!admin) return { error: "This phone number is not authorized as admin." };
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) return { error: error.message };
+    const { data, error } = await supabase.functions.invoke("admin-phone-otp", {
+      body: { action: "send", phone },
+    });
+    if (error) {
+      const msg = (data as any)?.error || error.message || "Failed to send OTP";
+      return { error: msg };
+    }
+    if ((data as any)?.error) return { error: (data as any).error };
     return { error: null };
   };
 
   const verifyOtp = async (phone: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
-    if (error) return { error: error.message };
+    const { data, error } = await supabase.functions.invoke("admin-phone-otp", {
+      body: { action: "verify", phone, code: token },
+    });
+    if (error) {
+      const msg = (data as any)?.error || error.message || "Verification failed";
+      return { error: msg };
+    }
+    const payload = data as { ok?: boolean; token_hash?: string; email?: string; error?: string };
+    if (!payload?.ok || !payload.token_hash) {
+      return { error: payload?.error || "Verification failed" };
+    }
+    const { error: sessErr } = await supabase.auth.verifyOtp({
+      token_hash: payload.token_hash,
+      type: "magiclink",
+    });
+    if (sessErr) return { error: sessErr.message };
     return { error: null };
   };
 
