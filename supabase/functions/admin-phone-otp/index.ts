@@ -127,10 +127,12 @@ Deno.serve(async (req) => {
       const otp = String(Math.floor(100000 + Math.random() * 900000));
       const code_hash = await hashCode(otp);
       const expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-      await supabase.from("portal_otp_codes").insert({ phone: phone10, code_hash, expires_at });
 
+      // Attempt WhatsApp send FIRST — only persist (and count against rate limit) on success.
       const send = await sendWhatsApp(phone10, otp);
       if (!send.ok) return jsonResponse({ error: `Failed to send OTP: ${send.error}` }, 502);
+
+      await supabase.from("portal_otp_codes").insert({ phone: phone10, code_hash, expires_at });
 
       return jsonResponse({ ok: true, message: "OTP sent via WhatsApp" });
     }
