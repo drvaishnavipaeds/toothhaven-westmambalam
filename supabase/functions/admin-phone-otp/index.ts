@@ -66,6 +66,7 @@ async function sendWhatsApp(phone10: string, code: string): Promise<{ ok: boolea
     const data = await res.json();
     if (!res.ok) {
       console.error("WhatsApp send failed:", res.status, JSON.stringify(data));
+      const firstError = getWhatsAppErrorMessage(data, res.status);
       const simple = { ...basePayload, template: { ...basePayload.template, components: [basePayload.template.components[0]] } };
       const res2 = await fetch(url, {
         method: "POST",
@@ -75,7 +76,7 @@ async function sendWhatsApp(phone10: string, code: string): Promise<{ ok: boolea
       const data2 = await res2.json();
       if (!res2.ok) {
         console.error("WhatsApp retry failed:", res2.status, JSON.stringify(data2));
-        return { ok: false, error: data2?.error?.message || `HTTP ${res2.status}` };
+        return { ok: false, error: getWhatsAppErrorMessage(data2, res2.status) || firstError };
       }
       return { ok: true };
     }
@@ -84,6 +85,15 @@ async function sendWhatsApp(phone10: string, code: string): Promise<{ ok: boolea
     console.error("WhatsApp send exception:", e);
     return { ok: false, error: e instanceof Error ? e.message : "send failed" };
   }
+}
+
+function getWhatsAppErrorMessage(data: any, status: number): string {
+  const graphError = data?.error;
+  if (graphError?.code === 133010) {
+    return "WhatsApp Business sender is not registered with Cloud API. Register/connect the sender number in Meta WhatsApp Manager, then retry OTP.";
+  }
+  if (graphError?.message) return graphError.message;
+  return `HTTP ${status}`;
 }
 
 function syntheticEmail(phone10: string): string {
