@@ -69,21 +69,45 @@ const PatientPortalContent = () => {
   };
 
   const sendOtp = async () => {
-    if (!/^\d{10}$/.test(phone.trim())) {
-      toast.error(lang === "en" ? "Enter a valid 10-digit phone number" : "சரியான 10 இலக்க எண்ணை உள்ளிடவும்");
-      return;
+    if (method === "whatsapp") {
+      if (!/^\d{10}$/.test(phone.trim())) {
+        toast.error(lang === "en" ? "Enter a valid 10-digit phone number" : "சரியான 10 இலக்க எண்ணை உள்ளிடவும்");
+        return;
+      }
+      setSending(true);
+      const { data, error } = await supabase.functions.invoke("portal-otp", {
+        body: { action: "send", phone: phone.trim() },
+      });
+      setSending(false);
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || "Failed to send OTP");
+        return;
+      }
+      toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP WhatsApp மூலம் அனுப்பப்பட்டது");
+      setStep("otp");
+    } else {
+      const e = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+        toast.error(lang === "en" ? "Enter a valid email address" : "சரியான மின்னஞ்சலை உள்ளிடவும்");
+        return;
+      }
+      setSending(true);
+      // Verify a patient with this email exists before sending
+      const { data: pats } = await supabase.from("patients").select("id,email").ilike("email", e).limit(1);
+      if (!pats || pats.length === 0) {
+        setSending(false);
+        toast.error(lang === "en" ? "No patient found with this email. Please contact the clinic." : "இந்த மின்னஞ்சலுடன் நோயாளி இல்லை.");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
+      setSending(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(lang === "en" ? "6-digit code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு 6 இலக்க குறியீடு அனுப்பப்பட்டது");
+      setStep("otp");
     }
-    setSending(true);
-    const { data, error } = await supabase.functions.invoke("portal-otp", {
-      body: { action: "send", phone: phone.trim() },
-    });
-    setSending(false);
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Failed to send OTP");
-      return;
-    }
-    toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP WhatsApp மூலம் அனுப்பப்பட்டது");
-    setStep("otp");
   };
 
   const verifyOtp = async () => {
@@ -92,21 +116,45 @@ const PatientPortalContent = () => {
       return;
     }
     setVerifying(true);
-    const { data, error } = await supabase.functions.invoke("portal-otp", {
-      body: { action: "verify", phone: phone.trim(), code: otp },
-    });
-    setVerifying(false);
-    if (error || data?.error || !data?.token) {
-      toast.error(data?.error || "Invalid code");
-      return;
+    if (method === "whatsapp") {
+      const { data, error } = await supabase.functions.invoke("portal-otp", {
+        body: { action: "verify", phone: phone.trim(), code: otp },
+      });
+      setVerifying(false);
+      if (error || data?.error || !data?.token) {
+        toast.error(data?.error || "Invalid code");
+        return;
+      }
+      const sess: PortalSession = { phone: phone.trim(), token: data.token, expiresAt: Date.now() + 30 * 60 * 1000 };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+      setSession(sess);
+      setStep("in");
+      await loadPatientData(sess.phone);
+      toast.success(lang === "en" ? "Welcome back!" : "மீண்டும் வரவேற்கிறோம்!");
+    } else {
+      const e = email.trim().toLowerCase();
+      const { data: verifyData, error } = await supabase.auth.verifyOtp({ email: e, token: otp, type: "email" });
+      if (error || !verifyData?.session) {
+        setVerifying(false);
+        toast.error(error?.message || "Invalid code");
+        return;
+      }
+      const { data: pats } = await supabase.from("patients").select("*").ilike("email", e).limit(1);
+      setVerifying(false);
+      if (!pats || pats.length === 0) {
+        toast.error(lang === "en" ? "No patient record linked to this email" : "இந்த மின்னஞ்சலுடன் பதிவு இல்லை");
+        return;
+      }
+      const pat = pats[0];
+      const sess: PortalSession = { phone: pat.phone, token: verifyData.session.access_token, expiresAt: Date.now() + 30 * 60 * 1000 };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+      setSession(sess);
+      setStep("in");
+      await loadPatientData(pat.phone);
+      toast.success(lang === "en" ? "Welcome back!" : "மீண்டும் வரவேற்கிறோம்!");
     }
-    const sess: PortalSession = { phone: phone.trim(), token: data.token, expiresAt: Date.now() + 30 * 60 * 1000 };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
-    setSession(sess);
-    setStep("in");
-    await loadPatientData(sess.phone);
-    toast.success(lang === "en" ? "Welcome back!" : "மீண்டும் வரவேற்கிறோம்!");
   };
+
 
   const signOut = () => {
     localStorage.removeItem(SESSION_KEY);
