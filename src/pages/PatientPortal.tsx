@@ -31,7 +31,9 @@ const loadSession = (): PortalSession | null => {
 
 const PatientPortalContent = () => {
   const { lang } = useLanguage();
+  const [method, setMethod] = useState<"whatsapp" | "email">("whatsapp");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"phone" | "otp" | "in">("phone");
   const [sending, setSending] = useState(false);
@@ -50,6 +52,7 @@ const PatientPortalContent = () => {
       loadPatientData(s.phone);
     }
   }, []);
+
 
   const loadPatientData = async (p: string) => {
     const { data: patients } = await supabase.from("patients").select("*").eq("phone", p);
