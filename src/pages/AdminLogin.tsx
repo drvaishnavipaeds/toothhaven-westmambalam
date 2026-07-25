@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { Phone, ShieldCheck, ArrowLeft, Mail, Lock } from "lucide-react";
+import { Phone, ShieldCheck, ArrowLeft, Mail, Lock, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "choose" | "email" | "phone" | "otp";
+type Step = "choose" | "email" | "email-otp" | "email-otp-code" | "phone" | "otp";
 
 const AdminLogin = () => {
   const [step, setStep] = useState<Step>("choose");
@@ -14,8 +14,9 @@ const AdminLogin = () => {
   const [otp, setOtp] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailOtpCode, setEmailOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signInWithPhone, verifyOtp, signInWithEmail, isAdmin, user } = useAdminAuth();
+  const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, isAdmin, user } = useAdminAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -65,6 +66,35 @@ const AdminLogin = () => {
     }
   };
 
+  const handleSendEmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Enter your email", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await sendEmailOtp(email);
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    } else {
+      setStep("email-otp-code");
+      toast({ title: "Code Sent", description: `Check ${email} for the 6-digit code.` });
+    }
+  };
+
+  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await verifyEmailOtp(email, emailOtpCode);
+    setLoading(false);
+    if (error) {
+      toast({ title: "Verification Failed", description: error, variant: "destructive" });
+    } else {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -86,11 +116,11 @@ const AdminLogin = () => {
           {step === "choose" && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground mb-4">Choose how you'd like to sign in</p>
-              <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("phone")}>
-                <Phone className="w-5 h-5 text-primary" />
+              <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("email-otp")}>
+                <KeyRound className="w-5 h-5 text-primary" />
                 <div className="text-left">
-                  <p className="text-sm font-medium">WhatsApp OTP</p>
-                  <p className="text-xs text-muted-foreground">Code sent to your authorized number</p>
+                  <p className="text-sm font-medium">Email OTP</p>
+                  <p className="text-xs text-muted-foreground">6-digit code sent to your email</p>
                 </div>
               </Button>
               <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("email")}>
@@ -99,7 +129,43 @@ const AdminLogin = () => {
                   <p className="text-sm font-medium">Email & Password</p>
                 </div>
               </Button>
+              <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("phone")}>
+                <Phone className="w-5 h-5 text-primary" />
+                <div className="text-left">
+                  <p className="text-sm font-medium">WhatsApp OTP</p>
+                  <p className="text-xs text-muted-foreground">Code sent to your authorized number</p>
+                </div>
+              </Button>
             </div>
+          )}
+
+          {step === "email-otp" && (
+            <form onSubmit={handleSendEmailOtp} className="space-y-4">
+              <button type="button" onClick={() => setStep("choose")} className="text-xs text-primary hover:underline">← Back</button>
+              <div>
+                <label className="text-sm font-medium text-foreground">Admin Email</label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@toothhaven.com" className="pl-10" required />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending code..." : "Send OTP"}
+              </Button>
+            </form>
+          )}
+
+          {step === "email-otp-code" && (
+            <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
+              <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to <strong>{email}</strong></p>
+              <Input type="text" value={emailOtpCode} onChange={e => setEmailOtpCode(e.target.value)} placeholder="Enter 6-digit code" maxLength={6} className="text-center text-lg tracking-widest" />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Verifying..." : "Verify & Login"}
+              </Button>
+              <button type="button" onClick={() => setStep("email-otp")} className="text-sm text-primary hover:underline w-full text-center">
+                Change email
+              </button>
+            </form>
           )}
 
           {step === "email" && (

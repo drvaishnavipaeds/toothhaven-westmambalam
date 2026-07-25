@@ -1,39 +1,30 @@
-## Goal
-Replace the current WhatsApp Cloud API sender configuration with the new details you provided:
-- WhatsApp Business Account ID: `1557345732385350`
-- Sender phone: `+91 87542 56417`  
-- Phone Number ID: `1132563273283167`
+# Switch Admin Login to Email OTP
 
-## Current state
-- `WHATSAPP_PHONE_NUMBER_ID` is already configured as a project secret.
-- `WHATSAPP_ACCESS_TOKEN` and `META_WEBHOOK_VERIFY_TOKEN` are already configured.
-- `WHATSAPP_BUSINESS_ACCOUNT_ID` is **not** currently stored as a secret.
+Replace the WhatsApp OTP flow for admin sign-in with email-based OTP (magic link / 6-digit code) using Lovable Cloud's built-in auth.
 
-## Plan
+## Changes
 
-1. **Update `WHATSAPP_PHONE_NUMBER_ID`**  
-   Set it to `1132563273283167` so the Graph API messages endpoint points to the new registered sender.
+### 1. Auth backend
+- Use `supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })` to send a 6-digit code to the admin's email.
+- Verify with `supabase.auth.verifyOtp({ email, token, type: 'email' })` to establish the session directly (no synthetic email hack, no magic-link redirect needed).
+- Gate access by checking the email against `admin_phones.email` via the existing `is_admin_identifier` RPC before sending the code.
 
-2. **Add `WHATSAPP_BUSINESS_ACCOUNT_ID`**  
-   Store `1557345732385350` as a new secret. This is required for webhook verification and for API calls scoped to the WABA (e.g., template management, message templates).
+### 2. Admin login UI (`src/pages/AdminLogin.tsx` + `AdminAuthContext.tsx`)
+- Replace "Phone + WhatsApp OTP" tab with "Email OTP" tab (keep Email+Password as fallback).
+- Step 1: enter email → call `is_admin_identifier` → if allowed, send OTP.
+- Step 2: enter 6-digit code → `verifyOtp` → session established → redirect to `/admin`.
 
-3. **Confirm `WHATSAPP_ACCESS_TOKEN` permissions**  
-   The existing token must belong to (or have permission on) the new WABA `1557345732385350` and the new Phone Number ID. If the token was created for the old WABA/number, it will need to be regenerated as a **System User permanent token** with `whatsapp_business_messaging` and `whatsapp_business_management` permissions. You will be asked to confirm before updating it.
+### 3. Email delivery
+- Lovable Cloud sends the OTP using the default Lovable sender automatically — no domain setup required for it to work.
+- Optional (not in this plan unless requested): custom-branded sender domain + templates.
 
-4. **Keep `META_WEBHOOK_VERIFY_TOKEN` unchanged**  
-   The webhook endpoint is already deployed at `https://zymakgyfirjecxbdvtzg.supabase.co/functions/v1/whatsapp-webhook`. No URL change is needed; the token value stays the same unless you want to rotate it.
+### 4. Cleanup
+- Keep `admin-phone-otp` and WhatsApp secrets in place (still used elsewhere / can be removed later). No destructive changes to WhatsApp infra.
+- Raise `rate_limit_email_sent` if the default hourly cap is too low for admin usage.
 
-5. **Meta-side verification (not code)**  
-   Before the admin OTP will send successfully, confirm in Meta Business / WhatsApp Manager that:
-   - The new number `+91 87542 56417` is **Registered / Connected** for Cloud API.
-   - The `otp_verification` template is **Approved** in language `en` (or update `WHATSAPP_TEMPLATE_LANG` if you use a different approved language).
+## Out of scope
+- Patient portal OTP (stays on WhatsApp).
+- Custom email templates / branded sender domain.
 
-6. **Post-change test**  
-   After the secrets are updated, run a send test via the admin login page and inspect the `admin-phone-otp` edge-function logs to confirm the WhatsApp message is accepted by Graph API.
-
-## Notes
-- The new sender number is not automatically added as an admin login number. If you also want `+91 87542 56417` to log into the admin portal, that requires a separate update to `admin_phones`.
-- The 10-digit login format used internally will be `8754256417` with country code `91` (the existing `DEFAULT_COUNTRY_CODE` default).
-
-## Question
-Do you have a **new Meta System User permanent access token** for this WABA, or should I keep the existing `WHATSAPP_ACCESS_TOKEN`? If the token was created under the old WABA/number, it will likely fail after the Phone Number ID is changed.
+## Confirm
+Should I keep the Email+Password option as a secondary tab, or remove it and make Email OTP the only admin login method?

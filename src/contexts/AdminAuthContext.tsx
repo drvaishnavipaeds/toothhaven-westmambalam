@@ -9,6 +9,8 @@ interface AdminAuthContextType {
   signInWithPhone: (phone: string) => Promise<{ error: string | null }>;
   verifyOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -115,6 +117,23 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return { error: null };
   };
 
+  const sendEmailOtp = async (email: string) => {
+    const admin = await checkAdminByEmail(email);
+    if (!admin) return { error: "This email is not authorized as admin." };
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  const verifyEmailOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -122,7 +141,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signInWithEmail, signOut }}>
+    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, signOut }}>
       {children}
     </AdminAuthContext.Provider>
   );
