@@ -326,8 +326,28 @@ const PatientPortalContent = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="w-5 h-5 text-primary" />
                 <h2 className="font-semibold text-foreground">
-                  {lang === "en" ? "Secure Login" : "பாதுகாப்பான உள்நுழைவு"}
+                  {mode === "signin"
+                    ? (lang === "en" ? "Secure Login" : "பாதுகாப்பான உள்நுழைவு")
+                    : (lang === "en" ? "Create Your Account" : "கணக்கை உருவாக்கவும்")}
                 </h2>
+              </div>
+
+              {/* Mode tabs */}
+              <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-muted rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => { setMode("signin"); setStep("phone"); setOtp(""); }}
+                  className={`py-2 rounded-md text-sm font-medium transition ${mode === "signin" ? "bg-background text-foreground shadow" : "text-muted-foreground"}`}
+                >
+                  {lang === "en" ? "Sign In" : "உள்நுழை"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode("register"); setStep("phone"); setOtp(""); }}
+                  className={`py-2 rounded-md text-sm font-medium transition ${mode === "register" ? "bg-background text-foreground shadow" : "text-muted-foreground"}`}
+                >
+                  {lang === "en" ? "Register" : "பதிவு"}
+                </button>
               </div>
 
               {step === "phone" && (
@@ -349,10 +369,61 @@ const PatientPortalContent = () => {
                     </button>
                   </div>
 
+                  {mode === "register" && (
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1">
+                          {lang === "en" ? "Full name" : "முழுப் பெயர்"} <span className="text-destructive">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={regName}
+                          onChange={(e) => setRegName(e.target.value)}
+                          maxLength={100}
+                          placeholder={lang === "en" ? "Your full name" : "உங்கள் முழுப் பெயர்"}
+                          className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">
+                            {lang === "en" ? "Date of birth" : "பிறந்த தேதி"}
+                          </label>
+                          <input
+                            type="date"
+                            value={regDob}
+                            onChange={(e) => setRegDob(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">
+                            {lang === "en" ? "Gender" : "பாலினம்"}
+                          </label>
+                          <select
+                            value={regGender}
+                            onChange={(e) => setRegGender(e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <option value="">--</option>
+                            <option value="male">{lang === "en" ? "Male" : "ஆண்"}</option>
+                            <option value="female">{lang === "en" ? "Female" : "பெண்"}</option>
+                            <option value="other">{lang === "en" ? "Other" : "மற்றவை"}</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    {method === "whatsapp"
-                      ? (lang === "en" ? "Registered phone number" : "பதிவு செய்யப்பட்ட தொலைபேசி எண்")
-                      : (lang === "en" ? "Registered email address" : "பதிவு செய்யப்பட்ட மின்னஞ்சல்")}
+                    {mode === "register"
+                      ? (method === "whatsapp"
+                          ? (lang === "en" ? "Phone number (WhatsApp)" : "தொலைபேசி எண் (WhatsApp)")
+                          : (lang === "en" ? "Email address" : "மின்னஞ்சல்"))
+                      : (method === "whatsapp"
+                          ? (lang === "en" ? "Registered phone number" : "பதிவு செய்யப்பட்ட தொலைபேசி எண்")
+                          : (lang === "en" ? "Registered email address" : "பதிவு செய்யப்பட்ட மின்னஞ்சல்"))}
+                    {mode === "register" && <span className="text-destructive"> *</span>}
                   </label>
                   <div className="flex gap-3">
                     <div className="relative flex-1">
@@ -391,6 +462,53 @@ const PatientPortalContent = () => {
                       {sending ? "..." : (lang === "en" ? "Send OTP" : "OTP அனுப்பு")}
                     </button>
                   </div>
+
+                  {mode === "register" && method === "whatsapp" && (
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === "en" ? "Email (optional)" : "மின்னஞ்சல் (விருப்பம்)"}
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  )}
+                  {mode === "register" && method === "email" && (
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === "en" ? "Phone number (WhatsApp)" : "தொலைபேசி எண் (WhatsApp)"} <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        maxLength={10}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                        placeholder="9841703037"
+                        className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  )}
+
+                  {mode === "register" && (
+                    <label className="flex items-start gap-2 mt-4 text-xs text-muted-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={regConsent}
+                        onChange={(e) => setRegConsent(e.target.checked)}
+                        className="mt-0.5 accent-primary"
+                      />
+                      <span>
+                        {lang === "en"
+                          ? "I agree to be contacted about appointments, treatment updates, and clinic communication."
+                          : "முன்பதிவுகள், சிகிச்சை புதுப்பிப்புகள் மற்றும் மருத்துவமனை தொடர்பு பற்றி என்னைத் தொடர்பு கொள்ள ஒப்புக்கொள்கிறேன்."}
+                      </span>
+                    </label>
+                  )}
+
                   <p className="text-xs text-muted-foreground mt-3">
                     {method === "whatsapp"
                       ? (lang === "en" ? "We'll send a 6-digit code to your WhatsApp." : "உங்கள் WhatsApp க்கு 6 இலக்க குறியீடு அனுப்பப்படும்.")
@@ -398,6 +516,7 @@ const PatientPortalContent = () => {
                   </p>
                 </>
               )}
+
 
               {step === "otp" && (
                 <>
