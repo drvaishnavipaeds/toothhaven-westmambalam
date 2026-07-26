@@ -1083,6 +1083,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          pending_registration: Json | null
           phone: string
         }
         Insert: {
@@ -1092,6 +1093,7 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
+          pending_registration?: Json | null
           phone: string
         }
         Update: {
@@ -1101,6 +1103,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          pending_registration?: Json | null
           phone?: string
         }
         Relationships: []

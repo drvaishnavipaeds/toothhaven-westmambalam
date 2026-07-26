@@ -1,30 +1,54 @@
-# Switch Admin Login to Email OTP
+## Goal
 
-Replace the WhatsApp OTP flow for admin sign-in with email-based OTP (magic link / 6-digit code) using Lovable Cloud's built-in auth.
+Let new patients register themselves from the Patient Portal login screen, then sign in immediately with the same WhatsApp or Email OTP flow already used for existing patients.
 
-## Changes
+## UX
 
-### 1. Auth backend
-- Use `supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })` to send a 6-digit code to the admin's email.
-- Verify with `supabase.auth.verifyOtp({ email, token, type: 'email' })` to establish the session directly (no synthetic email hack, no magic-link redirect needed).
-- Gate access by checking the email against `admin_phones.email` via the existing `is_admin_identifier` RPC before sending the code.
+On the Patient Portal login card, add a top-level tab pair: **Sign In** / **Register**.
 
-### 2. Admin login UI (`src/pages/AdminLogin.tsx` + `AdminAuthContext.tsx`)
-- Replace "Phone + WhatsApp OTP" tab with "Email OTP" tab (keep Email+Password as fallback).
-- Step 1: enter email → call `is_admin_identifier` → if allowed, send OTP.
-- Step 2: enter 6-digit code → `verifyOtp` → session established → redirect to `/admin`.
+Register flow (mobile-first, matches existing card styling):
 
-### 3. Email delivery
-- Lovable Cloud sends the OTP using the default Lovable sender automatically — no domain setup required for it to work.
-- Optional (not in this plan unless requested): custom-branded sender domain + templates.
+1. Choose method: WhatsApp or Email (same toggle as sign-in).
+2. Fill registration form:
+   - Full name (required)
+   - Phone (10 digits, required)
+   - Email (required if Email method; optional if WhatsApp)
+   - Date of birth (optional)
+   - Gender (optional)
+   - Consent checkbox: "I agree to be contacted for appointments and updates" (required)
+3. Tap **Send OTP** → 6-digit code delivered via chosen channel.
+4. Enter code → **Verify & Create Account**.
+5. On success: patient record is created, session is stored (same `portal_session_v1` key), user lands in the logged-in portal view.
 
-### 4. Cleanup
-- Keep `admin-phone-otp` and WhatsApp secrets in place (still used elsewhere / can be removed later). No destructive changes to WhatsApp infra.
-- Raise `rate_limit_email_sent` if the default hourly cap is too low for admin usage.
+Duplicate handling: if phone or email already matches an existing patient, show "An account already exists — please sign in instead" with a one-tap switch to the Sign In tab (prefilled).
+
+## Implementation
+
+### Backend
+
+Extend `supabase/functions/portal-otp/index.ts` with two new actions so RLS stays locked to staff:
+
+- `register_send`: input `{ name, phone, email?, dob?, gender?, method }`. Validates with Zod, checks `patients` for existing phone/email (returns `already_exists`), stashes pending registration payload keyed by phone in `portal_otp_codes` (reuse table; add a `pending_registration jsonb` column via migration), then sends WhatsApp OTP (existing helper) or triggers Supabase email OTP.
+- `register_verify`: input `{ phone or email, code, method }`. Verifies OTP, reads pending payload, inserts into `public.patients` via service role, clears pending payload, returns `{ token, phone }` shaped like the existing verify response.
+
+Email path reuses `supabase.auth.signInWithOtp` from the client (same as current sign-in), and the edge function performs the patient insert after the client confirms verification via a new `register_finalize` action that trusts an authenticated session's email.
+
+Migration:
+- `ALTER TABLE public.portal_otp_codes ADD COLUMN pending_registration jsonb;`
+- No new GRANTs needed (table already staff-only; edge function uses service role).
+
+### Frontend
+
+`src/pages/PatientPortal.tsx`:
+- Add `mode: "signin" | "register"` state and a tab switcher above the existing method toggle.
+- Add register form component (inline, no new files needed) with Zod validation.
+- Wire `sendOtp` / `verifyOtp` to call `portal-otp` `register_send` / `register_verify` (WhatsApp) or Supabase auth OTP + `register_finalize` (Email).
+- On duplicate error, surface a toast + auto-switch to Sign In with the entered phone/email prefilled.
+
+No changes to admin flows, existing sign-in flow, or RLS policies.
 
 ## Out of scope
-- Patient portal OTP (stays on WhatsApp).
-- Custom email templates / branded sender domain.
 
-## Confirm
-Should I keep the Email+Password option as a secondary tab, or remove it and make Email OTP the only admin login method?
+- Editing profile fields after registration (already handled in admin portal).
+- Password-based patient accounts.
+- Email verification beyond the OTP code itself.

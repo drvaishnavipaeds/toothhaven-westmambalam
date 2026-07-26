@@ -1,0 +1,1 @@
+ALTER TABLE public.portal_otp_codes ADD COLUMN IF NOT EXISTS pending_registration jsonb;
