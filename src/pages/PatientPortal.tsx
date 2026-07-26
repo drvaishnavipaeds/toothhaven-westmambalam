@@ -31,6 +31,7 @@ const loadSession = (): PortalSession | null => {
 
 const PatientPortalContent = () => {
   const { lang } = useLanguage();
+  const [mode, setMode] = useState<"signin" | "register">("signin");
   const [method, setMethod] = useState<"whatsapp" | "email">("whatsapp");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -42,6 +43,12 @@ const PatientPortalContent = () => {
   const [patient, setPatient] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [treatments, setTreatments] = useState<any[]>([]);
+
+  // Registration form fields
+  const [regName, setRegName] = useState("");
+  const [regDob, setRegDob] = useState("");
+  const [regGender, setRegGender] = useState("");
+  const [regConsent, setRegConsent] = useState(false);
 
   // Restore session
   useEffect(() => {
@@ -68,7 +75,79 @@ const PatientPortalContent = () => {
     }
   };
 
+  const switchToSignIn = (prefill?: { phone?: string; email?: string }) => {
+    setMode("signin");
+    setStep("phone");
+    setOtp("");
+    if (prefill?.phone) { setPhone(prefill.phone); setMethod("whatsapp"); }
+    if (prefill?.email) { setEmail(prefill.email); setMethod("email"); }
+  };
+
+  const sendRegisterOtp = async () => {
+    const name = regName.trim();
+    if (name.length < 2) {
+      toast.error(lang === "en" ? "Please enter your full name" : "உங்கள் முழுப் பெயரை உள்ளிடவும்");
+      return;
+    }
+    if (!/^\d{10}$/.test(phone.trim())) {
+      toast.error(lang === "en" ? "Enter a valid 10-digit phone number" : "சரியான 10 இலக்க எண்ணை உள்ளிடவும்");
+      return;
+    }
+    const e = email.trim().toLowerCase();
+    if (method === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      toast.error(lang === "en" ? "Enter a valid email address" : "சரியான மின்னஞ்சலை உள்ளிடவும்");
+      return;
+    }
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      toast.error(lang === "en" ? "Enter a valid email address" : "சரியான மின்னஞ்சலை உள்ளிடவும்");
+      return;
+    }
+    if (!regConsent) {
+      toast.error(lang === "en" ? "Please accept the consent to continue" : "தொடர ஒப்புதலை ஏற்கவும்");
+      return;
+    }
+
+    setSending(true);
+    if (method === "whatsapp") {
+      const { data, error } = await supabase.functions.invoke("portal-otp", {
+        body: {
+          action: "register_send",
+          name, phone: phone.trim(),
+          email: e || null,
+          dob: regDob || null,
+          gender: regGender || null,
+        },
+      });
+      setSending(false);
+      if (error || data?.error) {
+        if (data?.already_exists) {
+          toast.error(data.error);
+          switchToSignIn({ phone: phone.trim() });
+          return;
+        }
+        toast.error(data?.error || error?.message || "Failed to send OTP");
+        return;
+      }
+      toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP அனுப்பப்பட்டது");
+      setStep("otp");
+    } else {
+      const { data: existing } = await supabase.from("patients").select("id").or(`phone.eq.${phone.trim()},email.eq.${e}`).limit(1);
+      if (existing && existing.length > 0) {
+        setSending(false);
+        toast.error(lang === "en" ? "An account already exists. Please sign in." : "கணக்கு ஏற்கனவே உள்ளது. உள்நுழையவும்.");
+        switchToSignIn({ email: e });
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
+      setSending(false);
+      if (error) { toast.error(error.message); return; }
+      toast.success(lang === "en" ? "6-digit code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு குறியீடு அனுப்பப்பட்டது");
+      setStep("otp");
+    }
+  };
+
   const sendOtp = async () => {
+    if (mode === "register") return sendRegisterOtp();
     if (method === "whatsapp") {
       if (!/^\d{10}$/.test(phone.trim())) {
         toast.error(lang === "en" ? "Enter a valid 10-digit phone number" : "சரியான 10 இலக்க எண்ணை உள்ளிடவும்");
@@ -96,7 +175,7 @@ const PatientPortalContent = () => {
       const { data: pats } = await supabase.from("patients").select("id,email").ilike("email", e).limit(1);
       if (!pats || pats.length === 0) {
         setSending(false);
-        toast.error(lang === "en" ? "No patient found with this email. Please contact the clinic." : "இந்த மின்னஞ்சலுடன் நோயாளி இல்லை.");
+        toast.error(lang === "en" ? "No patient found with this email. Please register or contact the clinic." : "இந்த மின்னஞ்சலுடன் நோயாளி இல்லை.");
         return;
       }
       const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
@@ -116,6 +195,54 @@ const PatientPortalContent = () => {
       return;
     }
     setVerifying(true);
+
+    if (mode === "register") {
+      if (method === "whatsapp") {
+        const { data, error } = await supabase.functions.invoke("portal-otp", {
+          body: { action: "register_verify", phone: phone.trim(), code: otp },
+        });
+        setVerifying(false);
+        if (error || data?.error || !data?.token) {
+          toast.error(data?.error || error?.message || "Invalid code");
+          return;
+        }
+        const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: Date.now() + 30 * 60 * 1000 };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+        setSession(sess);
+        setStep("in");
+        await loadPatientData(sess.phone);
+        toast.success(lang === "en" ? "Welcome to Tooth Haven!" : "வரவேற்கிறோம்!");
+      } else {
+        const e = email.trim().toLowerCase();
+        const { data: verifyData, error } = await supabase.auth.verifyOtp({ email: e, token: otp, type: "email" });
+        if (error || !verifyData?.session) {
+          setVerifying(false);
+          toast.error(error?.message || "Invalid code");
+          return;
+        }
+        const { data, error: fnErr } = await supabase.functions.invoke("portal-otp", {
+          body: {
+            action: "register_finalize",
+            name: regName.trim(), phone: phone.trim(), email: e,
+            dob: regDob || null, gender: regGender || null,
+          },
+        });
+        setVerifying(false);
+        if (fnErr || data?.error || !data?.token) {
+          toast.error(data?.error || fnErr?.message || "Registration failed");
+          return;
+        }
+        const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: Date.now() + 30 * 60 * 1000 };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+        setSession(sess);
+        setStep("in");
+        await loadPatientData(sess.phone);
+        toast.success(lang === "en" ? "Welcome to Tooth Haven!" : "வரவேற்கிறோம்!");
+      }
+      return;
+    }
+
+    // Sign-in verify
     if (method === "whatsapp") {
       const { data, error } = await supabase.functions.invoke("portal-otp", {
         body: { action: "verify", phone: phone.trim(), code: otp },
@@ -163,9 +290,13 @@ const PatientPortalContent = () => {
     setAppointments([]);
     setTreatments([]);
     setPhone("");
+    setEmail("");
     setOtp("");
+    setRegName(""); setRegDob(""); setRegGender(""); setRegConsent(false);
     setStep("phone");
+    setMode("signin");
   };
+
 
   const nextAppt = appointments.find(a => a.status !== "completed" && a.status !== "cancelled" && new Date(a.appointment_date) >= new Date(new Date().toDateString()));
 
