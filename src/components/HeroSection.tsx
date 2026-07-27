@@ -1,6 +1,7 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Calendar, Phone, MapPin, Clock } from "lucide-react";
-import logo from "@/assets/tooth-haven-logo.png";
+import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
+const logo = logoAsset.url;
 
 const HeroSection = () => {
   const { t } = useLanguage();

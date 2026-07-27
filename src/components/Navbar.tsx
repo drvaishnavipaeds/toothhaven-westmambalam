@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logo from "@/assets/tooth-haven-logo.png";
+import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
+const logo = logoAsset.url;
 
 const Navbar = () => {
   const { lang, setLang, t } = useLanguage();
