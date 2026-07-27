@@ -12,7 +12,7 @@ const Footer = () => {
             <img src={logo} alt="Tooth Haven" className="h-10" />
           </div>
           <p className="text-background/60 text-sm text-center">
-            © {new Date().getFullYear()} Tooth Haven Multispeciality Dental Care. {t("footer.rights")}.
+            © {new Date().getFullYear()} Tooth Haven Advanced Dental Care. {t("footer.rights")}.
           </p>
         </div>
       </div>

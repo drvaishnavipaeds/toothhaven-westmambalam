@@ -168,7 +168,7 @@ var mcp_default = defineMcp({
   name: "tooth-haven-mcp",
   title: "Tooth Haven Dental Care",
   version: "0.1.0",
-  instructions: "Tools for Tooth Haven Multispeciality Dental Care patients. Once signed in, you can look up your patient profile, upcoming and past appointments, prescriptions, and invoices.",
+  instructions: "Tools for Tooth Haven Advanced Dental Care patients. Once signed in, you can look up your patient profile, upcoming and past appointments, prescriptions, and invoices.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"

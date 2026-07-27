@@ -14,7 +14,7 @@ const HeroSection = () => {
       
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <img src={logo} alt="Tooth Haven Multispeciality Dental Care" className="h-20 md:h-28 mx-auto mb-8" />
+          <img src={logo} alt="Tooth Haven Advanced Dental Care" className="h-20 md:h-28 mx-auto mb-8" />
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight mb-6">
             {t("hero.tagline")}
