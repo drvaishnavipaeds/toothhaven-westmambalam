@@ -1,5 +1,6 @@
 import { useLanguage } from "@/contexts/LanguageContext";
-import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
+import logoAsset from "@/assets/tooth-haven-logo-white.png.asset.json";
+const logo = logoAsset.url;
 const logo = logoAsset.url;
 
 const Footer = () => {
