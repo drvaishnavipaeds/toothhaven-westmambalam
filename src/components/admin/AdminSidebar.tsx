@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
+import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
 
 export type Tab =
   | "overview" | "patients" | "appointments" | "treatments" | "prescriptions" | "invoices"
