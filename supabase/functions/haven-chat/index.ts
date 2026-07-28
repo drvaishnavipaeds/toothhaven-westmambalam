@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const systemPrompt = `You are Haven AI, the friendly bilingual (English and Tamil) dental assistant for Tooth Haven Advanced Dental Care, West Mambalam, Chennai.
+const systemPrompt = `You are Haven AI, the friendly bilingual (English and Tamil) dental assistant for Tooth Haven Multispeciality Dental Care, West Mambalam, Chennai.
 
 About Tooth Haven:
 - Led by Dr. Karthik Srinivasan (BDS), Chief Dentist at the West Mambalam branch

@@ -1,5 +1,5 @@
 import { useLanguage } from "@/contexts/LanguageContext";
-import logoAsset from "@/assets/tooth-haven-logo-white.png.asset.json";
+import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
 const logo = logoAsset.url;
 
 const Footer = () => {
@@ -12,7 +12,7 @@ const Footer = () => {
             <img src={logo} alt="Tooth Haven" className="h-10" />
           </div>
           <p className="text-background/60 text-sm text-center">
-            © {new Date().getFullYear()} Tooth Haven Advanced Dental Care. {t("footer.rights")}.
+            © {new Date().getFullYear()} Tooth Haven Multispeciality Dental Care. {t("footer.rights")}.
           </p>
         </div>
       </div>
