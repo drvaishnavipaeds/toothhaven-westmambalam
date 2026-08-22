@@ -1404,6 +1404,8 @@ export type Database = {
           doctor_name: string | null
           drugs: Json
           id: string
+          instructions_en: string | null
+          instructions_ta: string | null
           notes: string | null
           patient_id: string
           prescribed_date: string
@@ -1415,6 +1417,8 @@ export type Database = {
           doctor_name?: string | null
           drugs?: Json
           id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
           notes?: string | null
           patient_id: string
           prescribed_date?: string
@@ -1426,6 +1430,8 @@ export type Database = {
           doctor_name?: string | null
           drugs?: Json
           id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
           notes?: string | null
           patient_id?: string
           prescribed_date?: string
