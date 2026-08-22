@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { toast } from "sonner";
+import DentalChart from "./DentalChart";
+import TreatmentPlans from "./TreatmentPlans";
+
 
 interface Patient {
   id: string;
