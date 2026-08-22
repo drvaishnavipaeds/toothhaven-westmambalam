@@ -52,6 +52,10 @@ const AdminDashboard = () => {
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList />}
         {activeTab === "appointments" && <AppointmentsList />}
+        {activeTab === "schedule" && <ScheduleManager />}
+        {activeTab === "waitlist" && <WaitlistManager />}
+        {activeTab === "recalls" && <RecallsManager />}
+
         {activeTab === "treatments" && <TreatmentsManager />}
         {activeTab === "prescriptions" && <PrescriptionsManager />}
         {activeTab === "invoices" && <InvoicesManager />}
