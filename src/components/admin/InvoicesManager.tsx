@@ -18,18 +18,20 @@ const InvoicesManager = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<Item[]>([]);
 
   const load = async () => {
-    const [{ data: inv }, { data: p }, { data: c }] = await Promise.all([
+    const [{ data: inv }, { data: p }, { data: c }, { data: s }] = await Promise.all([
       supabase.from("invoices").select("*, patients(name, phone)").order("invoice_date", { ascending: false }),
       supabase.from("patients").select("id,name,phone").order("name"),
       supabase.from("treatment_catalog").select("*").eq("is_active", true).order("name"),
+      supabase.from("clinic_settings").select("*").limit(1).maybeSingle(),
     ]);
-    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []);
+    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []); setSettings(s ?? {});
   };
   useEffect(() => { load(); }, []);
 
@@ -44,10 +46,14 @@ const InvoicesManager = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ invoice_date: new Date().toISOString().slice(0, 10), status: "unpaid", discount: 0, tax: 0, amount_paid: 0 });
+    setForm({
+      invoice_date: new Date().toISOString().slice(0, 10), status: "unpaid", discount: 0, amount_paid: 0,
+      place_of_supply: settings.state_code ?? "", interstate: false,
+    });
     setItems([]);
     setOpen(true);
   };
+
 
   const openEdit = async (r: any) => {
     setEditing(r);
