@@ -5,9 +5,19 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import upiQrCode from "@/assets/upi-qr-code.jpg";
 
-const UPI_ID = "Q42218734@ybl";
-const PAYEE_NAME = "Tooth Haven Dental";
-const RAZORPAY_KEY = "rzp_test_SdQ7562mMWoVkM";
+// ⚠️ SECURITY FIX: Load from environment variables - NEVER hardcode secrets
+const UPI_ID = import.meta.env.VITE_UPI_ID || "";
+const PAYEE_NAME = import.meta.env.VITE_UPI_PAYEE_NAME || "";
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY || "";
+
+// Validate required environment variables at component load
+if (!UPI_ID || !PAYEE_NAME) {
+  console.warn("⚠️ UPI credentials are not configured. Please set VITE_UPI_ID and VITE_UPI_PAYEE_NAME in .env.local");
+}
+
+if (!RAZORPAY_KEY) {
+  console.warn("⚠️ VITE_RAZORPAY_KEY is not set. Card payments will be disabled. Set this in .env.local or use production Razorpay key.");
+}
 
 const PaymentSection = () => {
   const { lang } = useLanguage();
@@ -34,17 +44,29 @@ const PaymentSection = () => {
   const generateGPayLink = (amt: string) => `tez://upi/pay?${buildUpiParams(amt)}`;
   const generatePaytmLink = (amt: string) => `paytmmp://pay?${buildUpiParams(amt)}`;
 
-  // Client-side "payment succeeded" notifications are not trustworthy and can
-  // be spoofed, so we no longer call payment-notification directly from the
-  // browser. Staff verify the transaction and record it in the payments table;
+  // SECURITY NOTE: Client-side "payment succeeded" notifications are not trustworthy and can
+  // be spoofed. We no longer call payment-notification directly from the browser.
+  // Staff verify the transaction and record it in the payments table;
   // the notification is emitted from that verified server-side record.
   const sendNotification = async (_method: string, _amt: string) => {
     /* intentionally no-op — see payment-notification edge function */
   };
 
   const handleUpiPay = (app: "any" | "phonepe" | "gpay" | "paytm" = "any") => {
+    if (!UPI_ID || !PAYEE_NAME) {
+      toast.error(lang === "ta" ? "UPI வகையமைக்கப்படவில்லை" : "UPI is not configured");
+      return;
+    }
+
     if (!amount || !patientName || !patientPhone) {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
+      return;
+    }
+
+    // SECURITY FIX: Validate amount is positive number
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0 || amountNum > 100000) {
+      toast.error(lang === "ta" ? "சரியான தொகையை உள்ளிடவும்" : "Enter a valid amount (₹1 - ₹100,000)");
       return;
     }
 
@@ -71,6 +93,16 @@ const PaymentSection = () => {
   };
 
   const handleRazorpayPay = () => {
+    // SECURITY FIX: Check if Razorpay key is configured
+    if (!RAZORPAY_KEY) {
+      toast.error(
+        lang === "ta"
+          ? "Razorpay வகையமைக்கப்படவில்லை. UPI பயன்படுத்தவும்।"
+          : "Card payments are not configured. Please use UPI."
+      );
+      return;
+    }
+
     if (!amount || !patientName || !patientPhone) {
       toast.error(lang === "ta" ? "அனைத்து விவரங்களையும் நிரப்பவும்" : "Please fill all details");
       return;
@@ -160,7 +192,7 @@ const PaymentSection = () => {
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             {lang === "ta"
-              ? "UPI, கார்டு அல்லது நெட்பேங்கிங் மூலம் பாதுகாப்பாக கட்டணம் செலுத்துங்கள்"
+              ? "UPI, கார்டு அல்லது நெட்பேங்கிங் மூலம் பாதுகாப்பாக கட்டணம் செலுத்து"
               : "Pay securely via UPI, Card or Netbanking"}
           </p>
         </div>
@@ -225,6 +257,7 @@ const PaymentSection = () => {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   min="1"
+                  max="100000"
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -267,12 +300,12 @@ const PaymentSection = () => {
                   <img src={upiQrCode} alt="UPI QR Code" className="w-full h-full object-contain" />
                 </div>
                 <p className="font-mono text-sm bg-muted px-3 py-1.5 rounded-lg inline-block select-all">
-                  {UPI_ID}
+                  {UPI_ID || "UPI not configured"}
                 </p>
                 <button
                   type="button"
                   onClick={() => handleUpiPay("any")}
-                  disabled={!amount}
+                  disabled={!amount || !UPI_ID}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <Smartphone className="w-5 h-5" />
@@ -281,7 +314,7 @@ const PaymentSection = () => {
                     : amount ? `Pay ₹${amount} via UPI` : "Enter amount first"}
                 </button>
 
-                {amount && (
+                {amount && UPI_ID && (
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
@@ -310,7 +343,7 @@ const PaymentSection = () => {
                 <p className="text-xs text-muted-foreground">
                   {lang === "ta"
                     ? "எந்த UPI ஆப் மூலமும் (PhonePe, GPay, Paytm, BHIM) செலுத்தலாம். டெஸ்க்டாப்பில் QR கோடை ஸ்கேன் செய்யவும்."
-                    : "Pays with any installed UPI app (PhonePe, GPay, Paytm, BHIM). On desktop, scan the QR code above."}
+                    : "Pay with any installed UPI app (PhonePe, GPay, Paytm, BHIM). On desktop, scan the QR code above."}
                 </p>
               </div>
             )}
@@ -329,7 +362,7 @@ const PaymentSection = () => {
                 <button
                   type="button"
                   onClick={handleRazorpayPay}
-                  disabled={!amount || processing}
+                  disabled={!amount || processing || !RAZORPAY_KEY}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <CreditCard className="w-5 h-5" />
