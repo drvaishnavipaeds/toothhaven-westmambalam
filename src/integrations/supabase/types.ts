@@ -592,6 +592,44 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_ai_logs: {
+        Row: {
+          actor_email: string | null
+          created_at: string
+          id: string
+          input: Json | null
+          output: Json | null
+          patient_id: string | null
+          task: string
+        }
+        Insert: {
+          actor_email?: string | null
+          created_at?: string
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          patient_id?: string | null
+          task: string
+        }
+        Update: {
+          actor_email?: string | null
+          created_at?: string
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          patient_id?: string | null
+          task?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_ai_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_campaigns: {
         Row: {
           audience: string | null
@@ -1366,6 +1404,8 @@ export type Database = {
           doctor_name: string | null
           drugs: Json
           id: string
+          instructions_en: string | null
+          instructions_ta: string | null
           notes: string | null
           patient_id: string
           prescribed_date: string
@@ -1377,6 +1417,8 @@ export type Database = {
           doctor_name?: string | null
           drugs?: Json
           id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
           notes?: string | null
           patient_id: string
           prescribed_date?: string
@@ -1388,6 +1430,8 @@ export type Database = {
           doctor_name?: string | null
           drugs?: Json
           id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
           notes?: string | null
           patient_id?: string
           prescribed_date?: string
@@ -1802,6 +1846,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          ai_replied: boolean
+          body: string | null
+          created_at: string
+          direction: string
+          handled_by_staff: boolean
+          id: string
+          message_type: string
+          patient_id: string | null
+          phone: string
+          profile_name: string | null
+          raw: Json | null
+          status: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          ai_replied?: boolean
+          body?: string | null
+          created_at?: string
+          direction: string
+          handled_by_staff?: boolean
+          id?: string
+          message_type?: string
+          patient_id?: string | null
+          phone: string
+          profile_name?: string | null
+          raw?: Json | null
+          status?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          ai_replied?: boolean
+          body?: string | null
+          created_at?: string
+          direction?: string
+          handled_by_staff?: boolean
+          id?: string
+          message_type?: string
+          patient_id?: string | null
+          phone?: string
+          profile_name?: string | null
+          raw?: Json | null
+          status?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

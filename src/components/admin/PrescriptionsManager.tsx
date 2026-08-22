@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Printer, Pencil } from "lucide-react";
+import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
 
 type Drug = { name: string; dose: string; frequency: string; duration: string; notes?: string };
 
@@ -15,6 +15,7 @@ const PrescriptionsManager = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ prescribed_date: new Date().toISOString().slice(0, 10), drugs: [] as Drug[] });
 
@@ -42,6 +43,32 @@ const PrescriptionsManager = () => {
     setForm((f: any) => ({ ...f, drugs: f.drugs.map((d: Drug, idx: number) => (idx === i ? { ...d, [k]: v } : d)) }));
   const removeDrug = (i: number) => setForm((f: any) => ({ ...f, drugs: f.drugs.filter((_: any, idx: number) => idx !== i) }));
 
+  const aiDraft = async () => {
+    if (!form.diagnosis && !form.chief_complaint) return toast.error("Enter a diagnosis or complaint first");
+    setAiLoading(true);
+    const { data, error } = await supabase.functions.invoke("clinical-copilot", {
+      body: {
+        task: "prescription",
+        patient_id: form.patient_id || undefined,
+        diagnosis: form.diagnosis || undefined,
+        chief_complaint: form.chief_complaint || undefined,
+      },
+    });
+    setAiLoading(false);
+    const err = (data as any)?.error ?? error?.message;
+    if (err) return toast.error(typeof err === "string" ? err : "AI draft failed");
+    const o = (data as any)?.output;
+    if (!o) return toast.error("No draft returned");
+    setForm((f: any) => ({
+      ...f,
+      diagnosis: f.diagnosis || o.diagnosis,
+      drugs: [...(f.drugs ?? []), ...(o.drugs ?? [])],
+      instructions_en: [o.instructions_en, o.red_flags].filter(Boolean).join("\n"),
+      instructions_ta: o.instructions_ta ?? "",
+    }));
+    toast.success("Draft added — review before saving");
+  };
+
   const save = async () => {
     if (!form.patient_id) return toast.error("Select a patient");
     const payload = {
@@ -51,6 +78,8 @@ const PrescriptionsManager = () => {
       drugs: form.drugs,
       notes: form.notes,
       doctor_name: form.doctor_name,
+      instructions_en: form.instructions_en,
+      instructions_ta: form.instructions_ta,
     };
     const { error } = editing
       ? await supabase.from("prescriptions").update(payload).eq("id", editing.id)
@@ -60,6 +89,7 @@ const PrescriptionsManager = () => {
     setOpen(false);
     load();
   };
+
 
   const remove = async (r: any) => {
     if (!confirm("Delete prescription?")) return;
@@ -74,13 +104,15 @@ const PrescriptionsManager = () => {
       `<tr><td>${i + 1}</td><td>${d.name}</td><td>${d.dose}</td><td>${d.frequency}</td><td>${d.duration}</td></tr>`
     ).join("");
     w.document.write(`
-      <html><head><title>Rx ${r.patients?.name ?? ""}</title>
+      <html><head><meta charset="utf-8"><title>Rx ${r.patients?.name ?? ""}</title>
       <style>body{font-family:sans-serif;padding:24px;color:#111}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left}.header{display:flex;justify-content:space-between;border-bottom:2px solid #0891b2;padding-bottom:8px;margin-bottom:16px}</style>
       </head><body>
       <div class="header"><div><h1>Tooth Haven Advanced Dental Care</h1><p>West Mambalam, Chennai · +91 89251 66149</p></div><div><strong>${r.doctor_name ?? "Dr. Karthik Srinivasan, BDS"}</strong></div></div>
       <p><strong>Patient:</strong> ${r.patients?.name ?? ""} · <strong>Phone:</strong> ${r.patients?.phone ?? ""}</p>
       <p><strong>Date:</strong> ${r.prescribed_date} · <strong>Diagnosis:</strong> ${r.diagnosis ?? ""}</p>
       <table><thead><tr><th>#</th><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th></tr></thead><tbody>${drugs}</tbody></table>
+      ${r.instructions_en ? `<h3 style="margin-top:20px;margin-bottom:4px">Instructions</h3><p style="white-space:pre-wrap;margin:0">${r.instructions_en}</p>` : ""}
+      ${r.instructions_ta ? `<h3 style="margin-top:16px;margin-bottom:4px">அறிவுரைகள்</h3><p style="white-space:pre-wrap;margin:0">${r.instructions_ta}</p>` : ""}
       <p style="margin-top:24px">${r.notes ?? ""}</p>
       <p style="margin-top:64px;text-align:right">Signature</p>
       </body></html>`);
@@ -145,9 +177,22 @@ const PrescriptionsManager = () => {
                 ))}
               </div>
             </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <div><Label>Patient instructions (English)</Label><Textarea rows={4} value={form.instructions_en ?? ""} onChange={(e) => setForm({ ...form, instructions_en: e.target.value })} /></div>
+              <div><Label>நோயாளிக்கான அறிவுரைகள் (Tamil)</Label><Textarea rows={4} value={form.instructions_ta ?? ""} onChange={(e) => setForm({ ...form, instructions_ta: e.target.value })} /></div>
+            </div>
             <div><Label>Notes</Label><Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="secondary" onClick={aiDraft} disabled={aiLoading}>
+              <Sparkles className="w-4 h-4 mr-1" />{aiLoading ? "Drafting…" : "AI draft"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={save}>Save</Button>
+            </div>
+          </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>
