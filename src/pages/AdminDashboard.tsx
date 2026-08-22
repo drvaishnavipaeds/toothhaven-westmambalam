@@ -15,6 +15,10 @@ import AchievementsManager from "@/components/admin/AchievementsManager";
 import ConsentManager from "@/components/admin/ConsentManager";
 import PrescriptionsManager from "@/components/admin/PrescriptionsManager";
 import InvoicesManager from "@/components/admin/InvoicesManager";
+import ScheduleManager from "@/components/admin/ScheduleManager";
+import WaitlistManager from "@/components/admin/WaitlistManager";
+import RecallsManager from "@/components/admin/RecallsManager";
+
 import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
@@ -52,6 +56,10 @@ const AdminDashboard = () => {
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList />}
         {activeTab === "appointments" && <AppointmentsList />}
+        {activeTab === "schedule" && <ScheduleManager />}
+        {activeTab === "waitlist" && <WaitlistManager />}
+        {activeTab === "recalls" && <RecallsManager />}
+
         {activeTab === "treatments" && <TreatmentsManager />}
         {activeTab === "prescriptions" && <PrescriptionsManager />}
         {activeTab === "invoices" && <InvoicesManager />}

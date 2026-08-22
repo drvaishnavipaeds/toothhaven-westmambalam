@@ -9,26 +9,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil } from "lucide-react";
 
-type Item = { description: string; quantity: number; unit_price: number; total: number };
+type Item = { description: string; quantity: number; unit_price: number; total: number; hsn_sac?: string | null; gst_rate?: number };
 
-const money = (v: any) => `₹${Number(v ?? 0).toLocaleString("en-IN")}`;
+const money = (v: any) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
 
 const InvoicesManager = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<Item[]>([]);
 
   const load = async () => {
-    const [{ data: inv }, { data: p }, { data: c }] = await Promise.all([
+    const [{ data: inv }, { data: p }, { data: c }, { data: s }] = await Promise.all([
       supabase.from("invoices").select("*, patients(name, phone)").order("invoice_date", { ascending: false }),
       supabase.from("patients").select("id,name,phone").order("name"),
       supabase.from("treatment_catalog").select("*").eq("is_active", true).order("name"),
+      supabase.from("clinic_settings").select("*").limit(1).maybeSingle(),
     ]);
-    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []);
+    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []); setSettings(s ?? {});
   };
   useEffect(() => { load(); }, []);
 
@@ -43,20 +46,27 @@ const InvoicesManager = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ invoice_date: new Date().toISOString().slice(0, 10), status: "unpaid", discount: 0, tax: 0, amount_paid: 0 });
+    setForm({
+      invoice_date: new Date().toISOString().slice(0, 10), status: "unpaid", discount: 0, amount_paid: 0,
+      place_of_supply: settings.state_code ?? "", interstate: false,
+    });
     setItems([]);
     setOpen(true);
   };
 
+
   const openEdit = async (r: any) => {
     setEditing(r);
-    setForm({ ...r });
+    setForm({ ...r, interstate: Number(r.igst ?? 0) > 0 });
     const { data } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
-    setItems((data ?? []).map((d: any) => ({ description: d.description, quantity: Number(d.quantity), unit_price: Number(d.unit_price), total: Number(d.total) })));
+    setItems((data ?? []).map((d: any) => ({
+      description: d.description, quantity: Number(d.quantity), unit_price: Number(d.unit_price), total: Number(d.total),
+      hsn_sac: d.hsn_sac ?? "", gst_rate: Number(d.gst_rate ?? 0),
+    })));
     setOpen(true);
   };
 
-  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0 }]);
+  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0, hsn_sac: "", gst_rate: Number(settings.default_gst_rate ?? 0) }]);
   const updateItem = (i: number, patch: Partial<Item>) => setItems((it) => it.map((r, idx) => {
     if (idx !== i) return r;
     const merged = { ...r, ...patch };
@@ -65,11 +75,23 @@ const InvoicesManager = () => {
   }));
   const removeItem = (i: number) => setItems((it) => it.filter((_, idx) => idx !== i));
 
+  // GST is computed per line on the discount-adjusted taxable value (proportional discount).
   const totals = useMemo(() => {
     const subtotal = items.reduce((s, r) => s + r.total, 0);
-    const total = subtotal - Number(form.discount ?? 0) + Number(form.tax ?? 0);
-    return { subtotal, total };
-  }, [items, form.discount, form.tax]);
+    const discount = Number(form.discount ?? 0);
+    const ratio = subtotal > 0 ? Math.max(0, subtotal - discount) / subtotal : 0;
+    const gst = items.reduce((s, r) => s + r.total * ratio * (Number(r.gst_rate ?? 0) / 100), 0);
+    const interstate = !!form.interstate;
+    const cgst = interstate ? 0 : gst / 2;
+    const sgst = interstate ? 0 : gst / 2;
+    const igst = interstate ? gst : 0;
+    const taxable = Math.max(0, subtotal - discount);
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      subtotal: round2(subtotal), taxable: round2(taxable), gst: round2(gst),
+      cgst: round2(cgst), sgst: round2(sgst), igst: round2(igst), total: round2(taxable + gst),
+    };
+  }, [items, form.discount, form.interstate]);
 
   const save = async () => {
     if (!form.patient_id) return toast.error("Select patient");
@@ -78,7 +100,9 @@ const InvoicesManager = () => {
     if (!editing) invoice_number = await nextInvoiceNumber();
     const payload = {
       invoice_number, patient_id: form.patient_id, invoice_date: form.invoice_date,
-      subtotal: totals.subtotal, discount: Number(form.discount ?? 0), tax: Number(form.tax ?? 0),
+      subtotal: totals.subtotal, discount: Number(form.discount ?? 0), tax: totals.gst,
+      cgst: totals.cgst, sgst: totals.sgst, igst: totals.igst,
+      place_of_supply: form.place_of_supply || null, patient_gstin: form.patient_gstin || null,
       total: totals.total, amount_paid: Number(form.amount_paid ?? 0),
       status: Number(form.amount_paid ?? 0) >= totals.total ? "paid" : Number(form.amount_paid ?? 0) > 0 ? "partial" : "unpaid",
       notes: form.notes,
@@ -88,7 +112,11 @@ const InvoicesManager = () => {
       : await supabase.from("invoices").insert(payload).select().single();
     if (error) return toast.error(error.message);
     if (editing) await supabase.from("invoice_items").delete().eq("invoice_id", editing.id);
-    await supabase.from("invoice_items").insert(items.map((it) => ({ ...it, invoice_id: saved!.id })));
+    await supabase.from("invoice_items").insert(items.map((it) => ({
+      invoice_id: saved!.id, description: it.description, quantity: it.quantity,
+      unit_price: it.unit_price, total: it.total, hsn_sac: it.hsn_sac || null, gst_rate: Number(it.gst_rate ?? 0),
+    })));
+
     toast.success("Saved");
     setOpen(false); load();
   };
@@ -102,24 +130,34 @@ const InvoicesManager = () => {
   const printInv = async (r: any) => {
     const { data: its } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
     const rowsHtml = (its ?? []).map((i, idx) =>
-      `<tr><td>${idx + 1}</td><td>${i.description}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${money(i.total)}</td></tr>`
+      `<tr><td>${idx + 1}</td><td>${i.description}</td><td>${i.hsn_sac ?? "—"}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${Number(i.gst_rate ?? 0)}%</td><td>${money(i.total)}</td></tr>`
     ).join("");
+    const isGst = Number(r.tax ?? 0) > 0;
     const w = window.open("", "_blank"); if (!w) return;
     w.document.write(`
       <html><head><title>Invoice ${r.invoice_number}</title>
-      <style>body{font-family:sans-serif;padding:24px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px}.h{display:flex;justify-content:space-between;border-bottom:2px solid #0891b2;padding-bottom:8px}.tot{text-align:right;margin-top:12px}</style>
+      <style>body{font-family:sans-serif;padding:24px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;font-size:13px}.h{display:flex;justify-content:space-between;border-bottom:2px solid #0891b2;padding-bottom:8px}.tot{text-align:right;margin-top:12px}.muted{color:#666;font-size:12px}</style>
       </head><body>
-      <div class="h"><div><h1>Tooth Haven Advanced Dental Care</h1><p>West Mambalam, Chennai</p></div><div><h2>INVOICE</h2><p>${r.invoice_number}</p><p>${r.invoice_date}</p></div></div>
+      <div class="h">
+        <div><h1>Tooth Haven Advanced Dental Care</h1><p class="muted">${settings.address ?? "West Mambalam, Chennai"}</p>${settings.gstin ? `<p class="muted">GSTIN: ${settings.gstin}</p>` : ""}</div>
+        <div><h2>${isGst ? "TAX INVOICE" : "INVOICE"}</h2><p>${r.invoice_number}</p><p>${r.invoice_date}</p></div>
+      </div>
       <p><strong>Bill To:</strong> ${r.patients?.name ?? ""} · ${r.patients?.phone ?? ""}</p>
-      <table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+      ${r.patient_gstin ? `<p class="muted">Patient GSTIN: ${r.patient_gstin}</p>` : ""}
+      ${r.place_of_supply ? `<p class="muted">Place of supply: ${r.place_of_supply}</p>` : ""}
+      <table><thead><tr><th>#</th><th>Description</th><th>HSN/SAC</th><th>Qty</th><th>Rate</th><th>GST</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>
       <div class="tot">
         <p>Subtotal: ${money(r.subtotal)}</p>
         <p>Discount: -${money(r.discount)}</p>
-        <p>Tax: ${money(r.tax)}</p>
+        <p>Taxable value: ${money(Number(r.subtotal) - Number(r.discount))}</p>
+        ${Number(r.igst ?? 0) > 0
+          ? `<p>IGST: ${money(r.igst)}</p>`
+          : `<p>CGST: ${money(r.cgst)}</p><p>SGST: ${money(r.sgst)}</p>`}
         <p><strong>Total: ${money(r.total)}</strong></p>
         <p>Paid: ${money(r.amount_paid)}</p>
         <p><strong>Balance: ${money(Number(r.total) - Number(r.amount_paid))}</strong></p>
       </div>
+
       </body></html>`);
     w.document.close(); w.print();
   };
@@ -166,7 +204,14 @@ const InvoicesManager = () => {
                 </select>
               </div>
               <div><Label>Date</Label><Input type="date" value={form.invoice_date ?? ""} onChange={(e) => setForm({ ...form, invoice_date: e.target.value })} /></div>
+              <div><Label>Place of supply</Label><Input placeholder="e.g. 33-Tamil Nadu" value={form.place_of_supply ?? ""} onChange={(e) => setForm({ ...form, place_of_supply: e.target.value })} /></div>
+              <div><Label>Patient GSTIN</Label><Input value={form.patient_gstin ?? ""} onChange={(e) => setForm({ ...form, patient_gstin: e.target.value })} /></div>
             </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!form.interstate} onChange={(e) => setForm({ ...form, interstate: e.target.checked })} />
+              Inter-state supply (charge IGST instead of CGST + SGST)
+            </label>
 
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -174,7 +219,7 @@ const InvoicesManager = () => {
                 <div className="flex gap-2">
                   <select className="h-9 rounded-md border bg-background px-2 text-sm" onChange={(e) => {
                     const t = catalog.find((x) => x.id === e.target.value); if (!t) return;
-                    setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price) }]);
+                    setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price), hsn_sac: t.hsn_sac ?? "", gst_rate: Number(t.gst_rate ?? settings.default_gst_rate ?? 0) }]);
                     e.target.value = "";
                   }}>
                     <option value="">+ From catalog</option>
@@ -183,29 +228,39 @@ const InvoicesManager = () => {
                   <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Custom</Button>
                 </div>
               </div>
+              <div className="hidden md:grid grid-cols-12 gap-2 text-[11px] text-muted-foreground px-1">
+                <span className="col-span-4">Description</span><span className="col-span-2">HSN/SAC</span><span className="col-span-1">Qty</span>
+                <span className="col-span-2">Rate</span><span className="col-span-1">GST%</span><span className="col-span-1 text-right">Amount</span>
+              </div>
               <div className="space-y-2">
                 {items.map((it, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <Input className="col-span-6" placeholder="Description" value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
+                    <Input className="col-span-4" placeholder="Description" value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
+                    <Input className="col-span-2" placeholder="HSN/SAC" value={it.hsn_sac ?? ""} onChange={(e) => updateItem(i, { hsn_sac: e.target.value })} />
                     <Input className="col-span-1" type="number" value={it.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} />
                     <Input className="col-span-2" type="number" value={it.unit_price} onChange={(e) => updateItem(i, { unit_price: Number(e.target.value) })} />
-                    <div className="col-span-2 text-sm text-right pr-2">{money(it.total)}</div>
+                    <Input className="col-span-1" type="number" value={it.gst_rate ?? 0} onChange={(e) => updateItem(i, { gst_rate: Number(e.target.value) })} />
+                    <div className="col-span-1 text-sm text-right pr-1">{money(it.total)}</div>
                     <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeItem(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div><Label>Discount ₹</Label><Input type="number" value={form.discount ?? 0} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></div>
-              <div><Label>Tax ₹</Label><Input type="number" value={form.tax ?? 0} onChange={(e) => setForm({ ...form, tax: e.target.value })} /></div>
               <div><Label>Paid ₹</Label><Input type="number" value={form.amount_paid ?? 0} onChange={(e) => setForm({ ...form, amount_paid: e.target.value })} /></div>
             </div>
 
             <div className="text-right text-sm space-y-1 border-t pt-2">
               <div>Subtotal: <strong>{money(totals.subtotal)}</strong></div>
+              <div>Taxable value: <strong>{money(totals.taxable)}</strong></div>
+              {form.interstate
+                ? <div>IGST: <strong>{money(totals.igst)}</strong></div>
+                : <><div>CGST: <strong>{money(totals.cgst)}</strong></div><div>SGST: <strong>{money(totals.sgst)}</strong></div></>}
               <div className="text-lg">Total: <strong className="text-primary">{money(totals.total)}</strong></div>
             </div>
+
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
         </DialogContent>

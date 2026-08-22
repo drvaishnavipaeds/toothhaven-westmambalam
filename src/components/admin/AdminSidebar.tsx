@@ -3,16 +3,20 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
+  CalendarClock, ListChecks, BellRing,
+
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
 import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
 
 export type Tab =
-  | "overview" | "patients" | "appointments" | "treatments" | "prescriptions" | "invoices"
+  | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
+  | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals";
+
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; }
 
@@ -24,9 +28,13 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
   { label: "Clinical", items: [
     { id: "patients", label: "Patients", icon: Users },
     { id: "appointments", label: "Appointments", icon: Calendar },
+    { id: "schedule", label: "Schedule", icon: CalendarClock },
+    { id: "waitlist", label: "Waitlist", icon: ListChecks },
+    { id: "recalls", label: "Recalls", icon: BellRing },
     { id: "treatments", label: "Treatments", icon: Stethoscope },
     { id: "prescriptions", label: "Prescriptions", icon: Pill },
   ]},
+
   { label: "Finance", items: [
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "financials", label: "Payments", icon: IndianRupee },
