@@ -26,9 +26,13 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
   { label: "Clinical", items: [
     { id: "patients", label: "Patients", icon: Users },
     { id: "appointments", label: "Appointments", icon: Calendar },
+    { id: "schedule", label: "Schedule", icon: CalendarClock },
+    { id: "waitlist", label: "Waitlist", icon: ListChecks },
+    { id: "recalls", label: "Recalls", icon: BellRing },
     { id: "treatments", label: "Treatments", icon: Stethoscope },
     { id: "prescriptions", label: "Prescriptions", icon: Pill },
   ]},
+
   { label: "Finance", items: [
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "financials", label: "Payments", icon: IndianRupee },
