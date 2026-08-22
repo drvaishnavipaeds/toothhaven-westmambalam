@@ -52,6 +52,12 @@ const SettingsManager = () => {
           <div><Label>Invoice Prefix</Label><Input value={settings.invoice_prefix ?? "TH-"} onChange={(e) => set("invoice_prefix", e.target.value)} /></div>
           <div><Label>Invoice Counter</Label><Input type="number" value={settings.invoice_counter ?? 1} onChange={(e) => set("invoice_counter", Number(e.target.value))} /></div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div><Label>Clinic GSTIN</Label><Input value={settings.gstin ?? ""} onChange={(e) => set("gstin", e.target.value)} /></div>
+          <div><Label>State Code / Place of Supply</Label><Input placeholder="33-Tamil Nadu" value={settings.state_code ?? ""} onChange={(e) => set("state_code", e.target.value)} /></div>
+          <div><Label>Default GST Rate %</Label><Input type="number" value={settings.default_gst_rate ?? 0} onChange={(e) => set("default_gst_rate", Number(e.target.value))} /></div>
+
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Notification Phone</Label><Input value={settings.notification_phone ?? ""} onChange={(e) => set("notification_phone", e.target.value)} /></div>
           <div><Label>Notification Email</Label><Input value={settings.notification_email ?? ""} onChange={(e) => set("notification_email", e.target.value)} /></div>
