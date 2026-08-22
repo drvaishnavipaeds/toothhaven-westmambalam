@@ -145,9 +145,22 @@ const PrescriptionsManager = () => {
                 ))}
               </div>
             </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <div><Label>Patient instructions (English)</Label><Textarea rows={4} value={form.instructions_en ?? ""} onChange={(e) => setForm({ ...form, instructions_en: e.target.value })} /></div>
+              <div><Label>நோயாளிக்கான அறிவுரைகள் (Tamil)</Label><Textarea rows={4} value={form.instructions_ta ?? ""} onChange={(e) => setForm({ ...form, instructions_ta: e.target.value })} /></div>
+            </div>
             <div><Label>Notes</Label><Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="secondary" onClick={aiDraft} disabled={aiLoading}>
+              <Sparkles className="w-4 h-4 mr-1" />{aiLoading ? "Drafting…" : "AI draft"}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={save}>Save</Button>
+            </div>
+          </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>
