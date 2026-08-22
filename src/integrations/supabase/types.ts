@@ -104,12 +104,78 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_waitlist: {
+        Row: {
+          created_at: string
+          doctor_id: string | null
+          id: string
+          notes: string | null
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string
+          preferred_date: string | null
+          preferred_time_slot: string | null
+          priority: string
+          status: string
+          treatment_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          patient_name: string
+          patient_phone: string
+          preferred_date?: string | null
+          preferred_time_slot?: string | null
+          priority?: string
+          status?: string
+          treatment_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string
+          preferred_date?: string | null
+          preferred_time_slot?: string | null
+          priority?: string
+          status?: string
+          treatment_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_waitlist_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_waitlist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_date: string
           appointment_time: string
           branch_id: string | null
+          chair_id: string | null
           created_at: string
+          doctor_id: string | null
+          duration_minutes: number
           id: string
           notes: string | null
           patient_id: string | null
@@ -124,7 +190,10 @@ export type Database = {
           appointment_date: string
           appointment_time: string
           branch_id?: string | null
+          chair_id?: string | null
           created_at?: string
+          doctor_id?: string | null
+          duration_minutes?: number
           id?: string
           notes?: string | null
           patient_id?: string | null
@@ -139,7 +208,10 @@ export type Database = {
           appointment_date?: string
           appointment_time?: string
           branch_id?: string | null
+          chair_id?: string | null
           created_at?: string
+          doctor_id?: string | null
+          duration_minutes?: number
           id?: string
           notes?: string | null
           patient_id?: string | null
@@ -156,6 +228,20 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_chair_id_fkey"
+            columns: ["chair_id"]
+            isOneToOne: false
+            referencedRelation: "chairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
           {
@@ -354,6 +440,44 @@ export type Database = {
           },
         ]
       }
+      chairs: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chairs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_content: {
         Row: {
           content: string | null
@@ -416,6 +540,8 @@ export type Database = {
           address: string | null
           clinic_name: string
           created_at: string
+          default_gst_rate: number
+          gstin: string | null
           id: string
           invoice_counter: number | null
           invoice_prefix: string | null
@@ -423,6 +549,7 @@ export type Database = {
           notification_phone: string | null
           primary_email: string | null
           primary_phone: string | null
+          state_code: string | null
           tax_percent: number | null
           updated_at: string
           working_hours: string | null
@@ -431,6 +558,8 @@ export type Database = {
           address?: string | null
           clinic_name?: string
           created_at?: string
+          default_gst_rate?: number
+          gstin?: string | null
           id?: string
           invoice_counter?: number | null
           invoice_prefix?: string | null
@@ -438,6 +567,7 @@ export type Database = {
           notification_phone?: string | null
           primary_email?: string | null
           primary_phone?: string | null
+          state_code?: string | null
           tax_percent?: number | null
           updated_at?: string
           working_hours?: string | null
@@ -446,6 +576,8 @@ export type Database = {
           address?: string | null
           clinic_name?: string
           created_at?: string
+          default_gst_rate?: number
+          gstin?: string | null
           id?: string
           invoice_counter?: number | null
           invoice_prefix?: string | null
@@ -453,6 +585,7 @@ export type Database = {
           notification_phone?: string | null
           primary_email?: string | null
           primary_phone?: string | null
+          state_code?: string | null
           tax_percent?: number | null
           updated_at?: string
           working_hours?: string | null
@@ -734,6 +867,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          gst_rate: number
+          hsn_sac: string | null
           id: string
           invoice_id: string
           quantity: number
@@ -743,6 +878,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          gst_rate?: number
+          hsn_sac?: string | null
           id?: string
           invoice_id: string
           quantity?: number
@@ -752,6 +889,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          gst_rate?: number
+          hsn_sac?: string | null
           id?: string
           invoice_id?: string
           quantity?: number
@@ -771,13 +910,18 @@ export type Database = {
       invoices: {
         Row: {
           amount_paid: number
+          cgst: number
           created_at: string
           discount: number
           id: string
+          igst: number
           invoice_date: string
           invoice_number: string
           notes: string | null
+          patient_gstin: string | null
           patient_id: string
+          place_of_supply: string | null
+          sgst: number
           status: string
           subtotal: number
           tax: number
@@ -786,13 +930,18 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          cgst?: number
           created_at?: string
           discount?: number
           id?: string
+          igst?: number
           invoice_date?: string
           invoice_number: string
           notes?: string | null
+          patient_gstin?: string | null
           patient_id: string
+          place_of_supply?: string | null
+          sgst?: number
           status?: string
           subtotal?: number
           tax?: number
@@ -801,13 +950,18 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          cgst?: number
           created_at?: string
           discount?: number
           id?: string
+          igst?: number
           invoice_date?: string
           invoice_number?: string
           notes?: string | null
+          patient_gstin?: string | null
           patient_id?: string
+          place_of_supply?: string | null
+          sgst?: number
           status?: string
           subtotal?: number
           tax?: number
@@ -1008,6 +1162,53 @@ export type Database = {
           },
           {
             foreignKeyName: "patient_memberships_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_recalls: {
+        Row: {
+          created_at: string
+          due_date: string
+          id: string
+          interval_months: number
+          last_contacted_at: string | null
+          notes: string | null
+          patient_id: string
+          recall_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date: string
+          id?: string
+          interval_months?: number
+          last_contacted_at?: string | null
+          notes?: string | null
+          patient_id: string
+          recall_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string
+          id?: string
+          interval_months?: number
+          last_contacted_at?: string | null
+          notes?: string | null
+          patient_id?: string
+          recall_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_recalls_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -1363,6 +1564,8 @@ export type Database = {
           default_price: number
           description: string | null
           duration_minutes: number | null
+          gst_rate: number
+          hsn_sac: string | null
           id: string
           is_active: boolean
           name: string
@@ -1374,6 +1577,8 @@ export type Database = {
           default_price?: number
           description?: string | null
           duration_minutes?: number | null
+          gst_rate?: number
+          hsn_sac?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -1385,6 +1590,8 @@ export type Database = {
           default_price?: number
           description?: string | null
           duration_minutes?: number | null
+          gst_rate?: number
+          hsn_sac?: string | null
           id?: string
           is_active?: boolean
           name?: string
