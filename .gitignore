@@ -22,3 +22,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.*.local
+
+# SECURITY: Never commit these files
+.env.production
+.env.development
+.env.test
+
+# Sensitive data
+*.pem
+*.key
+*.crt
+*.cer
+
+# Lock files (use one package manager)
+bun.lock
+bun.lockb
+
+# Build artifacts
+/build
+/out
