@@ -9,10 +9,12 @@ import { useNavigate } from "react-router-dom";
 import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
 
 export type Tab =
-  | "overview" | "patients" | "appointments" | "treatments" | "prescriptions" | "invoices"
+  | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
+  | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals";
+
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; }
 
