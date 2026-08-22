@@ -108,17 +108,30 @@ Deno.serve(async (req) => {
       treatment_plan: "Draft a phased dental treatment plan with a bilingual patient explainer.",
     };
 
+    const shapes: Record<Task, string> = {
+      prescription: `{"diagnosis":string,"drugs":[{"name":string,"dose":string,"frequency":string,"duration":string,"notes":string}],"instructions_en":string,"instructions_ta":string,"red_flags":string}`,
+      soap_note: `{"subjective":string,"objective":string,"assessment":string,"plan":string}`,
+      treatment_plan: `{"summary":string,"phases":[{"phase":number,"title":string,"procedures":string,"sittings":number}],"patient_explainer_en":string,"patient_explainer_ta":string}`,
+    };
+
     const gateway = createLovableAiGatewayProvider(apiKey);
 
     let output: unknown;
     try {
-      const result = await generateObject({
+      const result = await generateText({
         model: gateway(MODEL),
         system: SYSTEM,
-        prompt: `${asks[task]}\n\n${context || "No details supplied — ask for a generic safe draft."}`,
-        schema: schemas[task],
+        prompt: `${asks[task]}\n\n${context || "No details supplied — produce a generic safe draft."}\n\n` +
+          `Respond with ONLY raw JSON (no markdown fence, no commentary) matching exactly this shape, using these exact keys:\n${shapes[task]}\n` +
+          `Multi-line text fields use "\\n" between lines. Never omit a key; use an empty string when not applicable.`,
       });
-      output = result.object;
+      const raw = result.text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+      const parsedOut = schemas[task].safeParse(JSON.parse(raw));
+      if (!parsedOut.success) {
+        console.error("copilot schema mismatch:", parsedOut.error.message, raw.slice(0, 500));
+        return json({ error: "The AI draft came back malformed. Please try again." }, 502);
+      }
+      output = parsedOut.data;
     } catch (err) {
       const status = (err as { statusCode?: number; status?: number })?.statusCode ??
         (err as { status?: number })?.status;
@@ -128,6 +141,7 @@ Deno.serve(async (req) => {
       console.error("copilot generation failed:", err);
       return json({ error: "Could not generate a draft. Please try again." }, 500);
     }
+
 
     await admin.from("clinical_ai_logs").insert({
       patient_id: input.patient_id ?? null,
