@@ -130,24 +130,34 @@ const InvoicesManager = () => {
   const printInv = async (r: any) => {
     const { data: its } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
     const rowsHtml = (its ?? []).map((i, idx) =>
-      `<tr><td>${idx + 1}</td><td>${i.description}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${money(i.total)}</td></tr>`
+      `<tr><td>${idx + 1}</td><td>${i.description}</td><td>${i.hsn_sac ?? "—"}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${Number(i.gst_rate ?? 0)}%</td><td>${money(i.total)}</td></tr>`
     ).join("");
+    const isGst = Number(r.tax ?? 0) > 0;
     const w = window.open("", "_blank"); if (!w) return;
     w.document.write(`
       <html><head><title>Invoice ${r.invoice_number}</title>
-      <style>body{font-family:sans-serif;padding:24px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px}.h{display:flex;justify-content:space-between;border-bottom:2px solid #0891b2;padding-bottom:8px}.tot{text-align:right;margin-top:12px}</style>
+      <style>body{font-family:sans-serif;padding:24px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;font-size:13px}.h{display:flex;justify-content:space-between;border-bottom:2px solid #0891b2;padding-bottom:8px}.tot{text-align:right;margin-top:12px}.muted{color:#666;font-size:12px}</style>
       </head><body>
-      <div class="h"><div><h1>Tooth Haven Advanced Dental Care</h1><p>West Mambalam, Chennai</p></div><div><h2>INVOICE</h2><p>${r.invoice_number}</p><p>${r.invoice_date}</p></div></div>
+      <div class="h">
+        <div><h1>Tooth Haven Advanced Dental Care</h1><p class="muted">${settings.address ?? "West Mambalam, Chennai"}</p>${settings.gstin ? `<p class="muted">GSTIN: ${settings.gstin}</p>` : ""}</div>
+        <div><h2>${isGst ? "TAX INVOICE" : "INVOICE"}</h2><p>${r.invoice_number}</p><p>${r.invoice_date}</p></div>
+      </div>
       <p><strong>Bill To:</strong> ${r.patients?.name ?? ""} · ${r.patients?.phone ?? ""}</p>
-      <table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+      ${r.patient_gstin ? `<p class="muted">Patient GSTIN: ${r.patient_gstin}</p>` : ""}
+      ${r.place_of_supply ? `<p class="muted">Place of supply: ${r.place_of_supply}</p>` : ""}
+      <table><thead><tr><th>#</th><th>Description</th><th>HSN/SAC</th><th>Qty</th><th>Rate</th><th>GST</th><th>Amount</th></tr></thead><tbody>${rowsHtml}</tbody></table>
       <div class="tot">
         <p>Subtotal: ${money(r.subtotal)}</p>
         <p>Discount: -${money(r.discount)}</p>
-        <p>Tax: ${money(r.tax)}</p>
+        <p>Taxable value: ${money(Number(r.subtotal) - Number(r.discount))}</p>
+        ${Number(r.igst ?? 0) > 0
+          ? `<p>IGST: ${money(r.igst)}</p>`
+          : `<p>CGST: ${money(r.cgst)}</p><p>SGST: ${money(r.sgst)}</p>`}
         <p><strong>Total: ${money(r.total)}</strong></p>
         <p>Paid: ${money(r.amount_paid)}</p>
         <p><strong>Balance: ${money(Number(r.total) - Number(r.amount_paid))}</strong></p>
       </div>
+
       </body></html>`);
     w.document.close(); w.print();
   };
