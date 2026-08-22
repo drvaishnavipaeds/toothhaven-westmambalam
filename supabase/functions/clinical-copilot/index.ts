@@ -1,6 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateText, Output } from "npm:ai@5";
+import { generateObject } from "npm:ai@5";
 import { z } from "npm:zod@3";
 import { createLovableAiGatewayProvider } from "../_shared/ai-gateway.ts";
 
@@ -112,13 +112,13 @@ Deno.serve(async (req) => {
 
     let output: unknown;
     try {
-      const result = await generateText({
+      const result = await generateObject({
         model: gateway(MODEL),
         system: SYSTEM,
         prompt: `${asks[task]}\n\n${context || "No details supplied — ask for a generic safe draft."}`,
-        output: Output.object({ schema: schemas[task] }),
+        schema: schemas[task],
       });
-      output = result.output;
+      output = result.object;
     } catch (err) {
       const status = (err as { statusCode?: number; status?: number })?.statusCode ??
         (err as { status?: number })?.status;
