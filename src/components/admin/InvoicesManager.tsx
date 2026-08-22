@@ -57,13 +57,16 @@ const InvoicesManager = () => {
 
   const openEdit = async (r: any) => {
     setEditing(r);
-    setForm({ ...r });
+    setForm({ ...r, interstate: Number(r.igst ?? 0) > 0 });
     const { data } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
-    setItems((data ?? []).map((d: any) => ({ description: d.description, quantity: Number(d.quantity), unit_price: Number(d.unit_price), total: Number(d.total) })));
+    setItems((data ?? []).map((d: any) => ({
+      description: d.description, quantity: Number(d.quantity), unit_price: Number(d.unit_price), total: Number(d.total),
+      hsn_sac: d.hsn_sac ?? "", gst_rate: Number(d.gst_rate ?? 0),
+    })));
     setOpen(true);
   };
 
-  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0 }]);
+  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0, hsn_sac: "", gst_rate: Number(settings.default_gst_rate ?? 0) }]);
   const updateItem = (i: number, patch: Partial<Item>) => setItems((it) => it.map((r, idx) => {
     if (idx !== i) return r;
     const merged = { ...r, ...patch };
@@ -72,11 +75,23 @@ const InvoicesManager = () => {
   }));
   const removeItem = (i: number) => setItems((it) => it.filter((_, idx) => idx !== i));
 
+  // GST is computed per line on the discount-adjusted taxable value (proportional discount).
   const totals = useMemo(() => {
     const subtotal = items.reduce((s, r) => s + r.total, 0);
-    const total = subtotal - Number(form.discount ?? 0) + Number(form.tax ?? 0);
-    return { subtotal, total };
-  }, [items, form.discount, form.tax]);
+    const discount = Number(form.discount ?? 0);
+    const ratio = subtotal > 0 ? Math.max(0, subtotal - discount) / subtotal : 0;
+    const gst = items.reduce((s, r) => s + r.total * ratio * (Number(r.gst_rate ?? 0) / 100), 0);
+    const interstate = !!form.interstate;
+    const cgst = interstate ? 0 : gst / 2;
+    const sgst = interstate ? 0 : gst / 2;
+    const igst = interstate ? gst : 0;
+    const taxable = Math.max(0, subtotal - discount);
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      subtotal: round2(subtotal), taxable: round2(taxable), gst: round2(gst),
+      cgst: round2(cgst), sgst: round2(sgst), igst: round2(igst), total: round2(taxable + gst),
+    };
+  }, [items, form.discount, form.interstate]);
 
   const save = async () => {
     if (!form.patient_id) return toast.error("Select patient");
@@ -85,7 +100,9 @@ const InvoicesManager = () => {
     if (!editing) invoice_number = await nextInvoiceNumber();
     const payload = {
       invoice_number, patient_id: form.patient_id, invoice_date: form.invoice_date,
-      subtotal: totals.subtotal, discount: Number(form.discount ?? 0), tax: Number(form.tax ?? 0),
+      subtotal: totals.subtotal, discount: Number(form.discount ?? 0), tax: totals.gst,
+      cgst: totals.cgst, sgst: totals.sgst, igst: totals.igst,
+      place_of_supply: form.place_of_supply || null, patient_gstin: form.patient_gstin || null,
       total: totals.total, amount_paid: Number(form.amount_paid ?? 0),
       status: Number(form.amount_paid ?? 0) >= totals.total ? "paid" : Number(form.amount_paid ?? 0) > 0 ? "partial" : "unpaid",
       notes: form.notes,
@@ -95,7 +112,11 @@ const InvoicesManager = () => {
       : await supabase.from("invoices").insert(payload).select().single();
     if (error) return toast.error(error.message);
     if (editing) await supabase.from("invoice_items").delete().eq("invoice_id", editing.id);
-    await supabase.from("invoice_items").insert(items.map((it) => ({ ...it, invoice_id: saved!.id })));
+    await supabase.from("invoice_items").insert(items.map((it) => ({
+      invoice_id: saved!.id, description: it.description, quantity: it.quantity,
+      unit_price: it.unit_price, total: it.total, hsn_sac: it.hsn_sac || null, gst_rate: Number(it.gst_rate ?? 0),
+    })));
+
     toast.success("Saved");
     setOpen(false); load();
   };
