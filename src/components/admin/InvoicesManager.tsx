@@ -204,7 +204,14 @@ const InvoicesManager = () => {
                 </select>
               </div>
               <div><Label>Date</Label><Input type="date" value={form.invoice_date ?? ""} onChange={(e) => setForm({ ...form, invoice_date: e.target.value })} /></div>
+              <div><Label>Place of supply</Label><Input placeholder="e.g. 33-Tamil Nadu" value={form.place_of_supply ?? ""} onChange={(e) => setForm({ ...form, place_of_supply: e.target.value })} /></div>
+              <div><Label>Patient GSTIN</Label><Input value={form.patient_gstin ?? ""} onChange={(e) => setForm({ ...form, patient_gstin: e.target.value })} /></div>
             </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!form.interstate} onChange={(e) => setForm({ ...form, interstate: e.target.checked })} />
+              Inter-state supply (charge IGST instead of CGST + SGST)
+            </label>
 
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -212,7 +219,7 @@ const InvoicesManager = () => {
                 <div className="flex gap-2">
                   <select className="h-9 rounded-md border bg-background px-2 text-sm" onChange={(e) => {
                     const t = catalog.find((x) => x.id === e.target.value); if (!t) return;
-                    setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price) }]);
+                    setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price), hsn_sac: t.hsn_sac ?? "", gst_rate: Number(t.gst_rate ?? settings.default_gst_rate ?? 0) }]);
                     e.target.value = "";
                   }}>
                     <option value="">+ From catalog</option>
@@ -221,29 +228,39 @@ const InvoicesManager = () => {
                   <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" />Custom</Button>
                 </div>
               </div>
+              <div className="hidden md:grid grid-cols-12 gap-2 text-[11px] text-muted-foreground px-1">
+                <span className="col-span-4">Description</span><span className="col-span-2">HSN/SAC</span><span className="col-span-1">Qty</span>
+                <span className="col-span-2">Rate</span><span className="col-span-1">GST%</span><span className="col-span-1 text-right">Amount</span>
+              </div>
               <div className="space-y-2">
                 {items.map((it, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <Input className="col-span-6" placeholder="Description" value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
+                    <Input className="col-span-4" placeholder="Description" value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
+                    <Input className="col-span-2" placeholder="HSN/SAC" value={it.hsn_sac ?? ""} onChange={(e) => updateItem(i, { hsn_sac: e.target.value })} />
                     <Input className="col-span-1" type="number" value={it.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} />
                     <Input className="col-span-2" type="number" value={it.unit_price} onChange={(e) => updateItem(i, { unit_price: Number(e.target.value) })} />
-                    <div className="col-span-2 text-sm text-right pr-2">{money(it.total)}</div>
+                    <Input className="col-span-1" type="number" value={it.gst_rate ?? 0} onChange={(e) => updateItem(i, { gst_rate: Number(e.target.value) })} />
+                    <div className="col-span-1 text-sm text-right pr-1">{money(it.total)}</div>
                     <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeItem(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div><Label>Discount ₹</Label><Input type="number" value={form.discount ?? 0} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></div>
-              <div><Label>Tax ₹</Label><Input type="number" value={form.tax ?? 0} onChange={(e) => setForm({ ...form, tax: e.target.value })} /></div>
               <div><Label>Paid ₹</Label><Input type="number" value={form.amount_paid ?? 0} onChange={(e) => setForm({ ...form, amount_paid: e.target.value })} /></div>
             </div>
 
             <div className="text-right text-sm space-y-1 border-t pt-2">
               <div>Subtotal: <strong>{money(totals.subtotal)}</strong></div>
+              <div>Taxable value: <strong>{money(totals.taxable)}</strong></div>
+              {form.interstate
+                ? <div>IGST: <strong>{money(totals.igst)}</strong></div>
+                : <><div>CGST: <strong>{money(totals.cgst)}</strong></div><div>SGST: <strong>{money(totals.sgst)}</strong></div></>}
               <div className="text-lg">Total: <strong className="text-primary">{money(totals.total)}</strong></div>
             </div>
+
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
         </DialogContent>
