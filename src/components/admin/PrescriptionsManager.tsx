@@ -42,6 +42,32 @@ const PrescriptionsManager = () => {
     setForm((f: any) => ({ ...f, drugs: f.drugs.map((d: Drug, idx: number) => (idx === i ? { ...d, [k]: v } : d)) }));
   const removeDrug = (i: number) => setForm((f: any) => ({ ...f, drugs: f.drugs.filter((_: any, idx: number) => idx !== i) }));
 
+  const aiDraft = async () => {
+    if (!form.diagnosis && !form.chief_complaint) return toast.error("Enter a diagnosis or complaint first");
+    setAiLoading(true);
+    const { data, error } = await supabase.functions.invoke("clinical-copilot", {
+      body: {
+        task: "prescription",
+        patient_id: form.patient_id || undefined,
+        diagnosis: form.diagnosis || undefined,
+        chief_complaint: form.chief_complaint || undefined,
+      },
+    });
+    setAiLoading(false);
+    const err = (data as any)?.error ?? error?.message;
+    if (err) return toast.error(typeof err === "string" ? err : "AI draft failed");
+    const o = (data as any)?.output;
+    if (!o) return toast.error("No draft returned");
+    setForm((f: any) => ({
+      ...f,
+      diagnosis: f.diagnosis || o.diagnosis,
+      drugs: [...(f.drugs ?? []), ...(o.drugs ?? [])],
+      instructions_en: [o.instructions_en, o.red_flags].filter(Boolean).join("\n"),
+      instructions_ta: o.instructions_ta ?? "",
+    }));
+    toast.success("Draft added — review before saving");
+  };
+
   const save = async () => {
     if (!form.patient_id) return toast.error("Select a patient");
     const payload = {
@@ -51,6 +77,8 @@ const PrescriptionsManager = () => {
       drugs: form.drugs,
       notes: form.notes,
       doctor_name: form.doctor_name,
+      instructions_en: form.instructions_en,
+      instructions_ta: form.instructions_ta,
     };
     const { error } = editing
       ? await supabase.from("prescriptions").update(payload).eq("id", editing.id)
@@ -60,6 +88,7 @@ const PrescriptionsManager = () => {
     setOpen(false);
     load();
   };
+
 
   const remove = async (r: any) => {
     if (!confirm("Delete prescription?")) return;
