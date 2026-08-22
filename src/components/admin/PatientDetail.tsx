@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { toast } from "sonner";
+import DentalChart from "./DentalChart";
+import TreatmentPlans from "./TreatmentPlans";
+
 
 interface Patient {
   id: string;
@@ -85,7 +88,12 @@ const PatientDetail = ({ patient, onBack }: { patient: Patient; onBack: () => vo
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3">
+      <DentalChart patientId={patient.id} />
+
+      <TreatmentPlans patientId={patient.id} patientName={patient.name} patientPhone={patient.phone} />
+
+      <div className="flex items-center justify-between mb-3 mt-6">
+
         <h3 className="font-bold text-foreground">Treatments</h3>
         <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-1" /> Add Treatment</Button>
       </div>
