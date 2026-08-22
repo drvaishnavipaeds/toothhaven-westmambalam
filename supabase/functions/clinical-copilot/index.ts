@@ -1,6 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateObject } from "npm:ai@5";
+import { generateText } from "npm:ai@5";
 import { z } from "npm:zod@3";
 import { createLovableAiGatewayProvider } from "../_shared/ai-gateway.ts";
 
