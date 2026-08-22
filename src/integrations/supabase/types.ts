@@ -498,6 +498,56 @@ export type Database = {
         }
         Relationships: []
       }
+      dental_chart_entries: {
+        Row: {
+          condition: string
+          created_at: string
+          dentition: string
+          id: string
+          notes: string | null
+          patient_id: string
+          recorded_by: string | null
+          recorded_on: string
+          surfaces: string[]
+          tooth_number: number
+          updated_at: string
+        }
+        Insert: {
+          condition?: string
+          created_at?: string
+          dentition?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          recorded_by?: string | null
+          recorded_on?: string
+          surfaces?: string[]
+          tooth_number: number
+          updated_at?: string
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          dentition?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          recorded_by?: string | null
+          recorded_on?: string
+          surfaces?: string[]
+          tooth_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dental_chart_entries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1342,6 +1392,106 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_plan_items: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          phase: number
+          plan_id: string
+          quantity: number
+          sittings: number
+          sort_order: number
+          status: string
+          tooth_number: string | null
+          treatment_name: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          phase?: number
+          plan_id: string
+          quantity?: number
+          sittings?: number
+          sort_order?: number
+          status?: string
+          tooth_number?: string | null
+          treatment_name: string
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          phase?: number
+          plan_id?: string
+          quantity?: number
+          sittings?: number
+          sort_order?: number
+          status?: string
+          tooth_number?: string | null
+          treatment_name?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_plans: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by: string | null
+          discount: number
+          id: string
+          notes: string | null
+          patient_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          notes?: string | null
+          patient_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatments: {
         Row: {
           cost: number | null
@@ -1425,6 +1575,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1439,10 +1610,18 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_admin_identifier: {
         Args: { _email?: string; _phone?: string }
         Returns: boolean
       }
+      is_clinical: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
@@ -1463,6 +1642,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "owner" | "dentist" | "receptionist" | "assistant"
       content_workflow_status:
         | "draft"
         | "pending_review"
@@ -1595,6 +1775,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["owner", "dentist", "receptionist", "assistant"],
       content_workflow_status: [
         "draft",
         "pending_review",
