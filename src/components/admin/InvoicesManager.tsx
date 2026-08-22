@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil } from "lucide-react";
 
-type Item = { description: string; quantity: number; unit_price: number; total: number };
+type Item = { description: string; quantity: number; unit_price: number; total: number; hsn_sac?: string | null; gst_rate?: number };
 
-const money = (v: any) => `₹${Number(v ?? 0).toLocaleString("en-IN")}`;
+const money = (v: any) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
 
 const InvoicesManager = () => {
   const [rows, setRows] = useState<any[]>([]);
