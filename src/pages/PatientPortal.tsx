@@ -463,6 +463,49 @@ const PatientPortalContent = () => {
                     </button>
                   </div>
 
+                  {mode === "signin" && (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowHelp(v => !v)}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        {lang === "en" ? "Forgot password / can't sign in?" : "கடவுச்சொல் மறந்துவிட்டதா / உள்நுழைய முடியவில்லையா?"}
+                      </button>
+                      {showHelp && (
+                        <div className="mt-2 rounded-lg border border-border bg-muted/50 p-3 space-y-2 text-xs text-muted-foreground">
+                          <p>
+                            {lang === "en"
+                              ? "Good news — the patient portal has no password. You sign in with a one-time code (OTP) sent to your WhatsApp or email."
+                              : "நல்ல செய்தி — நோயாளி போர்டலுக்கு கடவுச்சொல் தேவையில்லை. உங்கள் WhatsApp அல்லது மின்னஞ்சலுக்கு வரும் ஒரு முறை குறியீடு (OTP) மூலம் உள்நுழையலாம்."}
+                          </p>
+                          <p>
+                            {lang === "en"
+                              ? "Not receiving the code? Try the other method, or check that the number/email matches your clinic record."
+                              : "குறியீடு வரவில்லையா? மற்றொரு முறையை முயற்சிக்கவும், அல்லது எண்/மின்னஞ்சல் சரியானதா எனப் பாருங்கள்."}
+                          </p>
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setMethod(method === "whatsapp" ? "email" : "whatsapp")}
+                              className="px-3 py-1.5 rounded-md border border-primary text-primary font-medium"
+                            >
+                              {method === "whatsapp"
+                                ? (lang === "en" ? "Use email instead" : "மின்னஞ்சலைப் பயன்படுத்து")
+                                : (lang === "en" ? "Use WhatsApp instead" : "WhatsApp ஐப் பயன்படுத்து")}
+                            </button>
+                            <a
+                              href="tel:+919841703037"
+                              className="px-3 py-1.5 rounded-md border border-border font-medium text-foreground"
+                            >
+                              {lang === "en" ? "Call the clinic" : "மருத்துவமனையை அழைக்க"}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {mode === "register" && method === "whatsapp" && (
                     <div className="mt-3">
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
