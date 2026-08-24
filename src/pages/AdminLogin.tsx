@@ -204,7 +204,38 @@ const AdminLogin = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
+              <button type="button" onClick={() => setStep("forgot")} className="text-sm text-primary hover:underline w-full text-center">
+                Forgot password?
+              </button>
             </form>
+          )}
+
+          {step === "forgot" && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <button type="button" onClick={() => setStep("email")} className="text-xs text-primary hover:underline">← Back</button>
+              <p className="text-sm text-muted-foreground">Enter your admin email and we'll send a secure reset link.</p>
+              <div>
+                <label className="text-sm font-medium text-foreground">Admin Email</label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@toothhaven.com" className="pl-10" required />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending link..." : "Send reset link"}
+              </Button>
+            </form>
+          )}
+
+          {step === "forgot-sent" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                If <strong>{email}</strong> is an authorized admin, a password reset link is on its way. Check your inbox (and spam folder) and follow the link to set a new password.
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => setStep("choose")}>
+                Back to sign in
+              </Button>
+            </div>
           )}
 
           {step === "phone" && (
