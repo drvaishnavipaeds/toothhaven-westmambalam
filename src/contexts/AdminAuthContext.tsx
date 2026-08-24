@@ -11,6 +11,7 @@ interface AdminAuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
   verifyEmailOtp: (email: string, token: string) => Promise<{ error: string | null }>;
+  sendPasswordReset: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
