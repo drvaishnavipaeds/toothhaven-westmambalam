@@ -135,6 +135,16 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return { error: null };
   };
 
+  const sendPasswordReset = async (email: string) => {
+    const admin = await checkAdminByEmail(email);
+    if (!admin) return { error: "This email is not authorized as admin." };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -142,7 +152,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, signOut }}>
+    <AdminAuthContext.Provider value={{ user, isAdmin, isLoading, signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, sendPasswordReset, signOut }}>
       {children}
     </AdminAuthContext.Provider>
   );
