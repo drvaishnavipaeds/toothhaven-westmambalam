@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "choose" | "email" | "email-otp" | "email-otp-code" | "phone" | "otp";
+type Step = "choose" | "email" | "email-otp" | "email-otp-code" | "phone" | "otp" | "forgot" | "forgot-sent";
 
 const AdminLogin = () => {
   const [step, setStep] = useState<Step>("choose");
@@ -16,7 +16,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [emailOtpCode, setEmailOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, isAdmin, user } = useAdminAuth();
+  const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, sendPasswordReset, isAdmin, user } = useAdminAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -92,6 +92,22 @@ const AdminLogin = () => {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     } else {
       navigate("/admin/dashboard", { replace: true });
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Enter your email", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await sendPasswordReset(email);
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    } else {
+      setStep("forgot-sent");
     }
   };
 
@@ -188,7 +204,38 @@ const AdminLogin = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
+              <button type="button" onClick={() => setStep("forgot")} className="text-sm text-primary hover:underline w-full text-center">
+                Forgot password?
+              </button>
             </form>
+          )}
+
+          {step === "forgot" && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <button type="button" onClick={() => setStep("email")} className="text-xs text-primary hover:underline">← Back</button>
+              <p className="text-sm text-muted-foreground">Enter your admin email and we'll send a secure reset link.</p>
+              <div>
+                <label className="text-sm font-medium text-foreground">Admin Email</label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@toothhaven.com" className="pl-10" required />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending link..." : "Send reset link"}
+              </Button>
+            </form>
+          )}
+
+          {step === "forgot-sent" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                If <strong>{email}</strong> is an authorized admin, a password reset link is on its way. Check your inbox (and spam folder) and follow the link to set a new password.
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => setStep("choose")}>
+                Back to sign in
+              </Button>
+            </div>
           )}
 
           {step === "phone" && (
