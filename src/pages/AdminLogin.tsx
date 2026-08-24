@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "choose" | "email" | "email-otp" | "email-otp-code" | "phone" | "otp";
+type Step = "choose" | "email" | "email-otp" | "email-otp-code" | "phone" | "otp" | "forgot" | "forgot-sent";
 
 const AdminLogin = () => {
   const [step, setStep] = useState<Step>("choose");
@@ -16,7 +16,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [emailOtpCode, setEmailOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, isAdmin, user } = useAdminAuth();
+  const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, sendPasswordReset, isAdmin, user } = useAdminAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -92,6 +92,22 @@ const AdminLogin = () => {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     } else {
       navigate("/admin/dashboard", { replace: true });
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Enter your email", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await sendPasswordReset(email);
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    } else {
+      setStep("forgot-sent");
     }
   };
 
