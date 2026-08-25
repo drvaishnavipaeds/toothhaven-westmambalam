@@ -39,6 +39,7 @@ const PatientPortalContent = () => {
   const [step, setStep] = useState<"phone" | "otp" | "in">("phone");
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [session, setSession] = useState<PortalSession | null>(null);
   const [patient, setPatient] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
