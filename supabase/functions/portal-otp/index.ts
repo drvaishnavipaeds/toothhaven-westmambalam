@@ -38,45 +38,44 @@ async function sendWhatsApp(phone: string, code: string): Promise<{ ok: boolean;
   }
   const to = toE164(phone);
   const url = `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
-  const payload = {
-    messaging_product: "whatsapp",
-    to,
-    type: "template",
-    template: {
-      name: WHATSAPP_TEMPLATE_NAME,
-      language: { code: WHATSAPP_TEMPLATE_LANG },
-      components: [
-        { type: "body", parameters: [{ type: "text", text: code }] },
-        { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
-      ],
-    },
-  };
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      const simple = { ...payload, template: { ...payload.template, components: [payload.template.components[0]] } };
-      const res2 = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify(simple),
-      });
-      const data2 = await res2.json();
-      if (!res2.ok) {
-        console.error("WhatsApp retry failed:", res2.status, JSON.stringify(data2));
-        return { ok: false, error: data2?.error?.message || `HTTP ${res2.status}` };
+
+  // Try configured language first, then common fallbacks (#132001 = template/lang mismatch)
+  const langs = [...new Set([WHATSAPP_TEMPLATE_LANG, "en_US", "en", "en_GB"])];
+  const bodyOnly = [{ type: "body", parameters: [{ type: "text", text: code }] }];
+  const withButton = [
+    ...bodyOnly,
+    { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
+  ];
+
+  let lastError = "send failed";
+  for (const lang of langs) {
+    for (const components of [withButton, bodyOnly]) {
+      const payload = {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: { name: WHATSAPP_TEMPLATE_NAME, language: { code: lang }, components },
+      };
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok) return { ok: true };
+        lastError = data?.error?.message || `HTTP ${res.status}`;
+        console.error("WhatsApp send failed:", lang, res.status, JSON.stringify(data));
+        // Language mismatch -> skip the second component variant, try next language
+        if (data?.error?.code === 132001) break;
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : "send failed";
       }
-      return { ok: true };
     }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "send failed" };
   }
+  return { ok: false, error: lastError };
 }
+
 
 function validName(n: string) { return typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 100; }
 function validPhone(p: string) { return typeof p === "string" && /^\d{10}$/.test(p.trim()); }
