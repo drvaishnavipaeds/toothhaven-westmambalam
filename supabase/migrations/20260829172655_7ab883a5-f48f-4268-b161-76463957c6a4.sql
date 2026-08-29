@@ -1,0 +1,1 @@
+ALTER TABLE public.dental_chart_entries ADD COLUMN IF NOT EXISTS complaint text;
