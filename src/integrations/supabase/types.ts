@@ -671,6 +671,7 @@ export type Database = {
       }
       dental_chart_entries: {
         Row: {
+          complaint: string | null
           condition: string
           created_at: string
           dentition: string
@@ -684,6 +685,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          complaint?: string | null
           condition?: string
           created_at?: string
           dentition?: string
@@ -697,6 +699,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          complaint?: string | null
           condition?: string
           created_at?: string
           dentition?: string

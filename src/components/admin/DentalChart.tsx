@@ -13,6 +13,7 @@ export interface ChartEntry {
   tooth_number: number;
   surfaces: string[];
   condition: string;
+  complaint: string | null;
   notes: string | null;
   recorded_on: string;
 }
@@ -58,7 +59,7 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
   const [dentition, setDentition] = useState<"permanent" | "primary">("permanent");
   const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ condition: "caries", surfaces: [] as string[], notes: "", recorded_on: "" });
+  const [form, setForm] = useState({ condition: "caries", surfaces: [] as string[], complaint: "", notes: "", recorded_on: "" });
 
   const fetchEntries = async () => {
     const { data, error } = await supabase
@@ -86,6 +87,7 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
     setForm({
       condition: existing?.condition ?? "caries",
       surfaces: existing?.surfaces ?? [],
+      complaint: existing?.complaint ?? "",
       notes: "",
       recorded_on: new Date().toISOString().slice(0, 10),
     });
@@ -105,6 +107,7 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
       tooth_number: selected,
       surfaces: form.surfaces,
       condition: form.condition,
+      complaint: form.complaint || null,
       notes: form.notes || null,
       recorded_on: form.recorded_on || new Date().toISOString().slice(0, 10),
       recorded_by: userData.user?.id ?? null,
@@ -189,6 +192,7 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
                   Tooth {e.tooth_number} · {conditionMeta(e.condition).label}
                   {e.surfaces.length ? ` · ${e.surfaces.join("")}` : ""}
                 </p>
+                {e.complaint && <p className="text-destructive">Complaint: {e.complaint}</p>}
                 <p className="text-muted-foreground">{e.recorded_on}{e.notes ? ` — ${e.notes}` : ""}</p>
               </div>
               <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-destructive">
@@ -235,6 +239,10 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
               </div>
             </div>
             <Input type="date" value={form.recorded_on} onChange={(e) => setForm({ ...form, recorded_on: e.target.value })} />
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Chief complaint (tooth-specific)</p>
+              <Input placeholder="e.g. Pain on biting since 3 days" value={form.complaint} onChange={(e) => setForm({ ...form, complaint: e.target.value })} />
+            </div>
             <Input placeholder="Clinical notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             <Button className="w-full" onClick={save} disabled={saving}>{saving ? "Saving..." : "Save finding"}</Button>
           </div>
