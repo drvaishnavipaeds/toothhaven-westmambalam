@@ -53,7 +53,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .invoke("check-admin", { body: payload })
       .then(({ data, error }) => {
         const ok = !error && !!data?.authorized;
-        if (!error) writeCache(key, ok);
+        // Only cache positive results: a transient failure must not lock the user out.
+        if (!error && ok) writeCache(key, true);
         return ok;
       })
       .catch(() => false)
@@ -102,7 +103,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      void applySession(session as any);
+      // Defer: calling other Supabase APIs synchronously inside this callback
+      // deadlocks the auth client and the admin check never resolves.
+      setTimeout(() => { void applySession(session as any); }, 0);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => applySession(session as any));
@@ -145,16 +148,15 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const signInWithEmail = async (email: string, password: string) => {
     // Run the authorization check in parallel with the password sign-in
     // instead of serially, so login isn't gated on an edge-function round trip.
-    const adminPromise = checkAdminByEmail(email);
-    const [{ error }, admin] = await Promise.all([
-      supabase.auth.signInWithPassword({ email, password }),
-      adminPromise,
-    ]);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    const admin = await checkAdminByEmail(email);
     if (!admin) {
-      if (!error) await supabase.auth.signOut();
+      await supabase.auth.signOut();
       return { error: "This email is not authorized as admin." };
     }
-    if (error) return { error: error.message };
+    setIsAdmin(true);
+    setIsLoading(false);
     return { error: null };
   };
 
