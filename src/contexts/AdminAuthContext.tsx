@@ -96,8 +96,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsLoading(false);
         return;
       }
-      setIsLoading(false);
       setIsAdmin(await checkAdmin(currentUser));
+      setIsLoading(false);
+
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
