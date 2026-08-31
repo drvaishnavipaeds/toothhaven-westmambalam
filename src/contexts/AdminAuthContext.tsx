@@ -17,26 +17,53 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
+const CACHE_PREFIX = "th_admin_check:";
+
+const readCache = (key: string): boolean | null => {
+  try {
+    const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+    return raw === null ? null : raw === "1";
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = (key: string, value: boolean) => {
+  try {
+    sessionStorage.setItem(CACHE_PREFIX + key, value ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+};
+
 export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // De-duplicates concurrent/repeat admin checks for the same identifier.
+  const inflight = React.useRef<Map<string, Promise<boolean>>>(new Map());
 
-  const checkAdminByPhone = async (phone: string) => {
-    const { data, error } = await supabase.functions.invoke("check-admin", {
-      body: { phone },
-    });
-    if (error) return false;
-    return !!data?.authorized;
+  const checkIdentifier = (payload: { phone?: string; email?: string }) => {
+    const key = payload.phone ? `p:${payload.phone}` : `e:${payload.email}`;
+    const cached = readCache(key);
+    if (cached !== null) return Promise.resolve(cached);
+    const existing = inflight.current.get(key);
+    if (existing) return existing;
+    const req = supabase.functions
+      .invoke("check-admin", { body: payload })
+      .then(({ data, error }) => {
+        const ok = !error && !!data?.authorized;
+        if (!error) writeCache(key, ok);
+        return ok;
+      })
+      .catch(() => false)
+      .finally(() => inflight.current.delete(key));
+    inflight.current.set(key, req);
+    return req;
   };
 
-  const checkAdminByEmail = async (email: string) => {
-    const { data, error } = await supabase.functions.invoke("check-admin", {
-      body: { email },
-    });
-    if (error) return false;
-    return !!data?.authorized;
-  };
+  const checkAdminByPhone = (phone: string) => checkIdentifier({ phone });
+  const checkAdminByEmail = (email: string) => checkIdentifier({ email });
 
   const checkAdmin = async (currentUser: User) => {
     const metaPhone = (currentUser.user_metadata as any)?.admin_phone as string | undefined;
@@ -53,27 +80,32 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    let lastUserId: string | null | undefined;
+
+    const applySession = async (session: { user: User } | null) => {
       const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        const admin = await checkAdmin(currentUser);
-        setIsAdmin(admin);
-      } else {
-        setIsAdmin(false);
+      // Skip redundant re-checks for the same user (initial getSession + auth events).
+      if (currentUser?.id && currentUser.id === lastUserId) {
+        setIsLoading(false);
+        return;
       }
+      lastUserId = currentUser?.id ?? null;
+      setUser(currentUser);
+      if (!currentUser) {
+        setIsAdmin(false);
+        setIsLoading(false);
+        return;
+      }
+      setIsAdmin(await checkAdmin(currentUser));
       setIsLoading(false);
+
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session as any);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        const admin = await checkAdmin(currentUser);
-        setIsAdmin(admin);
-      }
-      setIsLoading(false);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => applySession(session as any));
 
     return () => subscription.unsubscribe();
   }, []);
@@ -111,12 +143,21 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const signInWithEmail = async (email: string, password: string) => {
-    const admin = await checkAdminByEmail(email);
-    if (!admin) return { error: "This email is not authorized as admin." };
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Run the authorization check in parallel with the password sign-in
+    // instead of serially, so login isn't gated on an edge-function round trip.
+    const adminPromise = checkAdminByEmail(email);
+    const [{ error }, admin] = await Promise.all([
+      supabase.auth.signInWithPassword({ email, password }),
+      adminPromise,
+    ]);
+    if (!admin) {
+      if (!error) await supabase.auth.signOut();
+      return { error: "This email is not authorized as admin." };
+    }
     if (error) return { error: error.message };
     return { error: null };
   };
+
 
   const sendEmailOtp = async (email: string) => {
     const admin = await checkAdminByEmail(email);
