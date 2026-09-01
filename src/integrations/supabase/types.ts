@@ -319,6 +319,114 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error: string | null
+          id: string
+          name: string | null
+          patient_id: string | null
+          phone: string
+          sent_at: string | null
+          status: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          name?: string | null
+          patient_id?: string | null
+          phone: string
+          sent_at?: string | null
+          status?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          name?: string | null
+          patient_id?: string | null
+          phone?: string
+          sent_at?: string | null
+          status?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_recipients_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          audience: string
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          name: string
+          preview_text: string | null
+          scheduled_at: string | null
+          sent_count: number
+          status: string
+          template_language: string
+          template_name: string
+          total_count: number
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          name: string
+          preview_text?: string | null
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: string
+          template_language?: string
+          template_name: string
+          total_count?: number
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          name?: string
+          preview_text?: string | null
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: string
+          template_language?: string
+          template_name?: string
+          total_count?: number
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       case_studies: {
         Row: {
           anonymization_level: string
@@ -1271,6 +1379,7 @@ export type Database = {
           notes: string | null
           phone: string
           updated_at: string
+          whatsapp_opt_out: boolean
         }
         Insert: {
           address?: string | null
@@ -1285,6 +1394,7 @@ export type Database = {
           notes?: string | null
           phone: string
           updated_at?: string
+          whatsapp_opt_out?: boolean
         }
         Update: {
           address?: string | null
@@ -1299,6 +1409,7 @@ export type Database = {
           notes?: string | null
           phone?: string
           updated_at?: string
+          whatsapp_opt_out?: boolean
         }
         Relationships: [
           {
@@ -1854,6 +1965,7 @@ export type Database = {
         Row: {
           ai_replied: boolean
           body: string | null
+          campaign_id: string | null
           created_at: string
           direction: string
           handled_by_staff: boolean
@@ -1864,11 +1976,13 @@ export type Database = {
           profile_name: string | null
           raw: Json | null
           status: string | null
+          template_name: string | null
           wa_message_id: string | null
         }
         Insert: {
           ai_replied?: boolean
           body?: string | null
+          campaign_id?: string | null
           created_at?: string
           direction: string
           handled_by_staff?: boolean
@@ -1879,11 +1993,13 @@ export type Database = {
           profile_name?: string | null
           raw?: Json | null
           status?: string | null
+          template_name?: string | null
           wa_message_id?: string | null
         }
         Update: {
           ai_replied?: boolean
           body?: string | null
+          campaign_id?: string | null
           created_at?: string
           direction?: string
           handled_by_staff?: boolean
@@ -1894,9 +2010,17 @@ export type Database = {
           profile_name?: string | null
           raw?: Json | null
           status?: string | null
+          template_name?: string | null
           wa_message_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_messages_patient_id_fkey"
             columns: ["patient_id"]

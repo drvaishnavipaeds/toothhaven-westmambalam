@@ -1,13 +1,22 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-
-const WA_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-const WA_PHONE_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+import {
+  findPatientId,
+  isConfigured,
+  isWindowOpen,
+  listApprovedTemplates,
+  logMessage,
+  sendTemplate,
+  sendText,
+} from "../_shared/whatsapp.ts";
 
 const bodySchema = z.object({
   phone: z.string().min(10).max(20),
-  message: z.string().min(1).max(4000),
+  message: z.string().min(1).max(4000).optional(),
+  templateName: z.string().min(1).max(120).optional(),
+  templateLanguage: z.string().min(2).max(10).optional(),
+  variables: z.array(z.string().max(400)).max(10).optional(),
 });
 
 Deno.serve(async (req) => {
@@ -17,7 +26,7 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    if (!WA_TOKEN || !WA_PHONE_ID) return json({ error: "WhatsApp is not configured." }, 500);
+    if (!isConfigured()) return json({ error: "WhatsApp is not configured." }, 500);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -29,33 +38,53 @@ Deno.serve(async (req) => {
     const { data: staffRow } = await admin.from("admin_phones").select("id").ilike("email", email).maybeSingle();
     if (!staffRow) return json({ error: "Not authorized" }, 403);
 
-    const parsed = bodySchema.safeParse(await req.json());
-    if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-    const to = parsed.data.phone.replace(/\D/g, "");
-    const message = parsed.data.message;
+    const raw = await req.json().catch(() => ({}));
 
-    const r = await fetch(`https://graph.facebook.com/v21.0/${WA_PHONE_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: message } }),
-    });
-    const out = await r.json();
-    if (!r.ok) {
-      console.error("WhatsApp send failed:", out);
-      return json({ error: out?.error?.message ?? "WhatsApp send failed" }, 502);
+    // Approved templates for the inbox picker.
+    if (raw?.action === "templates") {
+      const templates = await listApprovedTemplates(raw?.refresh === true);
+      return json({ ok: true, templates });
     }
 
-    const digits = to.slice(-10);
-    const { data: patient } = await admin.from("patients").select("id").ilike("phone", `%${digits}`).maybeSingle();
+    const parsed = bodySchema.safeParse(raw);
+    if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
+    const { phone, message, templateName, templateLanguage, variables } = parsed.data;
 
-    await admin.from("whatsapp_messages").insert({
-      wa_message_id: out?.messages?.[0]?.id ?? null,
+    const windowOpen = await isWindowOpen(admin, phone);
+    const useTemplate = Boolean(templateName) || !windowOpen;
+
+    if (useTemplate && !templateName) {
+      return json(
+        {
+          error:
+            "This patient has not messaged in the last 24 hours, so WhatsApp only allows an approved template. Pick one from the template list.",
+          template_required: true,
+        },
+        409,
+      );
+    }
+    if (!useTemplate && !message) return json({ error: "Message is required" }, 400);
+
+    const result = useTemplate
+      ? await sendTemplate({
+          to: phone,
+          name: templateName!,
+          language: templateLanguage,
+          bodyParams: variables ?? [],
+        })
+      : await sendText(phone, message!);
+
+    if (!result.ok) return json({ error: result.error ?? "WhatsApp send failed", code: result.code }, 502);
+
+    await logMessage(admin, {
+      wa_message_id: result.id ?? null,
       direction: "outbound",
-      phone: to,
-      body: message,
-      message_type: "text",
+      phone,
+      body: useTemplate ? `[template] ${templateName}${variables?.length ? ` — ${variables.join(" | ")}` : ""}` : message!,
+      message_type: useTemplate ? "template" : "text",
+      template_name: useTemplate ? templateName : null,
       handled_by_staff: true,
-      patient_id: patient?.id ?? null,
+      patient_id: await findPatientId(admin, phone),
     });
 
     return json({ ok: true });
