@@ -19,6 +19,7 @@ import ScheduleManager from "@/components/admin/ScheduleManager";
 import WaitlistManager from "@/components/admin/WaitlistManager";
 import RecallsManager from "@/components/admin/RecallsManager";
 import WhatsAppInbox from "@/components/admin/WhatsAppInbox";
+import CampaignsManager from "@/components/admin/CampaignsManager";
 
 import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
@@ -73,6 +74,7 @@ const AdminDashboard = () => {
         {activeTab === "tutorials" && <TutorialsManager />}
         {activeTab === "communication" && <CommunicationManager />}
         {activeTab === "whatsapp_inbox" && <WhatsAppInbox />}
+        {activeTab === "campaigns" && <CampaignsManager />}
         {activeTab === "content" && <ContentManager />}
         {activeTab === "approvals" && <ApprovalsManager />}
         {activeTab === "case_studies" && <CaseStudiesManager />}

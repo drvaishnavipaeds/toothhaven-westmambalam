@@ -1,12 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { isConfigured, logMessage, sendText } from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const OWNER_PHONE = "918925166149";
+const OWNER_PHONE = Deno.env.get("CLINIC_NOTIFY_PHONE") ?? "918925166149";
 
 function sanitize(s: unknown, max = 200): string {
   return String(s ?? "")
@@ -14,7 +14,7 @@ function sanitize(s: unknown, max = 200): string {
     .slice(0, max);
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -63,17 +63,26 @@ serve(async (req) => {
       `💳 Method: ${sanitize((payment as any).payment_method ?? (payment as any).method, 40)}\n` +
       `🕐 Time: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`;
 
-    const CALLMEBOT_API_KEY = Deno.env.get("CALLMEBOT_API_KEY");
-    let notificationSent = false;
+    if (!isConfigured()) {
+      console.warn("WhatsApp not configured; payment alert not delivered.");
+      return new Response(
+        JSON.stringify({ success: true, notificationSent: false, message: "WhatsApp is not configured." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    if (CALLMEBOT_API_KEY) {
-      try {
-        const url = `https://api.callmebot.com/whatsapp.php?phone=${OWNER_PHONE}&text=${encodeURIComponent(message)}&apikey=${CALLMEBOT_API_KEY}`;
-        const res = await fetch(url);
-        if (res.ok) notificationSent = true;
-      } catch (e) {
-        console.error("CallMeBot notification failed:", e);
-      }
+    const result = await sendText(OWNER_PHONE, message);
+    const notificationSent = result.ok;
+    if (result.ok) {
+      await logMessage(supabase, {
+        wa_message_id: result.id ?? null,
+        direction: "outbound",
+        phone: OWNER_PHONE,
+        body: message,
+        handled_by_staff: true,
+      });
+    } else {
+      console.error("Payment alert failed:", result.error);
     }
 
     return new Response(
@@ -82,7 +91,7 @@ serve(async (req) => {
         notificationSent,
         message: notificationSent
           ? "WhatsApp notification sent"
-          : "Notification logged (CallMeBot not configured).",
+          : `Notification failed: ${result.error ?? "unknown error"}`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
