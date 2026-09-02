@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-  CalendarClock, ListChecks, BellRing, MessageSquare,
+  CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -14,7 +14,7 @@ export type Tab =
   | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
   | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
-  | "audit_logs" | "communication" | "whatsapp_inbox" | "settings" | "financials" | "content" | "case_studies"
+  | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals";
 
 
@@ -48,6 +48,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "tutorials", label: "Tutorials", icon: GraduationCap },
     { id: "communication", label: "Communication", icon: Send },
     { id: "whatsapp_inbox", label: "WhatsApp Inbox", icon: MessageSquare },
+    { id: "campaigns", label: "Campaigns", icon: Megaphone },
   ]},
   { label: "Marketing", items: [
     { id: "approvals", label: "Approvals", icon: Inbox },
