@@ -1,15 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { sendOtpTemplate } from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
-const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-const WHATSAPP_TEMPLATE_NAME = Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "otp_verification";
-const WHATSAPP_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_LANG") ?? "en";
-const DEFAULT_COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,68 +28,7 @@ async function hashCode(code: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function toE164(phone10: string): string {
-  return `${DEFAULT_COUNTRY_CODE}${phone10}`;
-}
-
-async function sendWhatsApp(phone10: string, code: string): Promise<{ ok: boolean; error?: string }> {
-  if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
-    console.log("WhatsApp not configured. Admin OTP for", phone10, ":", code);
-    return { ok: false, error: "WhatsApp not configured" };
-  }
-  const to = toE164(phone10);
-  const url = `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
-  const basePayload = {
-    messaging_product: "whatsapp",
-    to,
-    type: "template" as const,
-    template: {
-      name: WHATSAPP_TEMPLATE_NAME,
-      language: { code: WHATSAPP_TEMPLATE_LANG },
-      components: [
-        { type: "body", parameters: [{ type: "text", text: code }] },
-        { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
-      ],
-    },
-  };
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify(basePayload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("WhatsApp send failed:", res.status, JSON.stringify(data));
-      const firstError = getWhatsAppErrorMessage(data, res.status);
-      const simple = { ...basePayload, template: { ...basePayload.template, components: [basePayload.template.components[0]] } };
-      const res2 = await fetch(url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify(simple),
-      });
-      const data2 = await res2.json();
-      if (!res2.ok) {
-        console.error("WhatsApp retry failed:", res2.status, JSON.stringify(data2));
-        return { ok: false, error: getWhatsAppErrorMessage(data2, res2.status) || firstError };
-      }
-      return { ok: true };
-    }
-    return { ok: true };
-  } catch (e) {
-    console.error("WhatsApp send exception:", e);
-    return { ok: false, error: e instanceof Error ? e.message : "send failed" };
-  }
-}
-
-function getWhatsAppErrorMessage(data: any, status: number): string {
-  const graphError = data?.error;
-  if (graphError?.code === 133010) {
-    return "WhatsApp Business sender is not registered with Cloud API. Register/connect the sender number in Meta WhatsApp Manager, then retry OTP.";
-  }
-  if (graphError?.message) return graphError.message;
-  return `HTTP ${status}`;
-}
+const sendWhatsApp = (phone10: string, code: string) => sendOtpTemplate(phone10, code);
 
 function syntheticEmail(phone10: string): string {
   return `admin+${phone10}@toothhaven.internal`;

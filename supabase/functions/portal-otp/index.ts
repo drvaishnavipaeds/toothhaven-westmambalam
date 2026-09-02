@@ -1,37 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { sendOtpTemplate } from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
-const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
-const WHATSAPP_TEMPLATE_NAME = Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "otp_verification";
-const WHATSAPP_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_LANG") ?? "en";
-const WHATSAPP_BUSINESS_ACCOUNT_ID = Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID");
 const DEFAULT_COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
-
-type WhatsAppTemplate = {
-  name: string;
-  language: string;
-  status: string;
-  category?: string;
-};
-
-let templateCache: { expiresAt: number; templates: WhatsAppTemplate[] } | null = null;
 
 async function hashCode(code: string): Promise<string> {
   const data = new TextEncoder().encode(code);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-function toE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) return `${DEFAULT_COUNTRY_CODE}${digits}`;
-  return digits;
 }
 
 function json(body: unknown, status = 200) {
@@ -41,100 +22,8 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function getApprovedTemplates(): Promise<WhatsAppTemplate[]> {
-  if (!WHATSAPP_BUSINESS_ACCOUNT_ID || !WHATSAPP_ACCESS_TOKEN) return [];
-  if (templateCache && templateCache.expiresAt > Date.now()) return templateCache.templates;
-
-  try {
-    const url = new URL(`https://graph.facebook.com/v21.0/${WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates`);
-    url.searchParams.set("fields", "name,status,language,category");
-    url.searchParams.set("limit", "100");
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      console.error("Unable to load WhatsApp templates:", response.status, JSON.stringify(payload));
-      return [];
-    }
-    const templates = Array.isArray(payload?.data)
-      ? payload.data.filter((template: WhatsAppTemplate) => template.status === "APPROVED")
-      : [];
-    templateCache = { expiresAt: Date.now() + 5 * 60 * 1000, templates };
-    return templates;
-  } catch (error) {
-    console.error("Unable to load WhatsApp templates:", error);
-    return [];
-  }
-}
-
-async function sendWhatsApp(phone: string, code: string): Promise<{ ok: boolean; error?: string; configurationRequired?: boolean }> {
-  if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
-    console.log("WhatsApp not configured. OTP for", phone, ":", code);
-    return { ok: false, error: "WhatsApp not configured" };
-  }
-  const to = toE164(phone);
-  const url = `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
-
-  // Resolve against the templates that are actually approved in this WhatsApp account.
-  // If the configured template is absent, another approved authentication template can
-  // safely carry the same one-time code.
-  const approved = await getApprovedTemplates();
-  const configured = approved.filter((template) => template.name === WHATSAPP_TEMPLATE_NAME);
-  const authenticationFallback = approved.filter((template) => template.category === "AUTHENTICATION");
-  const candidates = configured.length > 0 ? configured : authenticationFallback;
-  const attempts = candidates.length > 0
-    ? candidates.map((template) => ({ name: template.name, language: template.language }))
-    : [...new Set([WHATSAPP_TEMPLATE_LANG, "en_US", "en", "en_GB"])].map((language) => ({
-        name: WHATSAPP_TEMPLATE_NAME,
-        language,
-      }));
-  const bodyOnly = [{ type: "body", parameters: [{ type: "text", text: code }] }];
-  const withButton = [
-    ...bodyOnly,
-    { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
-  ];
-
-  let lastError = "send failed";
-  let templateMissing = false;
-  for (const attempt of attempts) {
-    for (const components of [withButton, bodyOnly]) {
-      const payload = {
-        messaging_product: "whatsapp",
-        to,
-        type: "template",
-        template: { name: attempt.name, language: { code: attempt.language }, components },
-      };
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (res.ok) return { ok: true };
-        lastError = data?.error?.message || `HTTP ${res.status}`;
-        console.error("WhatsApp send failed:", attempt.name, attempt.language, res.status, JSON.stringify(data));
-        // Language mismatch -> skip the second component variant, try next language
-        if (data?.error?.code === 132001) {
-          templateMissing = true;
-          break;
-        }
-      } catch (e) {
-        lastError = e instanceof Error ? e.message : "send failed";
-      }
-    }
-  }
-  if (templateMissing) {
-    return {
-      ok: false,
-      configurationRequired: true,
-      error: "WhatsApp OTP is temporarily unavailable because no approved authentication template was found. Please use Email OTP or contact the clinic.",
-    };
-  }
-  return { ok: false, error: lastError };
-}
-
+/** Delivers the one-time code over the shared WhatsApp sender. */
+const sendWhatsApp = (phone: string, code: string) => sendOtpTemplate(phone, code);
 
 function validName(n: string) { return typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 100; }
 function validPhone(p: string) { return typeof p === "string" && /^\d{10}$/.test(p.trim()); }
