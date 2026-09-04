@@ -1,16 +1,12 @@
-# Meta WhatsApp webhook configuration details
+# Meta WhatsApp webhook configuration
 
-## About the Supabase login you tried
+## Current situation
 
-You do **not** need a Supabase login for this project, and the URL `https://zymakgyfirjecxbdvtzg.supabase.co` is not a login page. It is the backend API endpoint that your Lovable app and Edge Functions use behind the scenes.
+- This project runs on **Lovable Cloud**, so there is no separate Supabase dashboard login. The URL `https://zymakgyfirjecxbdvtzg.supabase.co` is the backend API endpoint only.
+- The Secrets page in Project Settings requires a Business-plan upgrade to view existing values.
+- `META_WEBHOOK_VERIFY_TOKEN` already exists, but because you cannot view it, we will set a fresh shared token.
 
-This project runs on **Lovable Cloud**, which manages the backend for you. There is no separate Supabase dashboard to sign into. You manage the backend inside Lovable (Cloud → Backend), and secrets in Project Settings → Secrets.
-
-Nothing is broken — the webhook URL below is the correct one to give Meta.
-
-## Webhook URL
-
-Use this exact URL in Meta WhatsApp webhook configuration:
+## Webhook URL to paste into Meta
 
 ```
 https://zymakgyfirjecxbdvtzg.supabase.co/functions/v1/whatsapp-webhook
@@ -18,26 +14,20 @@ https://zymakgyfirjecxbdvtzg.supabase.co/functions/v1/whatsapp-webhook
 
 ## Verify token environment variable
 
-The Edge Function expects the verify token in this environment variable:
+The Edge Function reads:
 
 ```
 META_WEBHOOK_VERIFY_TOKEN
 ```
 
-## Where to retrieve the verify token value
+## Steps
 
-The value is stored as a secret in your Lovable project:
+1. **Generate a strong random token** (for example, `openssl rand -hex 32` in a terminal, or a password manager).
+2. **Update the Lovable secret** — I will open the secure form for `META_WEBHOOK_VERIFY_TOKEN`; paste the same random string there.
+3. **Configure Meta WhatsApp webhook**:
+   - Webhook URL: `https://zymakgyfirjecxbdvtzg.supabase.co/functions/v1/whatsapp-webhook`
+   - Verify Token: the same random string from step 1.
+   - Subscribe to `messages` and `message_statuses` fields.
+4. **Test** by sending a message to the clinic WhatsApp number and confirming it appears in the admin WhatsApp Inbox.
 
-1. Open your project in Lovable.
-2. Go to **Project Settings → Secrets** (or Edge Function secrets).
-3. Find the secret named `META_WEBHOOK_VERIFY_TOKEN`.
-4. Copy its value and paste it into the Meta webhook "Verify Token" field.
-
-If the secret is missing, create it there with a secure random string.
-
-## Recommended webhook subscription fields
-
-In Meta WhatsApp webhook settings, subscribe to:
-
-- `messages` — inbound patient messages
-- `message_statuses` — sent / delivered / read / failed receipts
+No code changes are required; only the secret value and Meta configuration need updating.
