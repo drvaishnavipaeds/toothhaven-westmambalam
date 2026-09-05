@@ -74,7 +74,7 @@ const AdminSidebar = ({ activeTab, onTabChange }: Props) => {
   return (
     <aside className="w-full md:w-60 bg-card border-r border-border md:min-h-screen md:max-h-screen md:overflow-y-auto shrink-0">
       <div className="p-4 border-b border-border sticky top-0 bg-card z-10 flex items-center gap-3">
-        <img src={logoAsset.url} alt="Tooth Haven" className="h-10 w-auto" />
+        <img src={markTealAsset.url} alt="Tooth Haven" className="h-10 w-10 object-contain" />
         <div>
           <h2 className="font-bold text-foreground text-sm leading-tight">Tooth Haven</h2>
           <p className="text-xs text-muted-foreground">Admin Portal</p>
