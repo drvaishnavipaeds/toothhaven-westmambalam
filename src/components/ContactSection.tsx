@@ -14,7 +14,7 @@ const ContactSection = () => {
         </div>
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <div className="bg-card rounded-2xl p-8 shadow-card border border-border space-y-6">
-            <img src={logo} alt="Tooth Haven" className="h-12 mb-2" />
+            <Logo tone="teal" size="md" showTagline className="mb-2" />
             <p className="font-semibold text-foreground">Dr. Karthik Srinivasan</p>
 
             <div className="flex items-start gap-3">
