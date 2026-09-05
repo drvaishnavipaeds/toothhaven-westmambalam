@@ -33,8 +33,9 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
       <div className="container mx-auto px-4 flex items-center justify-between h-16 md:h-20">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="Tooth Haven" className="h-10 md:h-14" />
+          <Logo tone="teal" size="sm" />
         </Link>
+
 
         <div className="hidden lg:flex items-center gap-6">
           {navItems.map((item) => (

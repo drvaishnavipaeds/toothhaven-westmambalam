@@ -1,7 +1,7 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Calendar, Phone, MapPin, Clock } from "lucide-react";
-import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
-const logo = logoAsset.url;
+import Logo from "@/components/Logo";
+
 
 const HeroSection = () => {
   const { t } = useLanguage();
@@ -14,7 +14,7 @@ const HeroSection = () => {
       
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <img src={logo} alt="Tooth Haven Multispeciality Dental Care" className="h-20 md:h-28 mx-auto mb-8" />
+          <Logo tone="white" size="lg" className="mx-auto mb-8 flex-col text-center gap-4 sm:flex-row sm:text-left sm:gap-5" />
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight mb-6">
             {t("hero.tagline")}
