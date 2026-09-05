@@ -1,7 +1,7 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MapPin, Clock, Mail, Phone, ExternalLink } from "lucide-react";
-import logoAsset from "@/assets/tooth-haven-logo.png.asset.json";
-const logo = logoAsset.url;
+import Logo from "@/components/Logo";
+
 
 const ContactSection = () => {
   const { t, lang } = useLanguage();
