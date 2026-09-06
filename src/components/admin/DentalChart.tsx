@@ -32,16 +32,24 @@ const PRIMARY = {
   lowerLeft: [71, 72, 73, 74, 75],
 };
 
-export const CONDITIONS: { value: string; label: string; className: string; dot: string }[] = [
-  { value: "healthy", label: "Healthy", className: "bg-background border-border text-foreground", dot: "bg-muted" },
-  { value: "caries", label: "Caries", className: "bg-destructive/15 border-destructive text-destructive", dot: "bg-destructive" },
-  { value: "filled", label: "Filled / Restored", className: "bg-primary/15 border-primary text-primary", dot: "bg-primary" },
-  { value: "rct", label: "Root Canal", className: "bg-accent/30 border-accent-foreground/40 text-accent-foreground", dot: "bg-accent-foreground/60" },
-  { value: "crown", label: "Crown", className: "bg-secondary border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/60" },
-  { value: "bridge", label: "Bridge", className: "bg-secondary/70 border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/40" },
-  { value: "implant", label: "Implant", className: "bg-primary/30 border-primary text-primary", dot: "bg-primary/70" },
-  { value: "missing", label: "Missing / Extracted", className: "bg-muted border-muted-foreground/40 text-muted-foreground line-through", dot: "bg-muted-foreground" },
-  { value: "planned", label: "Planned Treatment", className: "bg-ring/20 border-ring text-foreground", dot: "bg-ring" },
+export const CONDITIONS: {
+  value: string;
+  label: string;
+  className: string;
+  dot: string;
+  /** fill / stroke used by the odontogram tooth shapes */
+  fill: string;
+  stroke: string;
+}[] = [
+  { value: "healthy", label: "Healthy", className: "bg-background border-border text-foreground", dot: "bg-muted", fill: "hsl(var(--card))", stroke: "hsl(var(--border))" },
+  { value: "caries", label: "Caries", className: "bg-destructive/15 border-destructive text-destructive", dot: "bg-destructive", fill: "hsl(var(--destructive) / 0.25)", stroke: "hsl(var(--destructive))" },
+  { value: "filled", label: "Filled / Restored", className: "bg-primary/15 border-primary text-primary", dot: "bg-primary", fill: "hsl(var(--primary) / 0.25)", stroke: "hsl(var(--primary))" },
+  { value: "rct", label: "Root Canal", className: "bg-accent/30 border-accent-foreground/40 text-accent-foreground", dot: "bg-accent-foreground/60", fill: "hsl(var(--accent))", stroke: "hsl(var(--accent-foreground) / 0.6)" },
+  { value: "crown", label: "Crown", className: "bg-secondary border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/60", fill: "hsl(var(--secondary))", stroke: "hsl(var(--secondary-foreground) / 0.5)" },
+  { value: "bridge", label: "Bridge", className: "bg-secondary/70 border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/40", fill: "hsl(var(--secondary) / 0.7)", stroke: "hsl(var(--secondary-foreground) / 0.4)" },
+  { value: "implant", label: "Implant", className: "bg-primary/30 border-primary text-primary", dot: "bg-primary/70", fill: "hsl(var(--primary) / 0.5)", stroke: "hsl(var(--primary))" },
+  { value: "missing", label: "Missing / Extracted", className: "bg-muted border-muted-foreground/40 text-muted-foreground line-through", dot: "bg-muted-foreground", fill: "hsl(var(--muted))", stroke: "hsl(var(--muted-foreground) / 0.5)" },
+  { value: "planned", label: "Planned Treatment", className: "bg-ring/20 border-ring text-foreground", dot: "bg-ring", fill: "hsl(var(--ring) / 0.25)", stroke: "hsl(var(--ring))" },
 ];
 
 const SURFACES = [
