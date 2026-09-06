@@ -37,6 +37,23 @@ const HavenAIChatbot = () => {
     }
   }, [isOpen]);
 
+  // Allows any page (e.g. a service page) to open the assistant with a question.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.lang === "ta" || detail.lang === "en") setChatLang(detail.lang);
+      setIsOpen(true);
+      if (detail.question) {
+        const q = String(detail.question);
+        setTimeout(() => sendMessage(q), 150);
+      }
+    };
+    window.addEventListener("haven:ask", handler as EventListener);
+    return () => window.removeEventListener("haven:ask", handler as EventListener);
+  });
+
+
+
   const toggleLanguage = () => {
     const newLang: ChatLang = chatLang === "en" ? "ta" : "en";
     setChatLang(newLang);
@@ -110,11 +127,13 @@ const HavenAIChatbot = () => {
     [chatLang]
   );
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (override?: string) => {
+    const text = (override ?? input).trim();
+    if (!text || isLoading) return;
 
-    const userMsg: Msg = { role: "user", content: input.trim() };
-    const updatedMessages = [...messages, userMsg];
+    const userMsg: Msg = { role: "user", content: text };
+    const base = messages.length === 0 ? [{ role: "assistant" as const, content: getGreeting(chatLang) }] : messages;
+    const updatedMessages = [...base, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);

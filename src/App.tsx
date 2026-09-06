@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import Index from "./pages/Index.tsx";
+import ServiceDetail from "./pages/ServiceDetail.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import PatientPortal from "./pages/PatientPortal.tsx";
 import AdminLogin from "./pages/AdminLogin.tsx";
@@ -23,6 +24,7 @@ const App = () => (
         <AdminAuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/services/:slug" element={<ServiceDetail />} />
             <Route path="/patient-portal" element={<PatientPortal />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />

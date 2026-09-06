@@ -32,16 +32,24 @@ const PRIMARY = {
   lowerLeft: [71, 72, 73, 74, 75],
 };
 
-export const CONDITIONS: { value: string; label: string; className: string; dot: string }[] = [
-  { value: "healthy", label: "Healthy", className: "bg-background border-border text-foreground", dot: "bg-muted" },
-  { value: "caries", label: "Caries", className: "bg-destructive/15 border-destructive text-destructive", dot: "bg-destructive" },
-  { value: "filled", label: "Filled / Restored", className: "bg-primary/15 border-primary text-primary", dot: "bg-primary" },
-  { value: "rct", label: "Root Canal", className: "bg-accent/30 border-accent-foreground/40 text-accent-foreground", dot: "bg-accent-foreground/60" },
-  { value: "crown", label: "Crown", className: "bg-secondary border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/60" },
-  { value: "bridge", label: "Bridge", className: "bg-secondary/70 border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/40" },
-  { value: "implant", label: "Implant", className: "bg-primary/30 border-primary text-primary", dot: "bg-primary/70" },
-  { value: "missing", label: "Missing / Extracted", className: "bg-muted border-muted-foreground/40 text-muted-foreground line-through", dot: "bg-muted-foreground" },
-  { value: "planned", label: "Planned Treatment", className: "bg-ring/20 border-ring text-foreground", dot: "bg-ring" },
+export const CONDITIONS: {
+  value: string;
+  label: string;
+  className: string;
+  dot: string;
+  /** fill / stroke used by the odontogram tooth shapes */
+  fill: string;
+  stroke: string;
+}[] = [
+  { value: "healthy", label: "Healthy", className: "bg-background border-border text-foreground", dot: "bg-muted", fill: "hsl(var(--card))", stroke: "hsl(var(--border))" },
+  { value: "caries", label: "Caries", className: "bg-destructive/15 border-destructive text-destructive", dot: "bg-destructive", fill: "hsl(var(--destructive) / 0.25)", stroke: "hsl(var(--destructive))" },
+  { value: "filled", label: "Filled / Restored", className: "bg-primary/15 border-primary text-primary", dot: "bg-primary", fill: "hsl(var(--primary) / 0.25)", stroke: "hsl(var(--primary))" },
+  { value: "rct", label: "Root Canal", className: "bg-accent/30 border-accent-foreground/40 text-accent-foreground", dot: "bg-accent-foreground/60", fill: "hsl(var(--accent))", stroke: "hsl(var(--accent-foreground) / 0.6)" },
+  { value: "crown", label: "Crown", className: "bg-secondary border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/60", fill: "hsl(var(--secondary))", stroke: "hsl(var(--secondary-foreground) / 0.5)" },
+  { value: "bridge", label: "Bridge", className: "bg-secondary/70 border-secondary-foreground/30 text-secondary-foreground", dot: "bg-secondary-foreground/40", fill: "hsl(var(--secondary) / 0.7)", stroke: "hsl(var(--secondary-foreground) / 0.4)" },
+  { value: "implant", label: "Implant", className: "bg-primary/30 border-primary text-primary", dot: "bg-primary/70", fill: "hsl(var(--primary) / 0.5)", stroke: "hsl(var(--primary))" },
+  { value: "missing", label: "Missing / Extracted", className: "bg-muted border-muted-foreground/40 text-muted-foreground line-through", dot: "bg-muted-foreground", fill: "hsl(var(--muted))", stroke: "hsl(var(--muted-foreground) / 0.5)" },
+  { value: "planned", label: "Planned Treatment", className: "bg-ring/20 border-ring text-foreground", dot: "bg-ring", fill: "hsl(var(--ring) / 0.25)", stroke: "hsl(var(--ring))" },
 ];
 
 const SURFACES = [
@@ -125,18 +133,51 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
     fetchEntries();
   };
 
-  const Tooth = ({ n }: { n: number }) => {
+  // Anatomical-looking tooth glyph: crown + roots, coloured by latest condition.
+  const Tooth = ({ n, lower }: { n: number; lower?: boolean }) => {
     const entry = latestByTooth.get(n);
     const meta = conditionMeta(entry?.condition ?? "healthy");
+    const molar = [6, 7, 8].includes(Number(String(n)[1])) || [4, 5].includes(Number(String(n)[1]));
     return (
       <button
         type="button"
         onClick={() => openTooth(n)}
         title={entry ? `${n} — ${meta.label}${entry.surfaces.length ? ` (${entry.surfaces.join("")})` : ""}` : `Tooth ${n}`}
-        className={`w-9 h-11 shrink-0 rounded-md border text-[11px] font-semibold flex flex-col items-center justify-center gap-0.5 transition-transform hover:scale-105 ${meta.className}`}
+        className="group shrink-0 flex flex-col items-center gap-0.5 focus:outline-none"
       >
-        <span>{n}</span>
-        {entry?.surfaces?.length ? <span className="text-[8px] font-normal opacity-80">{entry.surfaces.join("")}</span> : null}
+        {lower && (
+          <span className="text-[10px] font-semibold text-muted-foreground group-hover:text-primary">{n}</span>
+        )}
+        <svg
+          viewBox="0 0 40 56"
+          className={`w-8 h-11 transition-transform group-hover:scale-110 ${entry?.condition === "missing" ? "opacity-45" : ""}`}
+          style={{ transform: lower ? "scaleY(-1)" : undefined }}
+        >
+          <g fill={meta.fill} stroke={meta.stroke} strokeWidth="2" strokeLinejoin="round">
+            {molar ? (
+              <>
+                <path d="M8 22c-1 8-3 12-2 20 .5 4 4 4 4.5 0l2-14z" />
+                <path d="M32 22c1 8 3 12 2 20-.5 4-4 4-4.5 0l-2-14z" />
+                <path d="M20 24c0 8 0 14 .5 18 .4 4-3.5 4-3.8 0-.4-5 .3-10 .3-18z" />
+                <path d="M20 4c8 0 14 4 14 11 0 6-4 9-14 9S6 21 6 15C6 8 12 4 20 4z" />
+              </>
+            ) : (
+              <>
+                <path d="M20 22c3 8 4 16 2 26-.8 4-4.2 4-4.6 0-1-9 0-18 2.6-26z" />
+                <path d="M20 4c7 0 12 4 12 10s-5 10-12 10S8 20 8 14 13 4 20 4z" />
+              </>
+            )}
+          </g>
+          {entry?.condition === "missing" && (
+            <path d="M8 8 L32 30 M32 8 L8 30" stroke="hsl(var(--muted-foreground))" strokeWidth="2.5" strokeLinecap="round" />
+          )}
+        </svg>
+        {!lower && (
+          <span className="text-[10px] font-semibold text-muted-foreground group-hover:text-primary">{n}</span>
+        )}
+        {entry?.surfaces?.length ? (
+          <span className="text-[8px] leading-none text-muted-foreground">{entry.surfaces.join("")}</span>
+        ) : null}
       </button>
     );
   };
@@ -158,29 +199,47 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-3 md:p-4 overflow-x-auto">
-        <div className="min-w-max space-y-3">
-          <div className="flex items-center gap-4 justify-center">
-            <div className="flex gap-1">{arch.upperRight.map((n) => <Tooth key={n} n={n} />)}</div>
-            <div className="w-px self-stretch bg-border" />
-            <div className="flex gap-1">{arch.upperLeft.map((n) => <Tooth key={n} n={n} />)}</div>
+      <div className="bg-card rounded-xl border border-border p-3 md:p-5 overflow-x-auto">
+        <div className="min-w-max">
+          <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
+            <span>Upper right</span>
+            <span>Upper left</span>
           </div>
-          <div className="border-t border-dashed border-border" />
-          <div className="flex items-center gap-4 justify-center">
-            <div className="flex gap-1">{arch.lowerRight.map((n) => <Tooth key={n} n={n} />)}</div>
+          <div className="flex items-end gap-5 justify-center">
+            <div className="flex gap-1.5">{arch.upperRight.map((n) => <Tooth key={n} n={n} />)}</div>
             <div className="w-px self-stretch bg-border" />
-            <div className="flex gap-1">{arch.lowerLeft.map((n) => <Tooth key={n} n={n} />)}</div>
+            <div className="flex gap-1.5">{arch.upperLeft.map((n) => <Tooth key={n} n={n} />)}</div>
+          </div>
+
+          <div className="my-3 border-t border-dashed border-border" />
+
+          <div className="flex items-start gap-5 justify-center">
+            <div className="flex gap-1.5">{arch.lowerRight.map((n) => <Tooth key={n} n={n} lower />)}</div>
+            <div className="w-px self-stretch bg-border" />
+            <div className="flex gap-1.5">{arch.lowerLeft.map((n) => <Tooth key={n} n={n} lower />)}</div>
+          </div>
+          <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground mt-1 px-1">
+            <span>Lower right</span>
+            <span>Lower left</span>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mt-3">
-        {CONDITIONS.map((c) => (
-          <div key={c.value} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`} /> {c.label}
-          </div>
-        ))}
+      <div className="mt-3 bg-card border border-border rounded-xl p-3">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Findings &amp; treatments key</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {CONDITIONS.map((c) => (
+            <div key={c.value} className="flex items-center gap-1.5 text-[11px] text-foreground">
+              <span
+                className="w-3 h-3 rounded-sm border"
+                style={{ backgroundColor: c.fill, borderColor: c.stroke }}
+              />
+              {c.label}
+            </div>
+          ))}
+        </div>
       </div>
+
 
       <div className="mt-4">
         <h4 className="font-semibold text-sm text-foreground mb-2">Chart history</h4>
