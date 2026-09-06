@@ -24,6 +24,7 @@ const App = () => (
         <AdminAuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/services/:slug" element={<ServiceDetail />} />
             <Route path="/patient-portal" element={<PatientPortal />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
