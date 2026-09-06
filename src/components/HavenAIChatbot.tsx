@@ -110,11 +110,13 @@ const HavenAIChatbot = () => {
     [chatLang]
   );
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (override?: string) => {
+    const text = (override ?? input).trim();
+    if (!text || isLoading) return;
 
-    const userMsg: Msg = { role: "user", content: input.trim() };
-    const updatedMessages = [...messages, userMsg];
+    const userMsg: Msg = { role: "user", content: text };
+    const base = messages.length === 0 ? [{ role: "assistant" as const, content: getGreeting(chatLang) }] : messages;
+    const updatedMessages = [...base, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
