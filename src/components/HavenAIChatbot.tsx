@@ -37,6 +37,23 @@ const HavenAIChatbot = () => {
     }
   }, [isOpen]);
 
+  // Allows any page (e.g. a service page) to open the assistant with a question.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.lang === "ta" || detail.lang === "en") setChatLang(detail.lang);
+      setIsOpen(true);
+      if (detail.question) {
+        const q = String(detail.question);
+        setTimeout(() => sendMessage(q), 150);
+      }
+    };
+    window.addEventListener("haven:ask", handler as EventListener);
+    return () => window.removeEventListener("haven:ask", handler as EventListener);
+  });
+
+
+
   const toggleLanguage = () => {
     const newLang: ChatLang = chatLang === "en" ? "ta" : "en";
     setChatLang(newLang);
