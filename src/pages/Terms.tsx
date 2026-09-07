@@ -13,7 +13,7 @@ const Section = ({ title, children, icon: Icon }: { title: string; children: Rea
 );
 
 const Terms = () => {
-  const effectiveDate = "[Effective Date — to be confirmed]";
+  const effectiveDate = "Effective Date: 1 September 2026";
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,9 +172,9 @@ const Terms = () => {
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Clinic name:</strong> Tooth Haven Advanced Dental Care</li>
-              <li><strong>Address:</strong> [Clinic address — to be confirmed]</li>
-              <li><strong>Email:</strong> [Contact email — to be confirmed]</li>
-              <li><strong>Phone:</strong> [Contact phone — to be confirmed]</li>
+              <li><strong>Address:</strong> 24/23 Postal Colony Cross Street, West Mambalam, Chennai – 600033</li>
+              <li><strong>Email:</strong> karthiktoothhaven25@gmail.com</li>
+              <li><strong>Phone:</strong> +91 89251 66149</li>
             </ul>
           </Section>
         </div>
