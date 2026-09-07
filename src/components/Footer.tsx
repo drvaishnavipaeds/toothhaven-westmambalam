@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Logo from "@/components/Logo";
 
@@ -11,9 +12,23 @@ const Footer = () => {
             <Logo tone="white" size="md" showTagline />
           </div>
 
-          <p className="text-background/60 text-sm text-center">
-            © {new Date().getFullYear()} Tooth Haven Multispeciality Dental Care. {t("footer.rights")}.
-          </p>
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+            <Link
+              to="/terms"
+              className="text-sm text-background/70 hover:text-background transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/privacy"
+              className="text-sm text-background/70 hover:text-background transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <p className="text-background/60 text-sm text-center">
+              © {new Date().getFullYear()} Tooth Haven Multispeciality Dental Care. {t("footer.rights")}.
+            </p>
+          </div>
         </div>
       </div>
     </footer>
