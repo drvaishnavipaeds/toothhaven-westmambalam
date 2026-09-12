@@ -51,7 +51,13 @@ Deno.serve(async (req) => {
       return json({ ok: true, notificationSent: false, reason: "stale" });
     }
 
-    const notifMessage =
+    if (!isConfigured()) {
+      console.warn("WhatsApp not configured; appointment notifications not delivered.");
+      return json({ success: true, notificationSent: false, reason: "not_configured" });
+    }
+
+    // Admin notification message
+    const adminNotifMessage =
       `🦷 *Tooth Haven - New Appointment*\n\n` +
       `👤 Patient: ${sanitize(appt.patient_name, 80)}\n` +
       `📱 Phone: ${sanitize(appt.patient_phone, 20)}\n` +
@@ -60,25 +66,74 @@ Deno.serve(async (req) => {
       `💬 Note: ${sanitize(appt.notes, 300) || "None"}\n` +
       `🕐 Booked at: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`;
 
-    if (!isConfigured()) {
-      console.warn("WhatsApp not configured; appointment alert not delivered.");
-      return json({ success: true, notificationSent: false, reason: "not_configured" });
+    // Patient notification message
+    const patientNotifMessage =
+      `🦷 *Tooth Haven Appointment Confirmation*\n\n` +
+      `Hi ${sanitize(appt.patient_name, 50)},\n\n` +
+      `Your appointment request has been received!\n\n` +
+      `📅 Date: ${sanitize(appt.appointment_date, 20)}\n` +
+      `🏥 Service: ${sanitize(appt.treatment_type, 80)}\n\n` +
+      `We will contact you shortly to confirm your appointment.\n\n` +
+      `Thank you for choosing Tooth Haven! 🙏`;
+
+    let adminNotifSent = false;
+    let patientNotifSent = false;
+    let adminError = null;
+    let patientError = null;
+
+    // Send notification to admin
+    try {
+      const adminResult = await sendText(OWNER_PHONE, adminNotifMessage);
+      adminNotifSent = adminResult.ok;
+      adminError = adminResult.error;
+      if (adminResult.ok) {
+        await logMessage(supabase, {
+          wa_message_id: adminResult.id ?? null,
+          direction: "outbound",
+          phone: OWNER_PHONE,
+          body: adminNotifMessage,
+          handled_by_staff: true,
+        });
+      } else {
+        console.error("Admin appointment notification failed:", adminResult.error);
+      }
+    } catch (err) {
+      console.error("Error sending admin notification:", err);
+      adminError = (err as Error).message;
     }
 
-    const result = await sendText(OWNER_PHONE, notifMessage);
-    if (result.ok) {
-      await logMessage(supabase, {
-        wa_message_id: result.id ?? null,
-        direction: "outbound",
-        phone: OWNER_PHONE,
-        body: notifMessage,
-        handled_by_staff: true,
-      });
-    } else {
-      console.error("Appointment alert failed:", result.error);
+    // Send notification to patient
+    try {
+      const patientResult = await sendText(appt.patient_phone, patientNotifMessage);
+      patientNotifSent = patientResult.ok;
+      patientError = patientResult.error;
+      if (patientResult.ok) {
+        await logMessage(supabase, {
+          wa_message_id: patientResult.id ?? null,
+          direction: "outbound",
+          phone: appt.patient_phone,
+          body: patientNotifMessage,
+          handled_by_staff: false,
+        });
+      } else {
+        console.error("Patient appointment notification failed:", patientResult.error);
+      }
+    } catch (err) {
+      console.error("Error sending patient notification:", err);
+      patientError = (err as Error).message;
     }
 
-    return json({ success: true, notificationSent: result.ok, error: result.ok ? undefined : result.error });
+    return json({
+      success: true,
+      notificationsSent: {
+        admin: adminNotifSent,
+        patient: patientNotifSent,
+      },
+      errors: {
+        admin: adminError,
+        patient: patientError,
+      },
+    });
   } catch (error) {
     return json({ error: (error as Error).message }, 400);
   }
