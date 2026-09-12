@@ -5,6 +5,7 @@
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 const WA_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+const META_APP_SECRET = Deno.env.get("META_APP_SECRET");
 const WA_PHONE_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
 const WA_WABA_ID = Deno.env.get("WHATSAPP_BUSINESS_ACCOUNT_ID");
 const COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
@@ -18,6 +19,26 @@ export const TEMPLATES = {
 export const DEFAULT_LANG = Deno.env.get("WHATSAPP_TEMPLATE_LANG") ?? "en";
 
 export const isConfigured = () => Boolean(WA_TOKEN && WA_PHONE_ID);
+
+async function appSecretProof(): Promise<string | null> {
+  if (!WA_TOKEN || !META_APP_SECRET) return null;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(META_APP_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(WA_TOKEN));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function graphUrl(path: string): Promise<string> {
+  const url = new URL(`${GRAPH}/${path}`);
+  const proof = await appSecretProof();
+  if (proof) url.searchParams.set("appsecret_proof", proof);
+  return url.toString();
+}
 
 export type SendResult = {
   ok: boolean;
@@ -73,7 +94,7 @@ export function friendlyError(data: any, status: number): { message: string; cod
 async function post(payload: Record<string, unknown>): Promise<SendResult> {
   if (!isConfigured()) return { ok: false, error: "WhatsApp is not configured.", configurationRequired: true };
   try {
-    const res = await fetch(`${GRAPH}/${WA_PHONE_ID}/messages`, {
+    const res = await fetch(await graphUrl(`${WA_PHONE_ID}/messages`), {
       method: "POST",
       headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -137,7 +158,7 @@ export async function listApprovedTemplates(force = false): Promise<WaTemplate[]
   if (!WA_WABA_ID || !WA_TOKEN) return [];
   if (!force && templateCache && templateCache.expiresAt > Date.now()) return templateCache.templates;
   try {
-    const url = new URL(`${GRAPH}/${WA_WABA_ID}/message_templates`);
+    const url = new URL(await graphUrl(`${WA_WABA_ID}/message_templates`));
     url.searchParams.set("fields", "name,status,language,category,components");
     url.searchParams.set("limit", "200");
     const res = await fetch(url, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
