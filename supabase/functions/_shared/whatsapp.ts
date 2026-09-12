@@ -122,6 +122,7 @@ export function sendTemplate(opts: {
   name: string;
   language?: string;
   bodyParams?: string[];
+  bodyParamNames?: string[];
   /** Copy-code / URL button parameter (authentication templates). */
   buttonParam?: string;
 }): Promise<SendResult> {
@@ -129,7 +130,11 @@ export function sendTemplate(opts: {
   if (opts.bodyParams?.length) {
     components.push({
       type: "body",
-      parameters: opts.bodyParams.map((text) => ({ type: "text", text })),
+      parameters: opts.bodyParams.map((text, index) => ({
+        type: "text",
+        text,
+        ...(opts.bodyParamNames?.[index] ? { parameter_name: opts.bodyParamNames[index] } : {}),
+      })),
     });
   }
   if (opts.buttonParam) {
