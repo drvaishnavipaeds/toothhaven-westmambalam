@@ -65,14 +65,32 @@ Deno.serve(async (req) => {
     }
     if (!useTemplate && !message) return json({ error: "Message is required" }, 400);
 
-    const result = useTemplate
+    let bodyParamNames: string[] | undefined;
+    if (useTemplate && templateName && variables?.length) {
+      const templates = await listApprovedTemplates();
+      const selected = templates.find(
+        (template) => template.name === templateName && (!templateLanguage || template.language === templateLanguage),
+      );
+      const bodyComponent = Array.isArray(selected?.components)
+        ? selected.components.find((component: any) => component?.type === "BODY") as any
+        : undefined;
+      const namedExamples = bodyComponent?.example?.body_text_named_params;
+      if (Array.isArray(namedExamples)) {
+        bodyParamNames = namedExamples
+          .map((example: any) => typeof example?.param_name === "string" ? example.param_name : null)
+          .filter((name: string | null): name is string => Boolean(name));
+      }
+    }
+
+    const result = useTemplate && templateName
       ? await sendTemplate({
           to: phone,
-          name: templateName!,
+          name: templateName,
           language: templateLanguage,
           bodyParams: variables ?? [],
+          bodyParamNames,
         })
-      : await sendText(phone, message!);
+      : await sendText(phone, message ?? "");
 
     if (!result.ok) return json({ error: result.error ?? "WhatsApp send failed", code: result.code }, 502);
 
