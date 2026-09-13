@@ -96,7 +96,7 @@ const ScheduleManager = () => {
 
   const save = async () => {
     if (!form.patient_name || !form.patient_phone) return toast.error("Patient name and phone are required");
-    const { error } = await supabase.from("appointments").insert({
+    const { data: inserted, error } = await supabase.from("appointments").insert({
       patient_id: form.patient_id || null,
       patient_name: form.patient_name,
       patient_phone: form.patient_phone,
@@ -109,9 +109,16 @@ const ScheduleManager = () => {
       doctor_id: form.doctor_id || null,
       notes: form.notes || null,
       source: "admin",
-    });
+    }).select("id").single();
     if (error) return toast.error(error.message);
-    toast.success("Appointment booked");
+    const { data: notification, error: notificationError } = await supabase.functions.invoke("appointment-notification", {
+      body: { appointmentId: inserted?.id, event: form.status === "confirmed" ? "confirmation" : "request" },
+    });
+    if (notificationError || notification?.ok === false) {
+      toast.warning("Appointment booked, but WhatsApp was not sent");
+    } else {
+      toast.success("Appointment booked and patient notified");
+    }
     setOpen(false);
     load();
   };
