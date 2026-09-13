@@ -277,11 +277,21 @@ async function handleInbound(value: Record<string, any>) {
   }
 
   for (const st of value?.statuses ?? []) {
+    const statusPatch: Record<string, unknown> = { status: st.status };
+    if (st.status === "delivered") statusPatch.delivered_at = new Date().toISOString();
+    if (st.status === "read") statusPatch.read_at = new Date().toISOString();
+    if (st.status === "failed") {
+      statusPatch.failed_at = new Date().toISOString();
+      statusPatch.error = st.errors?.[0]?.title ?? st.errors?.[0]?.message ?? "Meta delivery failed";
+    }
     await admin.from("whatsapp_messages")
       .update({ status: st.status })
       .eq("wa_message_id", st.id);
     await admin.from("campaign_recipients")
       .update({ status: st.status === "failed" ? "failed" : st.status })
+      .eq("wa_message_id", st.id);
+    await admin.from("appointment_notifications")
+      .update(statusPatch)
       .eq("wa_message_id", st.id);
   }
 }
