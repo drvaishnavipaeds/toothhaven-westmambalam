@@ -104,6 +104,77 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_notifications: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          delivered_at: string | null
+          error: string | null
+          event_key: string
+          event_type: string
+          failed_at: string | null
+          id: string
+          metadata: Json
+          phone: string
+          read_at: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string
+          template_language: string
+          template_name: string
+          updated_at: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          event_key: string
+          event_type: string
+          failed_at?: string | null
+          id?: string
+          metadata?: Json
+          phone: string
+          read_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          template_language?: string
+          template_name: string
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          event_key?: string
+          event_type?: string
+          failed_at?: string | null
+          id?: string
+          metadata?: Json
+          phone?: string
+          read_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          template_language?: string
+          template_name?: string
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_notifications_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_waitlist: {
         Row: {
           created_at: string
