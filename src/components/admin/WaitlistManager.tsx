@@ -50,7 +50,7 @@ const WaitlistManager = () => {
 
   const schedule = async (r: any) => {
     const date = r.preferred_date ?? new Date().toISOString().slice(0, 10);
-    const { error } = await supabase.from("appointments").insert({
+    const { data: inserted, error } = await supabase.from("appointments").insert({
       patient_id: r.patient_id,
       patient_name: r.patient_name,
       patient_phone: r.patient_phone,
@@ -60,8 +60,14 @@ const WaitlistManager = () => {
       status: "pending",
       source: "waitlist",
       notes: r.notes,
-    });
+    }).select("id").single();
     if (error) return toast.error(error.message);
+    if (inserted?.id) {
+      const { data: notification, error: notificationError } = await supabase.functions.invoke("appointment-notification", {
+        body: { appointmentId: inserted.id, event: "request" },
+      });
+      if (notificationError || notification?.ok === false) toast.warning("Appointment created, but WhatsApp was not sent");
+    }
     await supabase.from("appointment_waitlist").update({ status: "scheduled" }).eq("id", r.id);
     toast.success("Appointment created — confirm the slot in Schedule");
     load();

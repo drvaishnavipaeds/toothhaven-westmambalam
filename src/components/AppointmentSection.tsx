@@ -58,7 +58,7 @@ const AppointmentSection = () => {
       // Notify staff by referencing the trusted appointment row.
       try {
         await supabase.functions.invoke("appointment-notification", {
-          body: { appointmentId: inserted?.id },
+          body: { appointmentId: inserted?.id, event: "request" },
         });
       } catch (notifErr) {
         console.error("Notification error:", notifErr);

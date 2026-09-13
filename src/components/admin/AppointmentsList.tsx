@@ -43,6 +43,8 @@ const AppointmentsList = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ patient_name: "", patient_phone: "", appointment_date: "", appointment_time: "11:00", treatment_type: "", notes: "", source: "manual" });
   const [saving, setSaving] = useState(false);
+  const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
+  const [rescheduleForm, setRescheduleForm] = useState({ appointment_date: "", appointment_time: "" });
   const { toast } = useToast();
 
   const fetchAppointments = async () => {
@@ -54,16 +56,66 @@ const AppointmentsList = () => {
 
   useEffect(() => { fetchAppointments(); }, [filter]);
 
+  const notifyAppointment = async (appointmentId: string, event: string, details: Record<string, string> = {}) => {
+    const { data, error } = await supabase.functions.invoke("appointment-notification", {
+      body: { appointmentId, event, ...details },
+    });
+    if (error || data?.ok === false) {
+      toast({
+        title: "Appointment saved, WhatsApp not sent",
+        description: data?.error ?? error?.message ?? "Check that the Meta template is approved.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("appointments").update({ status }).eq("id", id);
+    const appointment = appointments.find((item) => item.id === id);
+    const reason = status === "cancelled"
+      ? window.prompt("Cancellation reason shown to the patient:", "Cancelled by the clinic")
+      : null;
+    if (status === "cancelled" && reason === null) return;
+    const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+    if (error) {
+      toast({ title: "Could not update appointment", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (status === "confirmed") await notifyAppointment(id, "confirmation");
+    if (status === "cancelled") await notifyAppointment(id, "cancelled", { reason: reason || "Cancelled by the clinic" });
     toast({ title: `Appointment ${status}` });
+    fetchAppointments();
+  };
+
+  const openReschedule = (appointment: Appointment) => {
+    setRescheduling(appointment);
+    setRescheduleForm({ appointment_date: appointment.appointment_date, appointment_time: appointment.appointment_time });
+  };
+
+  const saveReschedule = async () => {
+    if (!rescheduling || !rescheduleForm.appointment_date || !rescheduleForm.appointment_time) return;
+    const previousDate = rescheduling.appointment_date;
+    const previousTime = rescheduling.appointment_time;
+    const { error } = await supabase.from("appointments").update({
+      appointment_date: rescheduleForm.appointment_date,
+      appointment_time: rescheduleForm.appointment_time,
+      status: "confirmed",
+    }).eq("id", rescheduling.id);
+    if (error) {
+      toast({ title: "Could not reschedule", description: error.message, variant: "destructive" });
+      return;
+    }
+    await notifyAppointment(rescheduling.id, "rescheduled", { previousDate, previousTime });
+    toast({ title: "Appointment rescheduled" });
+    setRescheduling(null);
     fetchAppointments();
   };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from("appointments").insert({
+    const { data: inserted, error } = await supabase.from("appointments").insert({
       patient_name: form.patient_name,
       patient_phone: form.patient_phone,
       appointment_date: form.appointment_date,
@@ -72,21 +124,13 @@ const AppointmentsList = () => {
       notes: form.notes || null,
       source: form.source,
       status: "confirmed",
-    });
+    }).select("id").single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       // Send notification for manually added appointments too
       try {
-        await supabase.functions.invoke("appointment-notification", {
-          body: {
-            patientName: form.patient_name,
-            patientPhone: form.patient_phone,
-            appointmentDate: form.appointment_date,
-            service: form.treatment_type,
-            source: form.source,
-          },
-        });
+        if (inserted?.id) await notifyAppointment(inserted.id, "confirmation");
       } catch {}
       toast({ title: "Appointment added" });
       setShowAdd(false);
@@ -169,7 +213,13 @@ const AppointmentsList = () => {
               </div>
             )}
             {a.status === "confirmed" && (
-              <div className="mt-2">
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openReschedule(a)}>
+                  <Clock className="w-3 h-3 mr-1" /> Reschedule
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs h-7 text-destructive" onClick={() => updateStatus(a.id, "cancelled")}>
+                  <X className="w-3 h-3 mr-1" /> Cancel
+                </Button>
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus(a.id, "completed")}>
                   <Check className="w-3 h-3 mr-1" /> Mark Complete
                 </Button>
@@ -201,6 +251,17 @@ const AppointmentsList = () => {
             <Input placeholder="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving..." : "Add Appointment"}</Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(rescheduling)} onOpenChange={(open) => !open && setRescheduling(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reschedule appointment</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input type="date" value={rescheduleForm.appointment_date} onChange={(e) => setRescheduleForm({ ...rescheduleForm, appointment_date: e.target.value })} />
+            <Input type="time" value={rescheduleForm.appointment_time} onChange={(e) => setRescheduleForm({ ...rescheduleForm, appointment_time: e.target.value })} />
+            <Button className="w-full" onClick={saveReschedule}>Save and notify patient</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

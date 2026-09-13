@@ -106,6 +106,21 @@ async function bookAppointment(phone: string, args: Record<string, string>) {
     console.error("WhatsApp booking failed:", error.message);
     return { ok: false, message: "Could not save the request." };
   }
+  if (data?.id) {
+    try {
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/appointment-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ appointmentId: data.id, event: "request" }),
+      });
+    } catch (notifyError) {
+      console.error("WhatsApp appointment request notification failed:", notifyError);
+    }
+  }
   return { ok: true, id: data?.id, message: "Appointment request saved; the clinic will confirm the time." };
 }
 
