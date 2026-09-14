@@ -12,6 +12,10 @@ const COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
 
 export const TEMPLATES = {
   otp: Deno.env.get("WHATSAPP_TEMPLATE_OTP") ?? Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "th_otp",
+  appointmentRequest: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_REQUEST") ?? "th_appointment_request",
+  appointmentConfirmation: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_CONFIRMATION") ?? "th_appointment_confirmation",
+  appointmentRescheduled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_RESCHEDULED") ?? "th_appointment_rescheduled",
+  appointmentCancelled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_CANCELLED") ?? "th_appointment_cancelled",
   appointmentReminder: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT") ?? "th_appointment_reminder",
   paymentReceipt: Deno.env.get("WHATSAPP_TEMPLATE_PAYMENT") ?? "th_payment_receipt",
   recall: Deno.env.get("WHATSAPP_TEMPLATE_RECALL") ?? "th_recall_checkup",
