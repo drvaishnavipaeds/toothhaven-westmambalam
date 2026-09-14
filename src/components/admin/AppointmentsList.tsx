@@ -131,7 +131,9 @@ const AppointmentsList = () => {
       // Send notification for manually added appointments too
       try {
         if (inserted?.id) await notifyAppointment(inserted.id, "confirmation");
-      } catch {}
+      } catch (notificationError) {
+        console.error("Appointment notification failed:", notificationError);
+      }
       toast({ title: "Appointment added" });
       setShowAdd(false);
       setForm({ patient_name: "", patient_phone: "", appointment_date: "", appointment_time: "11:00", treatment_type: "", notes: "", source: "manual" });
