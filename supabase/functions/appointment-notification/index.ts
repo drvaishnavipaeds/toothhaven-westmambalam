@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   DEFAULT_LANG,
+  TEMPLATES,
   listApprovedTemplates,
   logMessage,
   sendTemplate,
@@ -40,23 +41,23 @@ type Appointment = {
 
 const EVENT_CONFIG: Record<EventName, { template: string; names: string[] }> = {
   request: {
-    template: "th_appointment_request",
+    template: TEMPLATES.appointmentRequest,
     names: ["name", "date", "time", "service"],
   },
   confirmation: {
-    template: "th_appointment_confirmation",
+    template: TEMPLATES.appointmentConfirmation,
     names: ["name", "date", "time", "service"],
   },
   rescheduled: {
-    template: "th_appointment_rescheduled",
+    template: TEMPLATES.appointmentRescheduled,
     names: ["name", "old_date", "old_time", "new_date", "new_time", "service"],
   },
   cancelled: {
-    template: "th_appointment_cancelled",
+    template: TEMPLATES.appointmentCancelled,
     names: ["name", "date", "time", "reason"],
   },
   reminder: {
-    template: "th_appointment_reminder",
+    template: TEMPLATES.appointmentReminder,
     names: ["name", "date", "time"],
   },
 };
