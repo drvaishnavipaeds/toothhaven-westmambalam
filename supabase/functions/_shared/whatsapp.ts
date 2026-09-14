@@ -12,6 +12,10 @@ const COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
 
 export const TEMPLATES = {
   otp: Deno.env.get("WHATSAPP_TEMPLATE_OTP") ?? Deno.env.get("WHATSAPP_TEMPLATE_NAME") ?? "th_otp",
+  appointmentRequest: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_REQUEST") ?? "th_appointment_request",
+  appointmentConfirmation: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_CONFIRMATION") ?? "th_appointment_confirmation",
+  appointmentRescheduled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_RESCHEDULED") ?? "th_appointment_rescheduled",
+  appointmentCancelled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_CANCELLED") ?? "th_appointment_cancelled",
   appointmentReminder: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT") ?? "th_appointment_reminder",
   paymentReceipt: Deno.env.get("WHATSAPP_TEMPLATE_PAYMENT") ?? "th_payment_receipt",
   recall: Deno.env.get("WHATSAPP_TEMPLATE_RECALL") ?? "th_recall_checkup",
@@ -54,6 +58,14 @@ export type WaTemplate = {
   status: string;
   category?: string;
   components?: unknown[];
+};
+
+export type TemplateDefinition = {
+  name: string;
+  category: "UTILITY" | "MARKETING" | "AUTHENTICATION";
+  language: string;
+  body: string;
+  examples: string[];
 };
 
 export function digitsOnly(phone: unknown): string {
@@ -110,6 +122,37 @@ async function post(payload: Record<string, unknown>): Promise<SendResult> {
     const message = e instanceof Error ? e.message : "WhatsApp send failed";
     console.error("WhatsApp send exception:", message);
     return { ok: false, error: message };
+  }
+}
+
+export async function createMessageTemplate(definition: TemplateDefinition): Promise<SendResult> {
+  if (!WA_WABA_ID || !WA_TOKEN) {
+    return { ok: false, error: "WhatsApp template management is not configured.", configurationRequired: true };
+  }
+  try {
+    const res = await fetch(await graphUrl(`${WA_WABA_ID}/message_templates`), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: definition.name,
+        category: definition.category,
+        language: definition.language,
+        components: [{
+          type: "BODY",
+          text: definition.body,
+          example: { body_text: [definition.examples] },
+        }],
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const { message, code } = friendlyError(data, res.status);
+      return { ok: false, error: message, code };
+    }
+    templateCache = null;
+    return { ok: true, id: data?.id };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Template creation failed" };
   }
 }
 

@@ -3,6 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import {
   DEFAULT_LANG,
+  TEMPLATES,
+  createMessageTemplate,
   listApprovedTemplates,
   logMessage,
   sendTemplate,
@@ -40,26 +42,33 @@ type Appointment = {
 
 const EVENT_CONFIG: Record<EventName, { template: string; names: string[] }> = {
   request: {
-    template: "th_appointment_request",
+    template: TEMPLATES.appointmentRequest,
     names: ["name", "date", "time", "service"],
   },
   confirmation: {
-    template: "th_appointment_confirmation",
+    template: TEMPLATES.appointmentConfirmation,
     names: ["name", "date", "time", "service"],
   },
   rescheduled: {
-    template: "th_appointment_rescheduled",
+    template: TEMPLATES.appointmentRescheduled,
     names: ["name", "old_date", "old_time", "new_date", "new_time", "service"],
   },
   cancelled: {
-    template: "th_appointment_cancelled",
+    template: TEMPLATES.appointmentCancelled,
     names: ["name", "date", "time", "reason"],
   },
   reminder: {
-    template: "th_appointment_reminder",
+    template: TEMPLATES.appointmentReminder,
     names: ["name", "date", "time"],
   },
 };
+
+const TEMPLATE_DEFINITIONS = [
+  { name: TEMPLATES.appointmentRequest, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, we received your appointment request for {{4}} on {{2}} at {{3}}. Tooth Haven will confirm it shortly.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Dental consultation"] },
+  { name: TEMPLATES.appointmentConfirmation, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your Tooth Haven appointment for {{4}} is confirmed for {{2}} at {{3}}. Reply here if you need help.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Dental consultation"] },
+  { name: TEMPLATES.appointmentRescheduled, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your {{6}} appointment has moved from {{2}} at {{3}} to {{4}} at {{5}}. Reply here if you need help.", examples: ["Karthik", "15 September 2026", "11:00 AM", "16 September 2026", "3:00 PM", "Dental consultation"] },
+  { name: TEMPLATES.appointmentCancelled, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your Tooth Haven appointment on {{2}} at {{3}} was cancelled. Reason: {{4}}. Reply here to arrange another time.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Requested by patient"] },
+];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -147,7 +156,7 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     return { ok: true, duplicate: true, status: existing.status, messageId: existing.wa_message_id };
   }
 
-  const templates = await listApprovedTemplates(true);
+  const templates = await listApprovedTemplates();
   const template = templates.find((item) => item.name === config.template && item.language === DEFAULT_LANG)
     ?? templates.find((item) => item.name === config.template);
   if (!template) {
@@ -248,6 +257,20 @@ Deno.serve(async (req) => {
 
   try {
     const raw = await req.json().catch(() => ({}));
+    if (raw?.action === "setup_templates") {
+      if (jwtRole(req) !== "service_role" && !await isStaff(req)) return json({ error: "Forbidden" }, 403);
+      const existing = await listApprovedTemplates(true);
+      const existingNames = new Set(existing.map((template) => template.name));
+      const results = [];
+      for (const definition of TEMPLATE_DEFINITIONS) {
+        if (existingNames.has(definition.name)) {
+          results.push({ name: definition.name, ok: true, existing: true });
+          continue;
+        }
+        results.push({ name: definition.name, ...await createMessageTemplate(definition) });
+      }
+      return json({ ok: results.every((result) => result.ok), results });
+    }
     if (raw?.action === "scan_reminders") {
       if (jwtRole(req) !== "service_role") return json({ error: "Forbidden" }, 403);
       return json(await scanReminders());
