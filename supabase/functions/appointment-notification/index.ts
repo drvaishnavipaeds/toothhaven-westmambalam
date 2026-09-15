@@ -171,6 +171,15 @@ function templateParameters(template: WaTemplate) {
   };
 }
 
+function dynamicButtonParam(template: WaTemplate): string | undefined {
+  if (!Array.isArray(template.components)) return undefined;
+  const buttons = template.components.find((component: any) => component?.type === "BUTTONS") as any;
+  const dynamicUrl = Array.isArray(buttons?.buttons)
+    ? buttons.buttons.find((button: any) => button?.type === "URL" && /\{\{1\}\}/.test(button?.url ?? ""))
+    : undefined;
+  return dynamicUrl ? "appointment" : undefined;
+}
+
 function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string[] {
   const common = [
     clean(appt.patient_name, 80),
@@ -251,6 +260,7 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     language: template.language,
     bodyParams: params.values,
     bodyParamNames: params.names,
+    buttonParam: dynamicButtonParam(template),
   });
   const now = new Date().toISOString();
   await admin.from("appointment_notifications").update(result.ok ? {
