@@ -162,7 +162,11 @@ function templateParameters(template: WaTemplate) {
     count: named.length || positional,
     text: typeof body?.text === "string" ? body.text : "",
     componentTypes: Array.isArray(template.components)
-      ? template.components.map((component: any) => ({ type: component?.type, format: component?.format }))
+      ? template.components.map((component: any) => ({
+        type: component?.type,
+        format: component?.format,
+        buttons: component?.type === "BUTTONS" ? component?.buttons : undefined,
+      }))
       : [],
   };
 }
