@@ -132,6 +132,14 @@ function bodyParams(
   const positionalCount = new Set(
     Array.from(text.matchAll(/\{\{(\d+)\}\}/g), (match) => match[1]),
   ).size;
+  if (
+    positionalCount === 5
+    && configuredNames.join(",") === "name,date,time,service"
+  ) {
+    return {
+      values: [configuredValues[0], "Tooth Haven", "Dr. Karthik", configuredValues[1], configuredValues[2]],
+    };
+  }
   return {
     values: positionalCount > 0 ? configuredValues.slice(0, positionalCount) : configuredValues,
   };
