@@ -137,6 +137,21 @@ function bodyParams(
   };
 }
 
+function templateParameters(template: WaTemplate) {
+  const body = Array.isArray(template.components)
+    ? template.components.find((component: any) => component?.type === "BODY") as any
+    : undefined;
+  const named = Array.isArray(body?.example?.body_text_named_params)
+    ? body.example.body_text_named_params
+      .map((item: any) => typeof item?.param_name === "string" ? item.param_name : null)
+      .filter((name: string | null): name is string => Boolean(name))
+    : [];
+  const positional = typeof body?.text === "string"
+    ? new Set(Array.from(body.text.matchAll(/\{\{(\d+)\}\}/g), (match: RegExpMatchArray) => match[1])).size
+    : 0;
+  return { named, count: named.length || positional };
+}
+
 function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string[] {
   const common = [
     clean(appt.patient_name, 80),
@@ -282,11 +297,17 @@ Deno.serve(async (req) => {
     if (raw?.action === "setup_templates") {
       if (jwtRole(req) !== "service_role" && !await isStaff(req)) return json({ error: "Forbidden" }, 403);
       const existing = await listApprovedTemplates(true);
-      const existingNames = new Set(existing.map((template) => template.name));
+      const existingByName = new Map(existing.map((template) => [template.name, template]));
       const results = [];
       for (const definition of TEMPLATE_DEFINITIONS) {
-        if (existingNames.has(definition.name)) {
-          results.push({ name: definition.name, ok: true, existing: true });
+        const existingTemplate = existingByName.get(definition.name);
+        if (existingTemplate) {
+          results.push({
+            name: definition.name,
+            ok: true,
+            existing: true,
+            parameters: templateParameters(existingTemplate),
+          });
           continue;
         }
         results.push({ name: definition.name, ...await createMessageTemplate(definition) });
