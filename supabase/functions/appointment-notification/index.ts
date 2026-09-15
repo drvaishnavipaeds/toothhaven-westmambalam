@@ -104,16 +104,80 @@ async function isStaff(req: Request): Promise<boolean> {
   return Boolean(staff);
 }
 
-function bodyParamNames(template: WaTemplate, fallback: string[]): string[] | undefined {
+function bodyParams(
+  template: WaTemplate,
+  configuredNames: string[],
+  configuredValues: string[],
+): { names?: string[]; values: string[] } {
   const body = Array.isArray(template.components)
     ? template.components.find((component: any) => component?.type === "BODY") as any
     : undefined;
   const examples = body?.example?.body_text_named_params;
-  if (!Array.isArray(examples)) return undefined;
-  const names = examples
-    .map((example: any) => typeof example?.param_name === "string" ? example.param_name : null)
-    .filter((name: string | null): name is string => Boolean(name));
-  return names.length === fallback.length ? names : fallback;
+  if (Array.isArray(examples) && examples.length > 0) {
+    const names = examples
+      .map((example: any) => typeof example?.param_name === "string" ? example.param_name : null)
+      .filter((name: string | null): name is string => Boolean(name));
+    if (names.length > 0) {
+      return {
+        names,
+        values: names.map((name, index) => {
+          const configuredIndex = configuredNames.indexOf(name);
+          return configuredIndex >= 0 ? configuredValues[configuredIndex] : configuredValues[index] ?? "";
+        }),
+      };
+    }
+  }
+
+  const text = typeof body?.text === "string" ? body.text : "";
+  const positionalCount = new Set(
+    Array.from(text.matchAll(/\{\{(\d+)\}\}/g), (match) => match[1]),
+  ).size;
+  if (
+    positionalCount === 5
+    && configuredNames.join(",") === "name,date,time,service"
+  ) {
+    return {
+      values: [configuredValues[0], "Tooth Haven", "Dr. Karthik", configuredValues[1], configuredValues[2]],
+    };
+  }
+  return {
+    values: positionalCount > 0 ? configuredValues.slice(0, positionalCount) : configuredValues,
+  };
+}
+
+function templateParameters(template: WaTemplate) {
+  const body = Array.isArray(template.components)
+    ? template.components.find((component: any) => component?.type === "BODY") as any
+    : undefined;
+  const named = Array.isArray(body?.example?.body_text_named_params)
+    ? body.example.body_text_named_params
+      .map((item: any) => typeof item?.param_name === "string" ? item.param_name : null)
+      .filter((name: string | null): name is string => Boolean(name))
+    : [];
+  const positional = typeof body?.text === "string"
+    ? new Set(Array.from(body.text.matchAll(/\{\{(\d+)\}\}/g), (match: RegExpMatchArray) => match[1])).size
+    : 0;
+  return {
+    named,
+    count: named.length || positional,
+    text: typeof body?.text === "string" ? body.text : "",
+    componentTypes: Array.isArray(template.components)
+      ? template.components.map((component: any) => ({
+        type: component?.type,
+        format: component?.format,
+        buttons: component?.type === "BUTTONS" ? component?.buttons : undefined,
+      }))
+      : [],
+  };
+}
+
+function dynamicButtonParam(template: WaTemplate): string | undefined {
+  if (!Array.isArray(template.components)) return undefined;
+  const buttons = template.components.find((component: any) => component?.type === "BUTTONS") as any;
+  const dynamicUrl = Array.isArray(buttons?.buttons)
+    ? buttons.buttons.find((button: any) => button?.type === "URL" && /\{\{1\}\}/.test(button?.url ?? ""))
+    : undefined;
+  return dynamicUrl ? "appointment" : undefined;
 }
 
 function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string[] {
@@ -188,13 +252,15 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     metadata: input,
   }, { onConflict: "appointment_id,event_key" });
 
-  const values = valuesFor(appt, event, input);
+  const configuredValues = valuesFor(appt, event, input);
+  const params = bodyParams(template, config.names, configuredValues);
   const result = await sendTemplate({
     to: phone,
     name: template.name,
     language: template.language,
-    bodyParams: values,
-    bodyParamNames: bodyParamNames(template, config.names),
+    bodyParams: params.values,
+    bodyParamNames: params.names,
+    buttonParam: dynamicButtonParam(template),
   });
   const now = new Date().toISOString();
   await admin.from("appointment_notifications").update(result.ok ? {
@@ -214,7 +280,7 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
       wa_message_id: result.id ?? null,
       direction: "outbound",
       phone,
-      body: `[template] ${template.name} — ${values.join(" | ")}`,
+      body: `[template] ${template.name} — ${params.values.join(" | ")}`,
       message_type: "template",
       template_name: template.name,
       patient_id: appt.patient_id,
@@ -260,11 +326,17 @@ Deno.serve(async (req) => {
     if (raw?.action === "setup_templates") {
       if (jwtRole(req) !== "service_role" && !await isStaff(req)) return json({ error: "Forbidden" }, 403);
       const existing = await listApprovedTemplates(true);
-      const existingNames = new Set(existing.map((template) => template.name));
+      const existingByName = new Map(existing.map((template) => [template.name, template]));
       const results = [];
       for (const definition of TEMPLATE_DEFINITIONS) {
-        if (existingNames.has(definition.name)) {
-          results.push({ name: definition.name, ok: true, existing: true });
+        const existingTemplate = existingByName.get(definition.name);
+        if (existingTemplate) {
+          results.push({
+            name: definition.name,
+            ok: true,
+            existing: true,
+            parameters: templateParameters(existingTemplate),
+          });
           continue;
         }
         results.push({ name: definition.name, ...await createMessageTemplate(definition) });
