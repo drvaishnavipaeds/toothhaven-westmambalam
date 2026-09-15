@@ -157,7 +157,14 @@ function templateParameters(template: WaTemplate) {
   const positional = typeof body?.text === "string"
     ? new Set(Array.from(body.text.matchAll(/\{\{(\d+)\}\}/g), (match: RegExpMatchArray) => match[1])).size
     : 0;
-  return { named, count: named.length || positional, text: typeof body?.text === "string" ? body.text : "" };
+  return {
+    named,
+    count: named.length || positional,
+    text: typeof body?.text === "string" ? body.text : "",
+    componentTypes: Array.isArray(template.components)
+      ? template.components.map((component: any) => ({ type: component?.type, format: component?.format }))
+      : [],
+  };
 }
 
 function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string[] {
