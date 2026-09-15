@@ -104,16 +104,37 @@ async function isStaff(req: Request): Promise<boolean> {
   return Boolean(staff);
 }
 
-function bodyParamNames(template: WaTemplate, fallback: string[]): string[] | undefined {
+function bodyParams(
+  template: WaTemplate,
+  configuredNames: string[],
+  configuredValues: string[],
+): { names?: string[]; values: string[] } {
   const body = Array.isArray(template.components)
     ? template.components.find((component: any) => component?.type === "BODY") as any
     : undefined;
   const examples = body?.example?.body_text_named_params;
-  if (!Array.isArray(examples)) return undefined;
-  const names = examples
-    .map((example: any) => typeof example?.param_name === "string" ? example.param_name : null)
-    .filter((name: string | null): name is string => Boolean(name));
-  return names.length === fallback.length ? names : fallback;
+  if (Array.isArray(examples) && examples.length > 0) {
+    const names = examples
+      .map((example: any) => typeof example?.param_name === "string" ? example.param_name : null)
+      .filter((name: string | null): name is string => Boolean(name));
+    if (names.length > 0) {
+      return {
+        names,
+        values: names.map((name, index) => {
+          const configuredIndex = configuredNames.indexOf(name);
+          return configuredIndex >= 0 ? configuredValues[configuredIndex] : configuredValues[index] ?? "";
+        }),
+      };
+    }
+  }
+
+  const text = typeof body?.text === "string" ? body.text : "";
+  const positionalCount = new Set(
+    Array.from(text.matchAll(/\{\{(\d+)\}\}/g), (match) => match[1]),
+  ).size;
+  return {
+    values: positionalCount > 0 ? configuredValues.slice(0, positionalCount) : configuredValues,
+  };
 }
 
 function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string[] {
@@ -188,13 +209,14 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     metadata: input,
   }, { onConflict: "appointment_id,event_key" });
 
-  const values = valuesFor(appt, event, input);
+  const configuredValues = valuesFor(appt, event, input);
+  const params = bodyParams(template, config.names, configuredValues);
   const result = await sendTemplate({
     to: phone,
     name: template.name,
     language: template.language,
-    bodyParams: values,
-    bodyParamNames: bodyParamNames(template, config.names),
+    bodyParams: params.values,
+    bodyParamNames: params.names,
   });
   const now = new Date().toISOString();
   await admin.from("appointment_notifications").update(result.ok ? {
@@ -214,7 +236,7 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
       wa_message_id: result.id ?? null,
       direction: "outbound",
       phone,
-      body: `[template] ${template.name} — ${values.join(" | ")}`,
+      body: `[template] ${template.name} — ${params.values.join(" | ")}`,
       message_type: "template",
       template_name: template.name,
       patient_id: appt.patient_id,
