@@ -243,17 +243,30 @@ export type Database = {
           appointment_date: string
           appointment_time: string
           branch_id: string | null
+          calendar_sync_error: string | null
+          calendar_sync_status: string
+          cancellation_reason: string | null
           chair_id: string | null
+          confirmation_deadline: string | null
           created_at: string
           doctor_id: string | null
           duration_minutes: number
+          expired_at: string | null
+          google_event_id: string | null
           id: string
+          last_lifecycle_action: string | null
+          lifecycle_processed_at: string | null
           notes: string | null
           patient_id: string | null
           patient_name: string
           patient_phone: string
+          proposed_alternatives: Json
+          reminder_24h_sent_at: string | null
+          reminder_2h_sent_at: string | null
           source: string
           status: string
+          tentative_created_at: string | null
+          tentative_expires_at: string | null
           treatment_type: string | null
           updated_at: string
         }
@@ -261,17 +274,30 @@ export type Database = {
           appointment_date: string
           appointment_time: string
           branch_id?: string | null
+          calendar_sync_error?: string | null
+          calendar_sync_status?: string
+          cancellation_reason?: string | null
           chair_id?: string | null
+          confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
           duration_minutes?: number
+          expired_at?: string | null
+          google_event_id?: string | null
           id?: string
+          last_lifecycle_action?: string | null
+          lifecycle_processed_at?: string | null
           notes?: string | null
           patient_id?: string | null
           patient_name: string
           patient_phone: string
+          proposed_alternatives?: Json
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
           source?: string
           status?: string
+          tentative_created_at?: string | null
+          tentative_expires_at?: string | null
           treatment_type?: string | null
           updated_at?: string
         }
@@ -279,17 +305,30 @@ export type Database = {
           appointment_date?: string
           appointment_time?: string
           branch_id?: string | null
+          calendar_sync_error?: string | null
+          calendar_sync_status?: string
+          cancellation_reason?: string | null
           chair_id?: string | null
+          confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
           duration_minutes?: number
+          expired_at?: string | null
+          google_event_id?: string | null
           id?: string
+          last_lifecycle_action?: string | null
+          lifecycle_processed_at?: string | null
           notes?: string | null
           patient_id?: string | null
           patient_name?: string
           patient_phone?: string
+          proposed_alternatives?: Json
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
           source?: string
           status?: string
+          tentative_created_at?: string | null
+          tentative_expires_at?: string | null
           treatment_type?: string | null
           updated_at?: string
         }

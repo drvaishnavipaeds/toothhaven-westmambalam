@@ -19,7 +19,7 @@ const admin = createClient(
 
 const eventSchema = z.object({
   appointmentId: z.string().uuid(),
-  event: z.enum(["request", "confirmation", "rescheduled", "cancelled", "reminder"]).default("request"),
+  event: z.enum(["request", "confirmation", "rescheduled", "cancelled", "tentative", "expired", "alternatives", "reminder_24h", "reminder_2h"]).default("request"),
   reason: z.string().trim().max(300).optional(),
   previousDate: z.string().max(20).optional(),
   previousTime: z.string().max(40).optional(),
@@ -57,10 +57,14 @@ const EVENT_CONFIG: Record<EventName, { template: string; names: string[] }> = {
     template: TEMPLATES.appointmentCancelled,
     names: ["name", "date", "time", "reason"],
   },
-  reminder: {
+  reminder_24h: {
     template: TEMPLATES.appointmentReminder,
     names: ["name", "date", "time"],
   },
+  reminder_2h: { template: TEMPLATES.appointmentReminder2h, names: ["name", "date", "time"] },
+  tentative: { template: TEMPLATES.appointmentTentative, names: ["name", "date", "time", "service"] },
+  expired: { template: TEMPLATES.appointmentExpired, names: ["name", "date", "time"] },
+  alternatives: { template: TEMPLATES.appointmentAlternatives, names: ["name", "date", "time"] },
 };
 
 const TEMPLATE_DEFINITIONS = [
@@ -188,7 +192,8 @@ function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof ev
     clean(appt.treatment_type || "Dental consultation", 100),
   ];
   if (event === "request" || event === "confirmation") return common;
-  if (event === "reminder") return common.slice(0, 3);
+  if (event === "reminder_24h" || event === "reminder_2h" || event === "expired" || event === "alternatives") return common.slice(0, 3);
+  if (event === "tentative") return common;
   if (event === "cancelled") return [...common.slice(0, 3), clean(input.reason || "Cancelled by the clinic", 300)];
   return [
     common[0],
@@ -202,7 +207,8 @@ function valuesFor(appt: Appointment, event: EventName, input: z.infer<typeof ev
 
 function eventKey(appt: Appointment, event: EventName, input: z.infer<typeof eventSchema>): string {
   if (event === "rescheduled") return `rescheduled:${input.previousDate ?? ""}:${input.previousTime ?? ""}:${appt.appointment_date}:${appt.appointment_time}`;
-  if (event === "reminder") return `reminder:${appt.appointment_date}:${appt.appointment_time}:24h`;
+  if (event === "reminder_24h") return `reminder:${appt.appointment_date}:${appt.appointment_time}:24h`;
+  if (event === "reminder_2h") return `reminder:${appt.appointment_date}:${appt.appointment_time}:2h`;
   return event;
 }
 
@@ -289,34 +295,6 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
   return { ...result, template: template.name };
 }
 
-async function scanReminders() {
-  const now = new Date();
-  const target = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const dates = Array.from(new Set([
-    now.toISOString().slice(0, 10),
-    target.toISOString().slice(0, 10),
-    new Date(target.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  ]));
-  const { data: appointments, error } = await admin
-    .from("appointments")
-    .select("id,patient_id,patient_name,patient_phone,appointment_date,appointment_time,treatment_type,status,source,created_at,updated_at")
-    .eq("status", "confirmed")
-    .in("appointment_date", dates);
-  if (error) throw error;
-
-  let sent = 0;
-  let failed = 0;
-  for (const appt of (appointments ?? []) as Appointment[]) {
-    const scheduled = new Date(`${appt.appointment_date}T${/^\d{2}:\d{2}/.test(appt.appointment_time) ? appt.appointment_time.slice(0, 5) : "11:00"}:00+05:30`);
-    const hours = (scheduled.getTime() - now.getTime()) / 3_600_000;
-    if (hours < 23.5 || hours > 24.5) continue;
-    const result = await sendEvent(appt, "reminder", { appointmentId: appt.id, event: "reminder" });
-    if (result.ok && !result.duplicate) sent += 1;
-    if (!result.ok) failed += 1;
-  }
-  return { ok: true, checked: appointments?.length ?? 0, sent, failed };
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -343,11 +321,6 @@ Deno.serve(async (req) => {
       }
       return json({ ok: results.every((result) => result.ok), results });
     }
-    if (raw?.action === "scan_reminders") {
-      if (jwtRole(req) !== "service_role") return json({ error: "Forbidden" }, 403);
-      return json(await scanReminders());
-    }
-
     const parsed = eventSchema.safeParse(raw);
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
     const input = parsed.data;
@@ -365,9 +338,9 @@ Deno.serve(async (req) => {
       return json({ error: "Only clinic staff can send this appointment update" }, 403);
     }
 
-    if (input.event === "confirmation" && appt.status !== "confirmed") return json({ error: "Appointment is not confirmed" }, 409);
+    if (input.event === "confirmation" && !["confirmed", "rescheduled"].includes(appt.status)) return json({ error: "Appointment is not confirmed" }, 409);
     if (input.event === "cancelled" && appt.status !== "cancelled") return json({ error: "Appointment is not cancelled" }, 409);
-    if (input.event === "reminder" && appt.status !== "confirmed") return json({ error: "Appointment is not confirmed" }, 409);
+    if ((input.event === "reminder_24h" || input.event === "reminder_2h") && !["confirmed", "rescheduled"].includes(appt.status)) return json({ error: "Appointment is not confirmed" }, 409);
 
     const result = await sendEvent(appt as Appointment, input.event, input);
     return json(result, result.ok ? 200 : 502);

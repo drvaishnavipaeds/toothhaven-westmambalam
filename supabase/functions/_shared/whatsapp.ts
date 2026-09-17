@@ -17,6 +17,10 @@ export const TEMPLATES = {
   appointmentRescheduled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_RESCHEDULED") ?? "th_appointment_rescheduled",
   appointmentCancelled: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_CANCELLED") ?? "th_appointment_cancelled",
   appointmentReminder: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT") ?? "th_appointment_reminder",
+  appointmentReminder2h: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_2H") ?? "th_appointment_reminder_2h",
+  appointmentTentative: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_TENTATIVE") ?? "th_appointment_tentative",
+  appointmentExpired: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_EXPIRED") ?? "th_appointment_expired",
+  appointmentAlternatives: Deno.env.get("WHATSAPP_TEMPLATE_APPOINTMENT_ALTERNATIVES") ?? "th_appointment_alternatives",
   paymentReceipt: Deno.env.get("WHATSAPP_TEMPLATE_PAYMENT") ?? "th_payment_receipt",
   recall: Deno.env.get("WHATSAPP_TEMPLATE_RECALL") ?? "th_recall_checkup",
 };
