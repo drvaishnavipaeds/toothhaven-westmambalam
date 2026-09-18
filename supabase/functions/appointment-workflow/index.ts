@@ -12,10 +12,19 @@ const TZ = "+05:30";
 
 const bookingSchema = z.object({ action: z.literal("book"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/), service: z.string().trim().min(2).max(100), durationMinutes: z.number().int().min(30).max(180).default(30), notes: z.string().trim().max(500).optional() });
 const availabilitySchema = z.object({ action: z.literal("availability"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), durationMinutes: z.number().int().min(30).max(180).default(30) });
+const portalDataSchema = z.object({ action: z.literal("portal_data"), portalToken: z.string().min(10) });
 const staffSchema = z.object({ action: z.enum(["confirm", "reschedule", "cancel", "retry"]), appointmentId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), time: z.string().regex(/^\d{2}:\d{2}$/).optional(), reason: z.string().trim().min(2).max(300).optional() });
 
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 function configured() { return Boolean(gatewayKey && lovableKey); }
+function jwtRole(req: Request): string | null {
+  const payload = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").split(".")[1];
+  if (!payload) return null;
+  try {
+    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
+    return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")))?.role ?? null;
+  } catch { return null; }
+}
 function scheduledAt(date: string, time: string) { return new Date(`${date}T${time}:00${TZ}`); }
 function clinicSlots(date: string, duration = 30) {
   const day = scheduledAt(date, "12:00").getUTCDay();
@@ -52,6 +61,20 @@ async function isStaff(req: Request) {
   if (!email) return false;
   const { data: row } = await admin.from("admin_phones").select("id").ilike("email", email).maybeSingle();
   return Boolean(row);
+}
+async function portalData(portalToken: string) {
+  const phone = await verifyPortal(portalToken);
+  if (!phone) return { error: "Patient session expired", status: 401 };
+  const { data: patient, error } = await admin.from("patients").select("*").eq("phone", phone).maybeSingle();
+  if (error) throw error;
+  if (!patient) return { error: "Patient record not found", status: 404 };
+  const [appointments, treatments] = await Promise.all([
+    admin.from("appointments").select("*").eq("patient_id", patient.id).order("appointment_date", { ascending: false }),
+    admin.from("treatments").select("*").eq("patient_id", patient.id).order("treatment_date", { ascending: false }),
+  ]);
+  if (appointments.error) throw appointments.error;
+  if (treatments.error) throw treatments.error;
+  return { ok: true, patient, appointments: appointments.data ?? [], treatments: treatments.data ?? [] };
 }
 async function busy(date: string, duration: number, excludeId?: string) {
   const timeMin = scheduledAt(date, "00:00").toISOString();
@@ -120,7 +143,12 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const raw = await req.json().catch(() => ({}));
-    if (raw.action === "lifecycle") { const role = (req.headers.get("Authorization") ?? "").split(".")[1]; if (!role) return json({ error: "Forbidden" }, 403); return json(await runLifecycle()); }
+    if (raw.action === "lifecycle") { if (jwtRole(req) !== "service_role") return json({ error: "Forbidden" }, 403); return json(await runLifecycle()); }
+    if (raw.action === "portal_data") {
+      const input = portalDataSchema.parse(raw);
+      const result = await portalData(input.portalToken);
+      return json(result, "status" in result ? result.status : 200);
+    }
     if (!configured()) return json({ error: "Google Calendar authorization is required before online slots can be shown.", calendarAuthorizationRequired: true }, 503);
     if (raw.action === "availability") {
       const input = availabilitySchema.parse(raw); const phone = await verifyPortal(input.portalToken); if (!phone) return json({ error: "Patient session expired" }, 401);
