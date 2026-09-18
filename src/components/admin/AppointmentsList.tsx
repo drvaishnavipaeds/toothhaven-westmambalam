@@ -17,6 +17,9 @@ interface Appointment {
   notes: string | null;
   source: string;
   created_at: string;
+  calendar_sync_status?: string;
+  calendar_sync_error?: string | null;
+  proposed_alternatives?: string[];
 }
 
 const sourceIcon = (source: string) => {
@@ -56,34 +59,27 @@ const AppointmentsList = () => {
 
   useEffect(() => { fetchAppointments(); }, [filter]);
 
-  const notifyAppointment = async (appointmentId: string, event: string, details: Record<string, string> = {}) => {
-    const { data, error } = await supabase.functions.invoke("appointment-notification", {
-      body: { appointmentId, event, ...details },
-    });
-    if (error || data?.ok === false) {
-      toast({
-        title: "Appointment saved, WhatsApp not sent",
-        description: data?.error ?? error?.message ?? "Check that the Meta template is approved.",
-        variant: "destructive",
-      });
+  const runWorkflow = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", { body });
+    if (error || data?.error) {
+      toast({ title: "Appointment not changed", description: data?.error ?? error?.message ?? "Please retry.", variant: "destructive" });
       return false;
     }
     return true;
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const appointment = appointments.find((item) => item.id === id);
     const reason = status === "cancelled"
       ? window.prompt("Cancellation reason shown to the patient:", "Cancelled by the clinic")
       : null;
     if (status === "cancelled" && reason === null) return;
-    const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
-    if (error) {
-      toast({ title: "Could not update appointment", description: error.message, variant: "destructive" });
-      return;
+    if (status === "completed") {
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+      if (error) { toast({ title: "Could not update appointment", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const ok = await runWorkflow({ action: status === "confirmed" ? "confirm" : "cancel", appointmentId: id, ...(reason ? { reason } : {}) });
+      if (!ok) return;
     }
-    if (status === "confirmed") await notifyAppointment(id, "confirmation");
-    if (status === "cancelled") await notifyAppointment(id, "cancelled", { reason: reason || "Cancelled by the clinic" });
     toast({ title: `Appointment ${status}` });
     fetchAppointments();
   };
@@ -95,18 +91,8 @@ const AppointmentsList = () => {
 
   const saveReschedule = async () => {
     if (!rescheduling || !rescheduleForm.appointment_date || !rescheduleForm.appointment_time) return;
-    const previousDate = rescheduling.appointment_date;
-    const previousTime = rescheduling.appointment_time;
-    const { error } = await supabase.from("appointments").update({
-      appointment_date: rescheduleForm.appointment_date,
-      appointment_time: rescheduleForm.appointment_time,
-      status: "confirmed",
-    }).eq("id", rescheduling.id);
-    if (error) {
-      toast({ title: "Could not reschedule", description: error.message, variant: "destructive" });
-      return;
-    }
-    await notifyAppointment(rescheduling.id, "rescheduled", { previousDate, previousTime });
+    const ok = await runWorkflow({ action: "reschedule", appointmentId: rescheduling.id, date: rescheduleForm.appointment_date, time: rescheduleForm.appointment_time });
+    if (!ok) return;
     toast({ title: "Appointment rescheduled" });
     setRescheduling(null);
     fetchAppointments();
@@ -130,7 +116,7 @@ const AppointmentsList = () => {
     } else {
       // Send notification for manually added appointments too
       try {
-        if (inserted?.id) await notifyAppointment(inserted.id, "confirmation");
+        if (inserted?.id) await runWorkflow({ action: "confirm", appointmentId: inserted.id });
       } catch (notificationError) {
         console.error("Appointment notification failed:", notificationError);
       }
@@ -149,7 +135,7 @@ const AppointmentsList = () => {
     return "bg-yellow-100 text-yellow-700";
   };
 
-  const filters = ["all", "pending", "confirmed", "completed", "cancelled"];
+  const filters = ["all", "pending", "tentative", "confirmed", "rescheduled", "conflict", "expired", "completed", "cancelled"];
 
   const services = [
     "General Dentistry", "Dental Implants", "Root Canal", "Orthodontics",
@@ -201,10 +187,12 @@ const AppointmentsList = () => {
                 </div>
                 {a.treatment_type && <p className="text-xs text-muted-foreground mt-0.5">{a.treatment_type}</p>}
                 {a.notes && <p className="text-xs text-muted-foreground italic mt-0.5">{a.notes}</p>}
+                {a.calendar_sync_status && <p className="text-xs text-muted-foreground mt-1">Calendar: {a.calendar_sync_status}{a.calendar_sync_error ? ` — ${a.calendar_sync_error}` : ""}</p>}
+                {Array.isArray(a.proposed_alternatives) && a.proposed_alternatives.length > 0 && <p className="text-xs text-muted-foreground mt-1">Alternatives: {a.proposed_alternatives.join(", ")}</p>}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(a.status)}`}>{a.status}</span>
             </div>
-            {a.status === "pending" && (
+            {["pending", "tentative", "conflict", "expired"].includes(a.status) && (
               <div className="flex gap-2 mt-2">
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus(a.id, "confirmed")}>
                   <Check className="w-3 h-3 mr-1" /> Confirm
@@ -214,7 +202,7 @@ const AppointmentsList = () => {
                 </Button>
               </div>
             )}
-            {a.status === "confirmed" && (
+            {["confirmed", "rescheduled"].includes(a.status) && (
               <div className="flex gap-2 mt-2">
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openReschedule(a)}>
                   <Clock className="w-3 h-3 mr-1" /> Reschedule

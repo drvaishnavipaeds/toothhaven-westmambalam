@@ -11,6 +11,7 @@ import PortalTestimonials from "@/components/portal/PortalTestimonials";
 import AchievementsWall from "@/components/portal/AchievementsWall";
 import ClinicFeed from "@/components/portal/ClinicFeed";
 import InvestigationsViewer from "@/components/portal/InvestigationsViewer";
+import { Button } from "@/components/ui/button";
 
 const SESSION_KEY = "portal_session_v1";
 
@@ -44,6 +45,12 @@ const PatientPortalContent = () => {
   const [patient, setPatient] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [treatments, setTreatments] = useState<any[]>([]);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [booking, setBooking] = useState({ date: "", time: "", service: "General Dentistry", durationMinutes: 30, notes: "" });
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingBusy, setBookingBusy] = useState(false);
+  const [calendarRequired, setCalendarRequired] = useState(false);
 
   // Registration form fields
   const [regName, setRegName] = useState("");
@@ -57,23 +64,59 @@ const PatientPortalContent = () => {
     if (s) {
       setSession(s);
       setStep("in");
-      loadPatientData(s.phone);
+      loadPatientData(s);
     }
   }, []);
 
 
-  const loadPatientData = async (p: string) => {
-    const { data: patients } = await supabase.from("patients").select("*").eq("phone", p);
-    if (patients && patients.length > 0) {
-      const pat = patients[0];
-      setPatient(pat);
-      const [a, t] = await Promise.all([
-        supabase.from("appointments").select("*").eq("patient_id", pat.id).order("appointment_date", { ascending: false }),
-        supabase.from("treatments").select("*").eq("patient_id", pat.id).order("treatment_date", { ascending: false }),
-      ]);
-      setAppointments(a.data || []);
-      setTreatments(t.data || []);
+  const loadPatientData = async (portalSession: PortalSession) => {
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "portal_data", portalToken: portalSession.token },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Could not load patient records");
+      return;
     }
+    setPatient(data.patient);
+    setAppointments(data.appointments || []);
+    setTreatments(data.treatments || []);
+  };
+
+  const loadSlots = async (date: string, durationMinutes = booking.durationMinutes) => {
+    if (!session || !date) return;
+    setBooking({ ...booking, date, time: "", durationMinutes });
+    setLoadingSlots(true);
+    setCalendarRequired(false);
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "availability", portalToken: session.token, date, durationMinutes },
+    });
+    setLoadingSlots(false);
+    if (error || data?.error) {
+      setSlots([]);
+      setCalendarRequired(Boolean(data?.calendarAuthorizationRequired));
+      toast.error(data?.error || error?.message || "Could not check appointment times");
+      return;
+    }
+    setSlots(data.slots || []);
+  };
+
+  const bookAppointment = async () => {
+    if (!session || !booking.date || !booking.time) return;
+    setBookingBusy(true);
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "book", portalToken: session.token, ...booking },
+    });
+    setBookingBusy(false);
+    if (error || data?.error) {
+      if (Array.isArray(data?.alternatives)) setSlots(data.alternatives);
+      toast.error(data?.error || error?.message || "Could not request appointment");
+      return;
+    }
+    toast.success(lang === "en" ? "Appointment requested. The clinic has 10 minutes to review it." : "முன்பதிவு கோரப்பட்டது. மருத்துவமனை 10 நிமிடங்களில் பரிசீலிக்கும்.");
+    setBookingOpen(false);
+    setBooking({ date: "", time: "", service: "General Dentistry", durationMinutes: 30, notes: "" });
+    setSlots([]);
+    await loadPatientData(session);
   };
 
   const switchToSignIn = (prefill?: { phone?: string; email?: string }) => {
@@ -211,7 +254,7 @@ const PatientPortalContent = () => {
         localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
         setSession(sess);
         setStep("in");
-        await loadPatientData(sess.phone);
+        await loadPatientData(sess);
         toast.success(lang === "en" ? "Welcome to Tooth Haven!" : "வரவேற்கிறோம்!");
       } else {
         const e = email.trim().toLowerCase();
@@ -237,7 +280,7 @@ const PatientPortalContent = () => {
         localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
         setSession(sess);
         setStep("in");
-        await loadPatientData(sess.phone);
+        await loadPatientData(sess);
         toast.success(lang === "en" ? "Welcome to Tooth Haven!" : "வரவேற்கிறோம்!");
       }
       return;
@@ -257,7 +300,7 @@ const PatientPortalContent = () => {
       localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
       setSession(sess);
       setStep("in");
-      await loadPatientData(sess.phone);
+      await loadPatientData(sess);
       toast.success(lang === "en" ? "Welcome back!" : "மீண்டும் வரவேற்கிறோம்!");
     } else {
       const e = email.trim().toLowerCase();
@@ -278,7 +321,7 @@ const PatientPortalContent = () => {
       localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
       setSession(sess);
       setStep("in");
-      await loadPatientData(pat.phone);
+      await loadPatientData(sess);
       toast.success(lang === "en" ? "Welcome back!" : "மீண்டும் வரவேற்கிறோம்!");
     }
   };
@@ -621,9 +664,9 @@ const PatientPortalContent = () => {
                         {lang === "en" ? "Next visit:" : "அடுத்த பார்வை:"} {nextAppt.appointment_date} • {nextAppt.appointment_time}
                       </p>
                     ) : (
-                      <a href="/#appointment" className="inline-flex items-center gap-2 mt-3 bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-sm">
+                      <button type="button" onClick={() => setBookingOpen(true)} className="inline-flex items-center gap-2 mt-3 bg-primary-foreground/20 hover:bg-primary-foreground/30 rounded-lg px-3 py-2 text-sm">
                         {lang === "en" ? "Book appointment" : "முன்பதிவு செய்"} <ChevronRight className="w-4 h-4" />
-                      </a>
+                      </button>
                     )}
                   </div>
                   <button onClick={signOut} className="p-2 rounded-lg bg-white/10 hover:bg-white/20" title="Sign out">
@@ -668,10 +711,25 @@ const PatientPortalContent = () => {
 
               {/* Appointments */}
               <section className="bg-card rounded-2xl p-5 shadow-elevated">
-                <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  {lang === "en" ? "Appointments" : "முன்பதிவுகள்"}
-                </h3>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><Calendar className="w-5 h-5 text-primary" />{lang === "en" ? "Appointments" : "முன்பதிவுகள்"}</h3>
+                  <Button size="sm" onClick={() => setBookingOpen((value) => !value)}>{bookingOpen ? (lang === "en" ? "Close" : "மூடு") : (lang === "en" ? "Book Appointment" : "முன்பதிவு")}</Button>
+                </div>
+                {bookingOpen && (
+                  <div className="mb-5 border-y border-border py-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium text-foreground">{lang === "en" ? "Date" : "தேதி"}</label><input type="date" min={new Date().toISOString().slice(0, 10)} value={booking.date} onChange={(e) => loadSlots(e.target.value)} className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-foreground" /></div>
+                      <div><label className="text-sm font-medium text-foreground">{lang === "en" ? "Treatment" : "சிகிச்சை"}</label><select value={booking.service} onChange={(e) => setBooking({ ...booking, service: e.target.value })} className="mt-1 w-full h-10 rounded-md border border-input bg-background px-3 text-foreground"><option>General Dentistry</option><option>Dental Implants</option><option>Root Canal</option><option>Orthodontics</option><option>Cosmetic Dentistry</option><option>CBCT Imaging</option><option>Pediatric Dentistry</option><option>Oral Surgery</option><option>Home Visit</option></select></div>
+                    </div>
+                    {booking.date && new Date(`${booking.date}T12:00:00+05:30`).getUTCDay() === 0 ? <p className="text-sm text-destructive">{lang === "en" ? "Online booking is closed on Sundays. For emergencies, call or WhatsApp 8925166149." : "ஞாயிற்றுக்கிழமைகளில் ஆன்லைன் முன்பதிவு இல்லை. அவசரத்திற்கு 8925166149 ஐ அழைக்கவும் அல்லது WhatsApp செய்யவும்."}</p> : null}
+                    {loadingSlots ? <p className="text-sm text-muted-foreground">{lang === "en" ? "Checking Dr. Karthik's calendar…" : "டாக்டர் கார்த்திக்கின் காலெண்டர் சரிபார்க்கப்படுகிறது…"}</p> : null}
+                    {calendarRequired ? <p className="text-sm text-destructive">{lang === "en" ? "Online times are temporarily unavailable while the clinic calendar is being connected. Please call or WhatsApp 8925166149." : "மருத்துவமனை காலெண்டர் இணைக்கப்படும் வரை ஆன்லைன் நேரங்கள் கிடைக்காது. 8925166149 ஐ தொடர்பு கொள்ளவும்."}</p> : null}
+                    {slots.length > 0 && <div><p className="text-sm font-medium text-foreground mb-2">{lang === "en" ? "Available time" : "கிடைக்கும் நேரம்"}</p><div className="grid grid-cols-3 sm:grid-cols-4 gap-2">{slots.map((slot) => <Button key={slot} type="button" size="sm" variant={booking.time === slot ? "default" : "outline"} onClick={() => setBooking({ ...booking, time: slot })}>{slot}</Button>)}</div></div>}
+                    <textarea value={booking.notes} onChange={(e) => setBooking({ ...booking, notes: e.target.value })} maxLength={500} rows={2} placeholder={lang === "en" ? "Notes (optional)" : "குறிப்புகள் (விருப்பம்)"} className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground" />
+                    <Button className="w-full" disabled={!booking.date || !booking.time || bookingBusy || calendarRequired} onClick={bookAppointment}>{bookingBusy ? (lang === "en" ? "Requesting…" : "கோரப்படுகிறது…") : (lang === "en" ? "Request this time" : "இந்த நேரத்தை கோரவும்")}</Button>
+                    <p className="text-xs text-muted-foreground">{lang === "en" ? "The clinic reviews your request for 10 minutes. If no one responds, the time is held tentatively for 24 hours and still requires clinic confirmation." : "மருத்துவமனை 10 நிமிடங்கள் பரிசீலிக்கும். பதில் இல்லையெனில், நேரம் 24 மணி நேரம் தற்காலிகமாக வைக்கப்படும்; உறுதிப்படுத்தல் இன்னும் தேவை."}</p>
+                  </div>
+                )}
                 {appointments.length === 0 ? (
                   <p className="text-center text-muted-foreground text-sm py-4">
                     {lang === "en" ? "No appointments yet" : "முன்பதிவுகள் இல்லை"}

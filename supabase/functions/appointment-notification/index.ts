@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
     if (input.event === "request") {
       const age = Date.now() - new Date(appt.created_at).getTime();
       if (appt.status !== "pending" || age > 10 * 60 * 1000) return json({ error: "Request notification is no longer available" }, 403);
-    } else if (!await isStaff(req)) {
+    } else if (jwtRole(req) !== "service_role" && !await isStaff(req)) {
       return json({ error: "Only clinic staff can send this appointment update" }, 403);
     }
 
