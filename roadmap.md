@@ -6,6 +6,6 @@
 - [x] Replace the hourly reminder job with a five-minute lifecycle worker
 - [x] Add 10-minute tentative holds, 24-hour expiry, and 24h/2h reminder logic
 - [x] Keep WhatsApp notification delivery/error tracking idempotent
-- [ ] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
+- [x] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
 - [ ] Approve the new tentative, expiry, alternatives, and 2-hour Meta templates
 - [x] Deploy and verify the appointment functions and five-minute lifecycle worker
