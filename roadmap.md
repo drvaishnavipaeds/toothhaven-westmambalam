@@ -9,3 +9,7 @@
 - [x] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
 - [ ] Approve the new tentative, expiry, alternatives, and 2-hour Meta templates
 - [x] Deploy and verify the appointment functions and five-minute lifecycle worker
+- [ ] Add shared treatment-catalog and FDI tooth selectors across admin clinical and billing forms
+- [ ] Add treatment and tooth context to prescription/advice workflows
+- [ ] Upgrade the odontogram with realistic tooth-specific illustrations
+- [ ] Verify the updated admin workflows on desktop and mobile
