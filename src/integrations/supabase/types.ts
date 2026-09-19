@@ -1131,6 +1131,7 @@ export type Database = {
           id: string
           invoice_id: string
           quantity: number
+          tooth_number: string | null
           total: number
           unit_price: number
         }
@@ -1142,6 +1143,7 @@ export type Database = {
           id?: string
           invoice_id: string
           quantity?: number
+          tooth_number?: string | null
           total?: number
           unit_price?: number
         }
@@ -1153,6 +1155,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           quantity?: number
+          tooth_number?: string | null
           total?: number
           unit_price?: number
         }
@@ -1633,6 +1636,8 @@ export type Database = {
           notes: string | null
           patient_id: string
           prescribed_date: string
+          tooth_number: string | null
+          treatment_name: string | null
           updated_at: string
         }
         Insert: {
@@ -1646,6 +1651,8 @@ export type Database = {
           notes?: string | null
           patient_id: string
           prescribed_date?: string
+          tooth_number?: string | null
+          treatment_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -1659,6 +1666,8 @@ export type Database = {
           notes?: string | null
           patient_id?: string
           prescribed_date?: string
+          tooth_number?: string | null
+          treatment_name?: string | null
           updated_at?: string
         }
         Relationships: [
