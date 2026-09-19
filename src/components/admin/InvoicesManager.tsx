@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil } from "lucide-react";
+import { ToothSelect, TreatmentSelect } from "./ClinicalSelectors";
 
-type Item = { description: string; quantity: number; unit_price: number; total: number; hsn_sac?: string | null; gst_rate?: number };
+type Item = { description: string; quantity: number; unit_price: number; total: number; hsn_sac?: string | null; gst_rate?: number; tooth_number?: string | null };
 
 const money = (v: any) => `₹${Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -61,12 +62,12 @@ const InvoicesManager = () => {
     const { data } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
     setItems((data ?? []).map((d: any) => ({
       description: d.description, quantity: Number(d.quantity), unit_price: Number(d.unit_price), total: Number(d.total),
-      hsn_sac: d.hsn_sac ?? "", gst_rate: Number(d.gst_rate ?? 0),
+      hsn_sac: d.hsn_sac ?? "", gst_rate: Number(d.gst_rate ?? 0), tooth_number: d.tooth_number ?? "",
     })));
     setOpen(true);
   };
 
-  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0, hsn_sac: "", gst_rate: Number(settings.default_gst_rate ?? 0) }]);
+  const addItem = () => setItems((it) => [...it, { description: "", quantity: 1, unit_price: 0, total: 0, hsn_sac: "", gst_rate: Number(settings.default_gst_rate ?? 0), tooth_number: "" }]);
   const updateItem = (i: number, patch: Partial<Item>) => setItems((it) => it.map((r, idx) => {
     if (idx !== i) return r;
     const merged = { ...r, ...patch };
@@ -114,7 +115,7 @@ const InvoicesManager = () => {
     if (editing) await supabase.from("invoice_items").delete().eq("invoice_id", editing.id);
     await supabase.from("invoice_items").insert(items.map((it) => ({
       invoice_id: saved!.id, description: it.description, quantity: it.quantity,
-      unit_price: it.unit_price, total: it.total, hsn_sac: it.hsn_sac || null, gst_rate: Number(it.gst_rate ?? 0),
+      unit_price: it.unit_price, total: it.total, hsn_sac: it.hsn_sac || null, gst_rate: Number(it.gst_rate ?? 0), tooth_number: it.tooth_number || null,
     })));
 
     toast.success("Saved");
@@ -130,7 +131,7 @@ const InvoicesManager = () => {
   const printInv = async (r: any) => {
     const { data: its } = await supabase.from("invoice_items").select("*").eq("invoice_id", r.id);
     const rowsHtml = (its ?? []).map((i, idx) =>
-      `<tr><td>${idx + 1}</td><td>${i.description}</td><td>${i.hsn_sac ?? "—"}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${Number(i.gst_rate ?? 0)}%</td><td>${money(i.total)}</td></tr>`
+      `<tr><td>${idx + 1}</td><td>${i.description}${i.tooth_number ? ` (Tooth ${i.tooth_number})` : ""}</td><td>${i.hsn_sac ?? "—"}</td><td>${i.quantity}</td><td>${money(i.unit_price)}</td><td>${Number(i.gst_rate ?? 0)}%</td><td>${money(i.total)}</td></tr>`
     ).join("");
     const isGst = Number(r.tax ?? 0) > 0;
     const w = window.open("", "_blank"); if (!w) return;
@@ -219,7 +220,7 @@ const InvoicesManager = () => {
                 <div className="flex gap-2">
                   <select className="h-9 rounded-md border bg-background px-2 text-sm" onChange={(e) => {
                     const t = catalog.find((x) => x.id === e.target.value); if (!t) return;
-                    setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price), hsn_sac: t.hsn_sac ?? "", gst_rate: Number(t.gst_rate ?? settings.default_gst_rate ?? 0) }]);
+                     setItems((it) => [...it, { description: t.name, quantity: 1, unit_price: Number(t.default_price), total: Number(t.default_price), hsn_sac: t.hsn_sac ?? "", gst_rate: Number(t.gst_rate ?? settings.default_gst_rate ?? 0), tooth_number: "" }]);
                     e.target.value = "";
                   }}>
                     <option value="">+ From catalog</option>
@@ -229,18 +230,18 @@ const InvoicesManager = () => {
                 </div>
               </div>
               <div className="hidden md:grid grid-cols-12 gap-2 text-[11px] text-muted-foreground px-1">
-                <span className="col-span-4">Description</span><span className="col-span-2">HSN/SAC</span><span className="col-span-1">Qty</span>
-                <span className="col-span-2">Rate</span><span className="col-span-1">GST%</span><span className="col-span-1 text-right">Amount</span>
+                <span className="col-span-3">Treatment</span><span className="col-span-2">Tooth</span><span className="col-span-1">Qty</span>
+                <span className="col-span-2">Rate</span><span className="col-span-1">GST%</span><span className="col-span-2 text-right">Amount</span>
               </div>
               <div className="space-y-2">
                 {items.map((it, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <Input className="col-span-4" placeholder="Description" value={it.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
-                    <Input className="col-span-2" placeholder="HSN/SAC" value={it.hsn_sac ?? ""} onChange={(e) => updateItem(i, { hsn_sac: e.target.value })} />
+                    <div className="col-span-3"><TreatmentSelect catalog={catalog} value={it.description} onValueChange={(description, treatment) => updateItem(i, { description, unit_price: Number(treatment?.default_price ?? 0), hsn_sac: treatment?.hsn_sac ?? "", gst_rate: Number(treatment?.gst_rate ?? settings.default_gst_rate ?? 0) })} /></div>
+                    <div className="col-span-2"><ToothSelect value={it.tooth_number} onValueChange={(tooth_number) => updateItem(i, { tooth_number })} /></div>
                     <Input className="col-span-1" type="number" value={it.quantity} onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })} />
                     <Input className="col-span-2" type="number" value={it.unit_price} onChange={(e) => updateItem(i, { unit_price: Number(e.target.value) })} />
                     <Input className="col-span-1" type="number" value={it.gst_rate ?? 0} onChange={(e) => updateItem(i, { gst_rate: Number(e.target.value) })} />
-                    <div className="col-span-1 text-sm text-right pr-1">{money(it.total)}</div>
+                    <div className="col-span-2 text-sm text-right pr-1">{money(it.total)}</div>
                     <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeItem(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 ))}

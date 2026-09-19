@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import ToothIllustration from "./ToothIllustration";
+import { ADULT_TEETH, PRIMARY_TEETH } from "./ClinicalSelectors";
 
 export interface ChartEntry {
   id: string;
@@ -19,17 +21,12 @@ export interface ChartEntry {
 }
 
 const PERMANENT = {
-  upperRight: [18, 17, 16, 15, 14, 13, 12, 11],
-  upperLeft: [21, 22, 23, 24, 25, 26, 27, 28],
-  lowerRight: [48, 47, 46, 45, 44, 43, 42, 41],
-  lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38],
+  upperRight: ADULT_TEETH["Upper right"], upperLeft: ADULT_TEETH["Upper left"],
+  lowerRight: ADULT_TEETH["Lower right"], lowerLeft: ADULT_TEETH["Lower left"],
 };
-
 const PRIMARY = {
-  upperRight: [55, 54, 53, 52, 51],
-  upperLeft: [61, 62, 63, 64, 65],
-  lowerRight: [85, 84, 83, 82, 81],
-  lowerLeft: [71, 72, 73, 74, 75],
+  upperRight: PRIMARY_TEETH["Primary upper right"], upperLeft: PRIMARY_TEETH["Primary upper left"],
+  lowerRight: PRIMARY_TEETH["Primary lower right"], lowerLeft: PRIMARY_TEETH["Primary lower left"],
 };
 
 export const CONDITIONS: {
@@ -133,11 +130,9 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
     fetchEntries();
   };
 
-  // Anatomical-looking tooth glyph: crown + roots, coloured by latest condition.
   const Tooth = ({ n, lower }: { n: number; lower?: boolean }) => {
     const entry = latestByTooth.get(n);
     const meta = conditionMeta(entry?.condition ?? "healthy");
-    const molar = [6, 7, 8].includes(Number(String(n)[1])) || [4, 5].includes(Number(String(n)[1]));
     return (
       <button
         type="button"
@@ -148,30 +143,9 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
         {lower && (
           <span className="text-[10px] font-semibold text-muted-foreground group-hover:text-primary">{n}</span>
         )}
-        <svg
-          viewBox="0 0 40 56"
-          className={`w-8 h-11 transition-transform group-hover:scale-110 ${entry?.condition === "missing" ? "opacity-45" : ""}`}
-          style={{ transform: lower ? "scaleY(-1)" : undefined }}
-        >
-          <g fill={meta.fill} stroke={meta.stroke} strokeWidth="2" strokeLinejoin="round">
-            {molar ? (
-              <>
-                <path d="M8 22c-1 8-3 12-2 20 .5 4 4 4 4.5 0l2-14z" />
-                <path d="M32 22c1 8 3 12 2 20-.5 4-4 4-4.5 0l-2-14z" />
-                <path d="M20 24c0 8 0 14 .5 18 .4 4-3.5 4-3.8 0-.4-5 .3-10 .3-18z" />
-                <path d="M20 4c8 0 14 4 14 11 0 6-4 9-14 9S6 21 6 15C6 8 12 4 20 4z" />
-              </>
-            ) : (
-              <>
-                <path d="M20 22c3 8 4 16 2 26-.8 4-4.2 4-4.6 0-1-9 0-18 2.6-26z" />
-                <path d="M20 4c7 0 12 4 12 10s-5 10-12 10S8 20 8 14 13 4 20 4z" />
-              </>
-            )}
-          </g>
-          {entry?.condition === "missing" && (
-            <path d="M8 8 L32 30 M32 8 L8 30" stroke="hsl(var(--muted-foreground))" strokeWidth="2.5" strokeLinecap="round" />
-          )}
-        </svg>
+        <span className={`transition-transform group-hover:scale-105 ${entry?.condition === "missing" ? "opacity-45" : ""}`}>
+          <ToothIllustration tooth={n} fill={meta.fill} stroke={meta.stroke} lower={lower} missing={entry?.condition === "missing"} />
+        </span>
         {!lower && (
           <span className="text-[10px] font-semibold text-muted-foreground group-hover:text-primary">{n}</span>
         )}

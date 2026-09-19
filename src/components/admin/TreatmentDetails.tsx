@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ToothSelect, TreatmentSelect, type TreatmentCatalogOption } from "./ClinicalSelectors";
 
 interface Treatment {
   id: string;
@@ -33,6 +34,7 @@ const TreatmentDetails = ({ patientId, patientName }: { patientId: string; patie
   const [plans, setPlans] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<TreatmentCatalogOption[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -41,16 +43,18 @@ const TreatmentDetails = ({ patientId, patientName }: { patientId: string; patie
   const [form, setForm] = useState({ treatment_name: "", description: "", tooth_number: "", cost: "", treatment_date: "", notes: "", status: "planned" });
 
   const fetchAll = async () => {
-    const [t, p, rx, inv] = await Promise.all([
+    const [t, p, rx, inv, cat] = await Promise.all([
       supabase.from("treatments").select("*").eq("patient_id", patientId).order("treatment_date", { ascending: false, nullsFirst: false }),
       supabase.from("treatment_plans").select("id,title,status,discount,created_at").eq("patient_id", patientId).order("created_at", { ascending: false }),
       supabase.from("prescriptions").select("id,prescribed_date,diagnosis,doctor_name").eq("patient_id", patientId).order("prescribed_date", { ascending: false }),
       supabase.from("invoices").select("id,invoice_number,invoice_date,total,amount_paid,status").eq("patient_id", patientId).order("invoice_date", { ascending: false }),
+      supabase.from("treatment_catalog").select("id,name,category,default_price").eq("is_active", true).order("name"),
     ]);
     setTreatments((t.data as Treatment[]) || []);
     setPlans(p.data || []);
     setPrescriptions(rx.data || []);
     setInvoices(inv.data || []);
+    setCatalog((cat.data as TreatmentCatalogOption[]) || []);
   };
 
   useEffect(() => { fetchAll(); }, [patientId]);
@@ -280,10 +284,10 @@ const TreatmentDetails = ({ patientId, patientName }: { patientId: string; patie
         <DialogContent>
           <DialogHeader><DialogTitle>Add Treatment</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input placeholder="Treatment Name *" required value={form.treatment_name} onChange={e => setForm({ ...form, treatment_name: e.target.value })} />
+            <TreatmentSelect catalog={catalog} value={form.treatment_name} onValueChange={(name, item) => setForm({ ...form, treatment_name: name, cost: item?.default_price != null ? String(item.default_price) : form.cost })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Tooth Number" value={form.tooth_number} onChange={e => setForm({ ...form, tooth_number: e.target.value })} />
+              <ToothSelect value={form.tooth_number} onValueChange={tooth_number => setForm({ ...form, tooth_number })} />
               <select className="border border-input bg-background rounded-md px-3 py-2 text-sm" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                 {STATUSES.map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
               </select>

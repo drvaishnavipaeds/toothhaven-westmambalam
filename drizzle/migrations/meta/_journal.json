@@ -8,6 +8,13 @@
       "when": 1789809397465,
       "tag": "0000_expand_appointment_lifecycle_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789813201476,
+      "tag": "0001_add_clinical_context_to_prescriptions_and_invoices",
+      "breakpoints": true
     }
   ]
 }
