@@ -17,13 +17,10 @@ const staffSchema = z.object({ action: z.enum(["confirm", "reschedule", "cancel"
 
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 function configured() { return Boolean(gatewayKey && lovableKey); }
-function jwtRole(req: Request): string | null {
-  const payload = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").split(".")[1];
-  if (!payload) return null;
-  try {
-    const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-    return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")))?.role ?? null;
-  } catch { return null; }
+function isServiceRequest(req: Request) {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return Boolean(serviceKey && token && token === serviceKey);
 }
 function scheduledAt(date: string, time: string) { return new Date(`${date}T${time}:00${TZ}`); }
 function clinicSlots(date: string, duration = 30) {
@@ -118,7 +115,7 @@ async function runLifecycle() {
         const slots = await available(appt.appointment_date, appt.duration_minutes ?? 30, appt.id);
         if (slots.includes(appt.appointment_time)) {
           const event = await eventWrite(appt, true); const expiry = new Date(now.getTime() + 24 * 3600000).toISOString();
-          await admin.from("appointments").update({ status: "tentative", google_event_id: event.id, calendar_sync_status: "synced", tentative_created_at: now.toISOString(), tentative_expires_at: expiry, last_lifecycle_action: "tentative_created", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "pending");
+          await admin.from("appointments").update({ status: "tentative", google_event_id: event.id, calendar_sync_status: "synced", calendar_sync_error: null, tentative_created_at: now.toISOString(), tentative_expires_at: expiry, last_lifecycle_action: "tentative_created", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "pending");
           await notify(appt.id, "tentative"); await alertAdmin(appt, "Tentative hold created after 10 minutes.");
         } else {
           const alternatives = slots.slice(0, 3); await admin.from("appointments").update({ status: "conflict", proposed_alternatives: alternatives, calendar_sync_status: "conflict", last_lifecycle_action: "slot_conflict", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "pending");
@@ -130,8 +127,8 @@ async function runLifecycle() {
         await notify(appt.id, "expired"); await alertAdmin(appt, "Tentative hold expired and needs follow-up."); processed++;
       } else if (["confirmed", "rescheduled"].includes(appt.status)) {
         const hours = (scheduledAt(appt.appointment_date, appt.appointment_time).getTime() - now.getTime()) / 3600000;
-        if (!appt.reminder_24h_sent_at && hours > 23.9 && hours <= 24.1) { const r = await notify(appt.id, "reminder_24h"); if (r.ok) await admin.from("appointments").update({ reminder_24h_sent_at: now.toISOString() }).eq("id", appt.id); }
-        if (!appt.reminder_2h_sent_at && hours > 1.9 && hours <= 2.1) { const r = await notify(appt.id, "reminder_2h"); if (r.ok) await admin.from("appointments").update({ reminder_2h_sent_at: now.toISOString() }).eq("id", appt.id); }
+        if (!appt.reminder_24h_sent_at && hours > 2 && hours <= 24) { const r = await notify(appt.id, "reminder_24h"); if (r.ok) await admin.from("appointments").update({ reminder_24h_sent_at: now.toISOString() }).eq("id", appt.id); }
+        if (!appt.reminder_2h_sent_at && hours > 0 && hours <= 2) { const r = await notify(appt.id, "reminder_2h"); if (r.ok) await admin.from("appointments").update({ reminder_2h_sent_at: now.toISOString() }).eq("id", appt.id); }
       }
     } catch (error) { await admin.from("appointments").update({ calendar_sync_status: "failed", calendar_sync_error: error instanceof Error ? error.message : "Lifecycle failed" }).eq("id", appt.id); }
   }
@@ -143,7 +140,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const raw = await req.json().catch(() => ({}));
-    if (raw.action === "lifecycle") { if (jwtRole(req) !== "service_role") return json({ error: "Forbidden" }, 403); return json(await runLifecycle()); }
+    if (raw.action === "lifecycle") { if (!isServiceRequest(req)) return json({ error: "Forbidden" }, 403); return json(await runLifecycle()); }
     if (raw.action === "portal_data") {
       const input = portalDataSchema.parse(raw);
       const result = await portalData(input.portalToken);

@@ -72,6 +72,10 @@ const TEMPLATE_DEFINITIONS = [
   { name: TEMPLATES.appointmentConfirmation, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your Tooth Haven appointment for {{4}} is confirmed for {{2}} at {{3}}. Reply here if you need help.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Dental consultation"] },
   { name: TEMPLATES.appointmentRescheduled, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your {{6}} appointment has moved from {{2}} at {{3}} to {{4}} at {{5}}. Reply here if you need help.", examples: ["Karthik", "15 September 2026", "11:00 AM", "16 September 2026", "3:00 PM", "Dental consultation"] },
   { name: TEMPLATES.appointmentCancelled, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your Tooth Haven appointment on {{2}} at {{3}} was cancelled. Reason: {{4}}. Reply here to arrange another time.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Requested by patient"] },
+  { name: TEMPLATES.appointmentReminder2h, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, a reminder that your confirmed Tooth Haven appointment is today, {{2}}, at {{3}}.", examples: ["Karthik", "15 September 2026", "11:00 AM"] },
+  { name: TEMPLATES.appointmentTentative, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, we have tentatively held {{2}} at {{3}} for your {{4}} appointment. This is awaiting clinic confirmation and will be held for up to 24 hours.", examples: ["Karthik", "15 September 2026", "11:00 AM", "Dental consultation"] },
+  { name: TEMPLATES.appointmentExpired, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, the tentative appointment held for {{2}} at {{3}} has expired without confirmation. Reply here and Tooth Haven will help arrange another time.", examples: ["Karthik", "15 September 2026", "11:00 AM"] },
+  { name: TEMPLATES.appointmentAlternatives, category: "UTILITY" as const, language: DEFAULT_LANG, body: "Hi {{1}}, your requested time on {{2}} at {{3}} is no longer available. Please reply here and Tooth Haven will help you choose another available time.", examples: ["Karthik", "15 September 2026", "11:00 AM"] },
 ];
 
 function json(body: unknown, status = 200) {
@@ -85,17 +89,10 @@ function clean(value: unknown, max = 200): string {
   return String(value ?? "").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, max);
 }
 
-function jwtRole(req: Request): string | null {
+function isServiceRequest(req: Request): boolean {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  const payload = token.split(".")[1];
-  if (!payload) return null;
-  try {
-    const normalised = payload.replaceAll("-", "+").replaceAll("_", "/");
-    const decoded = JSON.parse(atob(normalised.padEnd(Math.ceil(normalised.length / 4) * 4, "=")));
-    return typeof decoded?.role === "string" ? decoded.role : null;
-  } catch {
-    return null;
-  }
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return Boolean(serviceKey && token && token === serviceKey);
 }
 
 async function isStaff(req: Request): Promise<boolean> {
@@ -302,7 +299,7 @@ Deno.serve(async (req) => {
   try {
     const raw = await req.json().catch(() => ({}));
     if (raw?.action === "setup_templates") {
-      if (jwtRole(req) !== "service_role" && !await isStaff(req)) return json({ error: "Forbidden" }, 403);
+      if (!isServiceRequest(req) && !await isStaff(req)) return json({ error: "Forbidden" }, 403);
       const existing = await listApprovedTemplates(true);
       const existingByName = new Map(existing.map((template) => [template.name, template]));
       const results = [];
@@ -334,7 +331,7 @@ Deno.serve(async (req) => {
     if (input.event === "request") {
       const age = Date.now() - new Date(appt.created_at).getTime();
       if (appt.status !== "pending" || age > 10 * 60 * 1000) return json({ error: "Request notification is no longer available" }, 403);
-    } else if (jwtRole(req) !== "service_role" && !await isStaff(req)) {
+    } else if (!isServiceRequest(req) && !await isStaff(req)) {
       return json({ error: "Only clinic staff can send this appointment update" }, 403);
     }
 

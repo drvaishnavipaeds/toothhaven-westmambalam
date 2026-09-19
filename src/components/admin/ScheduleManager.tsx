@@ -9,12 +9,11 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Armchair } from "lucide-react";
 
 const SLOT_MINUTES = 30;
-const DAY_START = 9;
-const DAY_END = 21;
-
 const slots = (() => {
   const out: string[] = [];
-  for (let h = DAY_START; h < DAY_END; h++) for (let m = 0; m < 60; m += SLOT_MINUTES) out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  for (const [start, end] of [[11, 14], [18, 21]]) {
+    for (let h = start; h < end; h++) for (let m = 0; m < 60; m += SLOT_MINUTES) out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  }
   return out;
 })();
 
@@ -85,9 +84,9 @@ const ScheduleManager = () => {
   const openNew = (colId?: string, slot?: string) => {
     setForm({
       appointment_date: date,
-      appointment_time: slot ?? "10:00",
+      appointment_time: slot ?? "11:00",
       duration_minutes: 30,
-      status: "confirmed",
+      status: "pending",
       chair_id: mode === "chair" && colId && colId !== "__unassigned" ? colId : null,
       doctor_id: mode === "doctor" && colId && colId !== "__unassigned" ? colId : null,
     });
@@ -104,20 +103,22 @@ const ScheduleManager = () => {
       appointment_time: form.appointment_time,
       duration_minutes: Number(form.duration_minutes) || 30,
       treatment_type: form.treatment_type || null,
-      status: form.status,
+      status: "pending",
       chair_id: form.chair_id || null,
       doctor_id: form.doctor_id || null,
       notes: form.notes || null,
       source: "admin",
+      confirmation_deadline: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      calendar_sync_status: "not_synced",
     }).select("id").single();
     if (error) return toast.error(error.message);
-    const { data: notification, error: notificationError } = await supabase.functions.invoke("appointment-notification", {
-      body: { appointmentId: inserted?.id, event: form.status === "confirmed" ? "confirmation" : "request" },
+    const { data: workflow, error: workflowError } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "confirm", appointmentId: inserted?.id },
     });
-    if (notificationError || notification?.ok === false) {
-      toast.warning("Appointment booked, but WhatsApp was not sent");
+    if (workflowError || workflow?.error) {
+      toast.warning("Appointment saved as pending; calendar confirmation is still required");
     } else {
-      toast.success("Appointment booked and patient notified");
+      toast.success("Appointment added to the calendar and patient notified");
     }
     setOpen(false);
     load();
