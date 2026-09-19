@@ -109,14 +109,24 @@ const AppointmentsList = () => {
       treatment_type: form.treatment_type || null,
       notes: form.notes || null,
       source: form.source,
-      status: "confirmed",
+      status: "pending",
+      confirmation_deadline: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      calendar_sync_status: "not_synced",
     }).select("id").single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       // Send notification for manually added appointments too
       try {
-        if (inserted?.id) await runWorkflow({ action: "confirm", appointmentId: inserted.id });
+        if (inserted?.id) {
+          const confirmed = await runWorkflow({ action: "confirm", appointmentId: inserted.id });
+          if (!confirmed) {
+            toast({ title: "Appointment saved as pending", description: "Calendar confirmation is still required.", variant: "destructive" });
+            setSaving(false);
+            fetchAppointments();
+            return;
+          }
+        }
       } catch (notificationError) {
         console.error("Appointment notification failed:", notificationError);
       }
@@ -129,9 +139,10 @@ const AppointmentsList = () => {
   };
 
   const statusColor = (s: string) => {
-    if (s === "confirmed") return "bg-green-100 text-green-700";
+    if (["confirmed", "rescheduled"].includes(s)) return "bg-green-100 text-green-700";
     if (s === "cancelled") return "bg-red-100 text-red-700";
     if (s === "completed") return "bg-blue-100 text-blue-700";
+    if (["conflict", "expired"].includes(s)) return "bg-red-100 text-red-700";
     return "bg-yellow-100 text-yellow-700";
   };
 

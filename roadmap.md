@@ -8,3 +8,4 @@
 - [x] Keep WhatsApp notification delivery/error tracking idempotent
 - [ ] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
 - [ ] Approve the new tentative, expiry, alternatives, and 2-hour Meta templates
+- [x] Deploy and verify the appointment functions and five-minute lifecycle worker
