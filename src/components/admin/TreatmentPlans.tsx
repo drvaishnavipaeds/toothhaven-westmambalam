@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, CheckCircle2, Send, FileText } from "lucide-react";
+import { ToothSelect, TreatmentSelect } from "./ClinicalSelectors";
 
 interface Plan {
   id: string;
@@ -250,20 +251,9 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
         <DialogContent>
           <DialogHeader><DialogTitle>Add procedure</DialogTitle></DialogHeader>
           <form onSubmit={addItem} className="space-y-3">
-            <select
-              className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
-              value=""
-              onChange={(e) => {
-                const c = catalog.find((x) => x.id === e.target.value);
-                if (c) setItemForm({ ...itemForm, treatment_name: c.name, unit_cost: String(c.default_price ?? "") });
-              }}
-            >
-              <option value="">Pick from treatment catalog…</option>
-              {catalog.map((c) => <option key={c.id} value={c.id}>{c.name} — {money(c.default_price)}</option>)}
-            </select>
-            <Input placeholder="Procedure name *" required value={itemForm.treatment_name} onChange={(e) => setItemForm({ ...itemForm, treatment_name: e.target.value })} />
+            <TreatmentSelect catalog={catalog} value={itemForm.treatment_name} placeholder="Select procedure from catalog" onValueChange={(name, item) => setItemForm({ ...itemForm, treatment_name: name, unit_cost: String(item?.default_price ?? "") })} />
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Tooth (FDI)" value={itemForm.tooth_number} onChange={(e) => setItemForm({ ...itemForm, tooth_number: e.target.value })} />
+              <ToothSelect value={itemForm.tooth_number} onValueChange={(tooth_number) => setItemForm({ ...itemForm, tooth_number })} />
               <Input placeholder="Phase" type="number" min={1} value={itemForm.phase} onChange={(e) => setItemForm({ ...itemForm, phase: e.target.value })} />
               <Input placeholder="Sittings" type="number" min={1} value={itemForm.sittings} onChange={(e) => setItemForm({ ...itemForm, sittings: e.target.value })} />
               <Input placeholder="Quantity" type="number" min={1} value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} />

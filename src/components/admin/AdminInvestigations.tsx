@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ToothSelect } from "./ClinicalSelectors";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
 
@@ -249,7 +250,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Input placeholder="Tooth #" value={form.tooth_number} onChange={e => setForm({ ...form, tooth_number: e.target.value })} />
+              <ToothSelect value={form.tooth_number} onValueChange={tooth_number => setForm({ ...form, tooth_number })} />
               <Input type="date" value={form.taken_on} onChange={e => setForm({ ...form, taken_on: e.target.value })} />
             </div>
             <label className="flex items-center gap-2 text-sm">
