@@ -133,7 +133,6 @@ const DentalChart = ({ patientId }: { patientId: string }) => {
   const Tooth = ({ n, lower }: { n: number; lower?: boolean }) => {
     const entry = latestByTooth.get(n);
     const meta = conditionMeta(entry?.condition ?? "healthy");
-    const molar = [6, 7, 8].includes(Number(String(n)[1])) || [4, 5].includes(Number(String(n)[1]));
     return (
       <button
         type="button"

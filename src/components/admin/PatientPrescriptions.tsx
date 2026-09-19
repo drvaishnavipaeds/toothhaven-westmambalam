@@ -7,24 +7,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
+import { ToothSelect, TreatmentSelect, type TreatmentCatalogOption } from "./ClinicalSelectors";
 
 type Drug = { name: string; dose: string; frequency: string; duration: string; notes?: string };
 
 const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patientId: string; patientName: string; patientPhone: string }) => {
   const [rows, setRows] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<TreatmentCatalogOption[]>([]);
   const [open, setOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ prescribed_date: new Date().toISOString().slice(0, 10), drugs: [] as Drug[] });
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from("prescriptions")
-      .select("*")
-      .eq("patient_id", patientId)
-      .order("prescribed_date", { ascending: false });
+    const [{ data, error }, { data: treatments }] = await Promise.all([
+      supabase.from("prescriptions").select("*").eq("patient_id", patientId).order("prescribed_date", { ascending: false }),
+      supabase.from("treatment_catalog").select("id,name,category,default_price").eq("is_active", true).order("name"),
+    ]);
     if (error) { toast.error(error.message); return; }
     setRows(data ?? []);
+    setCatalog((treatments as TreatmentCatalogOption[]) ?? []);
   };
   useEffect(() => { load(); }, [patientId]);
 
@@ -75,6 +77,8 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
       patient_id: patientId,
       prescribed_date: form.prescribed_date,
       diagnosis: form.diagnosis,
+      treatment_name: form.treatment_name || null,
+      tooth_number: form.tooth_number || null,
       drugs: form.drugs,
       notes: form.notes,
       doctor_name: form.doctor_name,
@@ -108,7 +112,7 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
       </head><body>
       <div class="header"><div><h1>Tooth Haven Advanced Dental Care</h1><p>West Mambalam, Chennai · +91 89251 66149</p></div><div><strong>${r.doctor_name ?? "Dr. Karthik Srinivasan, BDS"}</strong></div></div>
       <p><strong>Patient:</strong> ${patientName} · <strong>Phone:</strong> ${patientPhone}</p>
-      <p><strong>Date:</strong> ${r.prescribed_date} · <strong>Diagnosis:</strong> ${r.diagnosis ?? ""}</p>
+      <p><strong>Date:</strong> ${r.prescribed_date} · <strong>Diagnosis:</strong> ${r.diagnosis ?? ""}${r.treatment_name ? ` · <strong>Treatment:</strong> ${r.treatment_name}` : ""}${r.tooth_number ? ` · <strong>Tooth:</strong> ${r.tooth_number}` : ""}</p>
       <table><thead><tr><th>#</th><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th></tr></thead><tbody>${drugs}</tbody></table>
       ${r.instructions_en ? `<h3 style="margin-top:20px;margin-bottom:4px">Instructions</h3><p style="white-space:pre-wrap;margin:0">${r.instructions_en}</p>` : ""}
       ${r.instructions_ta ? `<h3 style="margin-top:16px;margin-bottom:4px">அறிவுரைகள்</h3><p style="white-space:pre-wrap;margin:0">${r.instructions_ta}</p>` : ""}
@@ -131,6 +135,7 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
           <div key={r.id} className="bg-card rounded-lg border border-border p-3 flex items-center justify-between gap-3">
             <div className="text-sm min-w-0">
               <p className="font-medium text-foreground">{r.prescribed_date} · {r.diagnosis || "No diagnosis"}</p>
+              {(r.treatment_name || r.tooth_number) && <p className="text-xs text-primary">{r.treatment_name || "General advice"}{r.tooth_number ? ` · Tooth ${r.tooth_number}` : ""}</p>}
               <p className="text-xs text-muted-foreground truncate">
                 {Array.isArray(r.drugs) && r.drugs.length
                   ? r.drugs.map((d: Drug) => d.name).filter(Boolean).join(", ")
@@ -156,6 +161,10 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
               <div><Label>Doctor</Label><Input value={form.doctor_name ?? ""} onChange={(e) => setForm({ ...form, doctor_name: e.target.value })} placeholder="Dr. Karthik Srinivasan, BDS" /></div>
             </div>
             <div><Label>Chief complaint</Label><Input value={form.chief_complaint ?? ""} onChange={(e) => setForm({ ...form, chief_complaint: e.target.value })} placeholder="e.g. Pain in lower right molar" /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><Label>Treatment / advice for</Label><TreatmentSelect catalog={catalog} value={form.treatment_name} onValueChange={(treatment_name) => setForm({ ...form, treatment_name })} /></div>
+              <div><Label>Tooth</Label><ToothSelect value={form.tooth_number} onValueChange={(tooth_number) => setForm({ ...form, tooth_number })} /></div>
+            </div>
             <div><Label>Diagnosis</Label><Input value={form.diagnosis ?? ""} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></div>
             <div>
               <div className="flex justify-between items-center mb-2"><Label>Drugs</Label><Button size="sm" variant="outline" onClick={addDrug}><Plus className="w-3 h-3 mr-1" />Add</Button></div>
