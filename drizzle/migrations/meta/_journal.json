@@ -15,6 +15,13 @@
       "when": 1789813201476,
       "tag": "0001_add_clinical_context_to_prescriptions_and_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789866834557,
+      "tag": "0002_move_security_definer_helpers_private",
+      "breakpoints": true
     }
   ]
 }
