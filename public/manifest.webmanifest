@@ -1,0 +1,16 @@
+{
+  "id": "/admin/",
+  "name": "Tooth Haven Admin",
+  "short_name": "TH Admin",
+  "description": "Secure clinic administration for Tooth Haven Advanced Dental Care.",
+  "start_url": "/admin/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#218b8f",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/admin-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/admin-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

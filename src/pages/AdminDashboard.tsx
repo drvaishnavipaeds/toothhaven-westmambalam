@@ -3,6 +3,7 @@ import { Navigate, Link } from "react-router-dom";
 import { Home, LogOut, UserCircle } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import AdminSidebar, { Tab } from "@/components/admin/AdminSidebar";
+import MobileAdminNavigation from "@/components/admin/MobileAdminNavigation";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import PatientsList from "@/components/admin/PatientsList";
 import AppointmentsList from "@/components/admin/AppointmentsList";
@@ -32,6 +33,7 @@ import {
 const AdminDashboard = () => {
   const { user, isAdmin, isLoading, signOut } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading...</p></div>;
@@ -41,8 +43,9 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-30 flex items-center justify-end gap-2 bg-background/95 backdrop-blur border-b border-border px-4 py-2">
+      <main className="min-w-0 flex-1 overflow-y-auto pb-20 md:pb-0">
+        <MobileAdminNavigation activeTab={activeTab} onTabChange={setActiveTab} menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
+        <div className="hidden md:flex sticky top-0 z-30 items-center justify-end gap-2 bg-background/95 backdrop-blur border-b border-border px-4 py-2">
           <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors">
             <Home className="w-3.5 h-3.5" /> Home
           </Link>
@@ -53,8 +56,8 @@ const AdminDashboard = () => {
             <LogOut className="w-3.5 h-3.5" /> Logout
           </button>
         </div>
-        <div className="p-4 md:p-6">
-        {activeTab === "overview" && <DashboardOverview />}
+        <div className="p-3 sm:p-4 md:p-6">
+        {activeTab === "overview" && <DashboardOverview onNavigate={setActiveTab} />}
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList />}
         {activeTab === "appointments" && <AppointmentsList />}

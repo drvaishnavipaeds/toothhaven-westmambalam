@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Check, X, Clock, Plus, Globe, MessageCircle, Phone as PhoneIcon, User } from "lucide-react";
+import { Calendar, Check, X, Clock, Plus, Globe, MessageCircle, Phone as PhoneIcon, User, RefreshCw, ContactRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -48,6 +48,9 @@ const AppointmentsList = () => {
   const [saving, setSaving] = useState(false);
   const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
   const [rescheduleForm, setRescheduleForm] = useState({ appointment_date: "", appointment_time: "" });
+  const [cancelling, setCancelling] = useState<Appointment | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [viewing, setViewing] = useState<Appointment | null>(null);
   const { toast } = useToast();
 
   const fetchAppointments = async () => {
@@ -69,18 +72,29 @@ const AppointmentsList = () => {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const reason = status === "cancelled"
-      ? window.prompt("Cancellation reason shown to the patient:", "Cancelled by the clinic")
-      : null;
-    if (status === "cancelled" && reason === null) return;
     if (status === "completed") {
       const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
       if (error) { toast({ title: "Could not update appointment", description: error.message, variant: "destructive" }); return; }
     } else {
-      const ok = await runWorkflow({ action: status === "confirmed" ? "confirm" : "cancel", appointmentId: id, ...(reason ? { reason } : {}) });
+      const ok = await runWorkflow({ action: "confirm", appointmentId: id });
       if (!ok) return;
     }
     toast({ title: `Appointment ${status}` });
+    fetchAppointments();
+  };
+
+  const openCancellation = (appointment: Appointment) => {
+    setCancelling(appointment);
+    setCancellationReason("");
+  };
+
+  const saveCancellation = async () => {
+    if (!cancelling || cancellationReason.trim().length < 2) return;
+    const ok = await runWorkflow({ action: "cancel", appointmentId: cancelling.id, reason: cancellationReason.trim() });
+    if (!ok) return;
+    toast({ title: "Appointment cancelled", description: "The patient has been notified with the reason and rescheduling option." });
+    setCancelling(null);
+    setCancellationReason("");
     fetchAppointments();
   };
 
@@ -155,7 +169,7 @@ const AppointmentsList = () => {
   ];
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h2 className="text-xl font-bold text-foreground">Appointments</h2>
         <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-1" /> Add Appointment</Button>
@@ -182,9 +196,9 @@ const AppointmentsList = () => {
 
       <div className="space-y-2">
         {appointments.map(a => (
-          <div key={a.id} className="bg-card rounded-xl border border-border p-3">
-            <div className="flex items-start justify-between">
-              <div>
+          <div key={a.id} className="bg-card rounded-md border border-border p-3 shadow-sm sm:p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-sm text-foreground">{a.patient_name}</p>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -198,32 +212,34 @@ const AppointmentsList = () => {
                 </div>
                 {a.treatment_type && <p className="text-xs text-muted-foreground mt-0.5">{a.treatment_type}</p>}
                 {a.notes && <p className="text-xs text-muted-foreground italic mt-0.5">{a.notes}</p>}
-                {a.calendar_sync_status && <p className="text-xs text-muted-foreground mt-1">Calendar: {a.calendar_sync_status}{a.calendar_sync_error ? ` — ${a.calendar_sync_error}` : ""}</p>}
+                 {a.calendar_sync_status && <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><RefreshCw className="h-3 w-3" /> Calendar: <span className="font-medium capitalize">{a.calendar_sync_status.replace(/_/g, " ")}</span>{a.calendar_sync_error ? ` — ${a.calendar_sync_error}` : ""}</p>}
                 {Array.isArray(a.proposed_alternatives) && a.proposed_alternatives.length > 0 && <p className="text-xs text-muted-foreground mt-1">Alternatives: {a.proposed_alternatives.join(", ")}</p>}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(a.status)}`}>{a.status}</span>
             </div>
             {["pending", "tentative", "conflict", "expired"].includes(a.status) && (
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus(a.id, "confirmed")}>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:flex">
+                <Button size="sm" className="h-10 text-xs sm:h-9" onClick={() => updateStatus(a.id, "confirmed")}>
                   <Check className="w-3 h-3 mr-1" /> Confirm
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs h-7 text-destructive" onClick={() => updateStatus(a.id, "cancelled")}>
+                <Button size="sm" variant="outline" className="h-10 text-xs text-destructive sm:h-9" onClick={() => openCancellation(a)}>
                   <X className="w-3 h-3 mr-1" /> Cancel
                 </Button>
+                <Button size="sm" variant="ghost" className="col-span-2 h-10 text-xs sm:h-9" onClick={() => setViewing(a)}><ContactRound /> Patient details</Button>
               </div>
             )}
             {["confirmed", "rescheduled"].includes(a.status) && (
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openReschedule(a)}>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                <Button size="sm" variant="outline" className="h-10 text-xs sm:h-9" onClick={() => openReschedule(a)}>
                   <Clock className="w-3 h-3 mr-1" /> Reschedule
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs h-7 text-destructive" onClick={() => updateStatus(a.id, "cancelled")}>
+                <Button size="sm" variant="outline" className="h-10 text-xs text-destructive sm:h-9" onClick={() => openCancellation(a)}>
                   <X className="w-3 h-3 mr-1" /> Cancel
                 </Button>
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateStatus(a.id, "completed")}>
+                <Button size="sm" variant="outline" className="h-10 text-xs sm:h-9" onClick={() => updateStatus(a.id, "completed")}>
                   <Check className="w-3 h-3 mr-1" /> Mark Complete
                 </Button>
+                <Button size="sm" variant="ghost" className="h-10 text-xs sm:h-9" onClick={() => setViewing(a)}><ContactRound /> Patient details</Button>
               </div>
             )}
           </div>
@@ -256,13 +272,39 @@ const AppointmentsList = () => {
       </Dialog>
 
       <Dialog open={Boolean(rescheduling)} onOpenChange={(open) => !open && setRescheduling(null)}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-md">
           <DialogHeader><DialogTitle>Reschedule appointment</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input type="date" value={rescheduleForm.appointment_date} onChange={(e) => setRescheduleForm({ ...rescheduleForm, appointment_date: e.target.value })} />
             <Input type="time" value={rescheduleForm.appointment_time} onChange={(e) => setRescheduleForm({ ...rescheduleForm, appointment_time: e.target.value })} />
             <Button className="w-full" onClick={saveReschedule}>Save and notify patient</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(cancelling)} onOpenChange={(open) => !open && setCancelling(null)}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-md">
+          <DialogHeader><DialogTitle>Cancel appointment</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">The patient will receive this reason and an option to reschedule.</p>
+            <label className="block text-sm font-medium text-foreground" htmlFor="cancellation-reason">Cancellation reason</label>
+            <textarea id="cancellation-reason" className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Enter a clear reason" maxLength={300} value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} />
+            <Button variant="destructive" className="h-11 w-full" disabled={cancellationReason.trim().length < 2} onClick={saveCancellation}>Cancel and notify patient</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-md">
+          <DialogHeader><DialogTitle>Patient details</DialogTitle></DialogHeader>
+          {viewing && <div className="space-y-3 text-sm">
+            <div><p className="text-xs text-muted-foreground">Patient</p><p className="font-semibold text-foreground">{viewing.patient_name}</p></div>
+            <div><p className="text-xs text-muted-foreground">Phone</p><a className="font-medium text-primary" href={`tel:${viewing.patient_phone}`}>{viewing.patient_phone}</a></div>
+            <div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-muted-foreground">Date</p><p>{viewing.appointment_date}</p></div><div><p className="text-xs text-muted-foreground">Time</p><p>{viewing.appointment_time}</p></div></div>
+            <div><p className="text-xs text-muted-foreground">Service</p><p>{viewing.treatment_type || "General consultation"}</p></div>
+            {viewing.notes && <div><p className="text-xs text-muted-foreground">Notes</p><p>{viewing.notes}</p></div>}
+            <div><p className="text-xs text-muted-foreground">Calendar</p><p className="capitalize">{viewing.calendar_sync_status?.replace(/_/g, " ") || "Not synced"}</p></div>
+          </div>}
         </DialogContent>
       </Dialog>
     </div>
