@@ -18,7 +18,7 @@ export type Tab =
   | "testimonials" | "achievements" | "consents" | "approvals";
 
 
-interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; }
+interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; mobile?: boolean; }
 
 const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[] = [
   { label: "Main", items: [
@@ -64,7 +64,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
   ]},
 ];
 
-const AdminSidebar = ({ activeTab, onTabChange }: Props) => {
+const AdminSidebar = ({ activeTab, onTabChange, mobile = false }: Props) => {
   const { signOut } = useAdminAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -72,12 +72,12 @@ const AdminSidebar = ({ activeTab, onTabChange }: Props) => {
   const handleSignOut = async () => { await signOut(); navigate("/admin"); };
 
   return (
-    <aside className="w-full md:w-60 bg-card border-r border-border md:min-h-screen md:max-h-screen md:overflow-y-auto shrink-0">
+    <aside className={`${mobile ? "w-full min-h-full" : "hidden md:block md:w-60 md:min-h-screen md:max-h-screen md:overflow-y-auto"} bg-card border-r border-border shrink-0`}>
       <div className="p-4 border-b border-border sticky top-0 bg-card z-10 flex items-center gap-3">
         <img src={markTealAsset.url} alt="Tooth Haven" className="h-10 w-10 object-contain" />
         <div>
           <h2 className="font-bold text-foreground text-sm leading-tight">Tooth Haven</h2>
-          <p className="text-xs text-muted-foreground">Admin Portal</p>
+          <p className="text-xs text-muted-foreground">Admin App</p>
         </div>
       </div>
       <nav className="p-2 space-y-2">
