@@ -13,3 +13,7 @@
 - [x] Add treatment and tooth context to prescription/advice workflows
 - [x] Upgrade the odontogram with realistic tooth-specific illustrations
 - [x] Verify the updated admin workflows on desktop and mobile
+- [ ] Add installable Tooth Haven Admin manifest and phone icons
+- [ ] Add mobile app navigation while preserving desktop admin
+- [ ] Upgrade the admin home dashboard and appointment actions
+- [ ] Verify PWA metadata, appointment lifecycle, desktop/mobile UI, and build
