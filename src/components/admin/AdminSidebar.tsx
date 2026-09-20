@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
-import markTealAsset from "@/assets/tooth-haven-mark-teal.png.asset.json";
 
 export type Tab =
   | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
@@ -74,7 +73,7 @@ const AdminSidebar = ({ activeTab, onTabChange, mobile = false }: Props) => {
   return (
     <aside className={`${mobile ? "w-full min-h-full" : "hidden md:block md:w-60 md:min-h-screen md:max-h-screen md:overflow-y-auto"} bg-card border-r border-border shrink-0`}>
       <div className="p-4 border-b border-border sticky top-0 bg-card z-10 flex items-center gap-3">
-        <img src={markTealAsset.url} alt="Tooth Haven" className="h-10 w-10 object-contain" />
+         <img src="/admin-icon-192.png" alt="Tooth Haven" className="h-10 w-10 object-contain" />
         <div>
           <h2 className="font-bold text-foreground text-sm leading-tight">Tooth Haven</h2>
           <p className="text-xs text-muted-foreground">Admin App</p>

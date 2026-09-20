@@ -2,7 +2,6 @@ import { CalendarDays, LayoutDashboard, Menu, MessageSquare, Settings, Users, Wa
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import AdminSidebar, { type Tab } from "@/components/admin/AdminSidebar";
-import markTealAsset from "@/assets/tooth-haven-mark-teal.png.asset.json";
 
 interface Props {
   activeTab: Tab;
@@ -13,7 +12,7 @@ interface Props {
 
 const primaryTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Home", icon: LayoutDashboard },
-  { id: "appointments", label: "Appointments", icon: CalendarDays },
+  { id: "appointments", label: "Appts", icon: CalendarDays },
   { id: "patients", label: "Patients", icon: Users },
   { id: "whatsapp_inbox", label: "Messages", icon: MessageSquare },
 ];
@@ -29,7 +28,7 @@ const MobileAdminNavigation = ({ activeTab, onTabChange, menuOpen, onMenuOpenCha
     <>
       <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card/95 px-4 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2.5">
-          <img src={markTealAsset.url} alt="Tooth Haven" className="h-9 w-9 shrink-0 object-contain" />
+          <img src="/admin-icon-192.png" alt="Tooth Haven" className="h-9 w-9 shrink-0 object-contain" />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-foreground">Tooth Haven Admin</p>
             <p className="truncate text-xs text-muted-foreground">Clinic workspace</p>
