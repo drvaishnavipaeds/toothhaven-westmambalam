@@ -212,7 +212,7 @@ const AppointmentsList = () => {
                 </div>
                 {a.treatment_type && <p className="text-xs text-muted-foreground mt-0.5">{a.treatment_type}</p>}
                 {a.notes && <p className="text-xs text-muted-foreground italic mt-0.5">{a.notes}</p>}
-                 {a.calendar_sync_status && <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><RefreshCw className="h-3 w-3" /> Calendar: <span className="font-medium capitalize">{a.calendar_sync_status.replaceAll("_", " ")}</span>{a.calendar_sync_error ? ` — ${a.calendar_sync_error}` : ""}</p>}
+                 {a.calendar_sync_status && <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><RefreshCw className="h-3 w-3" /> Calendar: <span className="font-medium capitalize">{a.calendar_sync_status.replace(/_/g, " ")}</span>{a.calendar_sync_error ? ` — ${a.calendar_sync_error}` : ""}</p>}
                 {Array.isArray(a.proposed_alternatives) && a.proposed_alternatives.length > 0 && <p className="text-xs text-muted-foreground mt-1">Alternatives: {a.proposed_alternatives.join(", ")}</p>}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(a.status)}`}>{a.status}</span>
@@ -303,7 +303,7 @@ const AppointmentsList = () => {
             <div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-muted-foreground">Date</p><p>{viewing.appointment_date}</p></div><div><p className="text-xs text-muted-foreground">Time</p><p>{viewing.appointment_time}</p></div></div>
             <div><p className="text-xs text-muted-foreground">Service</p><p>{viewing.treatment_type || "General consultation"}</p></div>
             {viewing.notes && <div><p className="text-xs text-muted-foreground">Notes</p><p>{viewing.notes}</p></div>}
-            <div><p className="text-xs text-muted-foreground">Calendar</p><p className="capitalize">{viewing.calendar_sync_status?.replaceAll("_", " ") || "Not synced"}</p></div>
+            <div><p className="text-xs text-muted-foreground">Calendar</p><p className="capitalize">{viewing.calendar_sync_status?.replace(/_/g, " ") || "Not synced"}</p></div>
           </div>}
         </DialogContent>
       </Dialog>
