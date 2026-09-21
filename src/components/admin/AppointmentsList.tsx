@@ -218,14 +218,17 @@ const AppointmentsList = () => {
               <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(a.status)}`}>{a.status}</span>
             </div>
             {["pending", "tentative", "conflict", "expired"].includes(a.status) && (
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:flex">
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <Button size="sm" className="h-10 text-xs sm:h-9" onClick={() => updateStatus(a.id, "confirmed")}>
                   <Check className="w-3 h-3 mr-1" /> Confirm
+                </Button>
+                <Button size="sm" variant="outline" className="h-10 text-xs sm:h-9" onClick={() => openReschedule(a)}>
+                  <Clock className="w-3 h-3 mr-1" /> Reschedule
                 </Button>
                 <Button size="sm" variant="outline" className="h-10 text-xs text-destructive sm:h-9" onClick={() => openCancellation(a)}>
                   <X className="w-3 h-3 mr-1" /> Cancel
                 </Button>
-                <Button size="sm" variant="ghost" className="col-span-2 h-10 text-xs sm:h-9" onClick={() => setViewing(a)}><ContactRound /> Patient details</Button>
+                <Button size="sm" variant="ghost" className="h-10 text-xs sm:h-9" onClick={() => setViewing(a)}><ContactRound /> Patient details</Button>
               </div>
             )}
             {["confirmed", "rescheduled"].includes(a.status) && (
