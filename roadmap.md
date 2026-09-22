@@ -7,7 +7,7 @@
 - [x] Add 10-minute tentative holds, 24-hour expiry, and 24h/2h reminder logic
 - [x] Keep WhatsApp notification delivery/error tracking idempotent
 - [x] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
-- [ ] Approve the new tentative, expiry, alternatives, and 2-hour Meta templates
+- [ ] Meta approval pending for the submitted tentative, expiry, alternatives, and 2-hour templates
 - [x] Deploy and verify the appointment functions and five-minute lifecycle worker
 - [x] Add shared treatment-catalog and FDI tooth selectors across admin clinical and billing forms
 - [x] Add treatment and tooth context to prescription/advice workflows
