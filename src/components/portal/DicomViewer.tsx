@@ -141,7 +141,7 @@ const DicomViewer = ({ url }: Props) => {
           littleEndian,
           slope: numberValue(dataset.string("x00281053"), 1),
           intercept: numberValue(dataset.string("x00281052"), 0),
-          windowWidth: Math.max(1, numberValue(dataset.string("x00281051"), 0)),
+          windowWidth: numberValue(dataset.string("x00281051"), 0),
           windowCenter: numberValue(dataset.string("x00281050"), 0),
         };
 
