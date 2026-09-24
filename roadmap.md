@@ -17,3 +17,9 @@
 - [x] Add mobile app navigation while preserving desktop admin
 - [x] Upgrade the admin home dashboard and appointment actions
 - [x] Verify PWA metadata, appointment lifecycle, desktop/mobile UI, and build
+
+- [ ] Add medicine catalogue and reusable clinical templates
+- [ ] Add voice notes, digital consent, estimates, and treatment timeline
+- [ ] Add imaging zoom, pan, measurements, annotations, series, and comparison
+- [ ] Add global search, quick actions, contact actions, secure re-entry, and badges
+- [ ] Verify premium workflows, policies, dependency safety, mobile/desktop UI, and build
