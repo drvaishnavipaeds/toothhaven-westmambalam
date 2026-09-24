@@ -848,6 +848,51 @@ export type Database = {
           },
         ]
       }
+      clinical_templates: {
+        Row: {
+          body_text: string | null
+          created_at: string
+          diagnosis_tag: string | null
+          drugs: Json
+          id: string
+          instructions_en: string | null
+          instructions_ta: string | null
+          is_active: boolean
+          name: string
+          template_type: string
+          treatment_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_text?: string | null
+          created_at?: string
+          diagnosis_tag?: string | null
+          drugs?: Json
+          id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
+          is_active?: boolean
+          name: string
+          template_type: string
+          treatment_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string | null
+          created_at?: string
+          diagnosis_tag?: string | null
+          drugs?: Json
+          id?: string
+          instructions_en?: string | null
+          instructions_ta?: string | null
+          is_active?: boolean
+          name?: string
+          template_type?: string
+          treatment_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       communication_campaigns: {
         Row: {
           audience: string | null
@@ -1122,6 +1167,53 @@ export type Database = {
         }
         Relationships: []
       }
+      investigation_annotations: {
+        Row: {
+          annotation_type: string
+          created_at: string
+          created_by: string | null
+          frame_index: number
+          id: string
+          investigation_id: string
+          label: string | null
+          points: Json
+          tooth_number: string | null
+          value_mm: number | null
+        }
+        Insert: {
+          annotation_type: string
+          created_at?: string
+          created_by?: string | null
+          frame_index?: number
+          id?: string
+          investigation_id: string
+          label?: string | null
+          points?: Json
+          tooth_number?: string | null
+          value_mm?: number | null
+        }
+        Update: {
+          annotation_type?: string
+          created_at?: string
+          created_by?: string | null
+          frame_index?: number
+          id?: string
+          investigation_id?: string
+          label?: string | null
+          points?: Json
+          tooth_number?: string | null
+          value_mm?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investigation_annotations_investigation_id_fkey"
+            columns: ["investigation_id"]
+            isOneToOne: false
+            referencedRelation: "patient_investigations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string
@@ -1240,6 +1332,51 @@ export type Database = {
           },
         ]
       }
+      medicine_catalog: {
+        Row: {
+          category: string | null
+          created_at: string
+          default_dose: string | null
+          default_duration: string | null
+          default_frequency: string | null
+          form: string | null
+          generic_name: string | null
+          id: string
+          is_active: boolean
+          name: string
+          strength: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          default_dose?: string | null
+          default_duration?: string | null
+          default_frequency?: string | null
+          form?: string | null
+          generic_name?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          strength?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          default_dose?: string | null
+          default_duration?: string | null
+          default_frequency?: string | null
+          form?: string | null
+          generic_name?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          strength?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       memberships: {
         Row: {
           created_at: string
@@ -1278,6 +1415,7 @@ export type Database = {
       }
       patient_consents: {
         Row: {
+          consent_text: string | null
           created_at: string
           granted: boolean
           granted_at: string
@@ -1286,10 +1424,15 @@ export type Database = {
           patient_id: string
           revoked_at: string | null
           scope: string
+          signature_path: string | null
           signature_url: string | null
+          signed_by_name: string | null
+          template_id: string | null
+          treatment_id: string | null
           updated_at: string
         }
         Insert: {
+          consent_text?: string | null
           created_at?: string
           granted?: boolean
           granted_at?: string
@@ -1298,10 +1441,15 @@ export type Database = {
           patient_id: string
           revoked_at?: string | null
           scope: string
+          signature_path?: string | null
           signature_url?: string | null
+          signed_by_name?: string | null
+          template_id?: string | null
+          treatment_id?: string | null
           updated_at?: string
         }
         Update: {
+          consent_text?: string | null
           created_at?: string
           granted?: boolean
           granted_at?: string
@@ -1310,7 +1458,11 @@ export type Database = {
           patient_id?: string
           revoked_at?: string | null
           scope?: string
+          signature_path?: string | null
           signature_url?: string | null
+          signed_by_name?: string | null
+          template_id?: string | null
+          treatment_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1319,6 +1471,20 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_consents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_consents_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]
@@ -1474,6 +1640,60 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_voice_notes: {
+        Row: {
+          audio_path: string
+          clinical_summary: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          patient_id: string
+          recorded_at: string
+          recorded_by: string | null
+          transcript: string | null
+          treatment_id: string | null
+        }
+        Insert: {
+          audio_path: string
+          clinical_summary?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          patient_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          transcript?: string | null
+          treatment_id?: string | null
+        }
+        Update: {
+          audio_path?: string
+          clinical_summary?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          patient_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          transcript?: string | null
+          treatment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_voice_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_voice_notes_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]
@@ -1879,6 +2099,7 @@ export type Database = {
       treatment_plan_items: {
         Row: {
           created_at: string
+          gst_rate: number
           id: string
           notes: string | null
           phase: number
@@ -1893,6 +2114,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          gst_rate?: number
           id?: string
           notes?: string | null
           phase?: number
@@ -1907,6 +2129,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          gst_rate?: number
           id?: string
           notes?: string | null
           phase?: number
@@ -1935,36 +2158,42 @@ export type Database = {
           created_at: string
           created_by: string | null
           discount: number
+          gst_amount: number
           id: string
           notes: string | null
           patient_id: string
           status: string
           title: string
           updated_at: string
+          valid_until: string | null
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           discount?: number
+          gst_amount?: number
           id?: string
           notes?: string | null
           patient_id: string
           status?: string
           title: string
           updated_at?: string
+          valid_until?: string | null
         }
         Update: {
           accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           discount?: number
+          gst_amount?: number
           id?: string
           notes?: string | null
           patient_id?: string
           status?: string
           title?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -1972,6 +2201,60 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_timeline_media: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          patient_id: string
+          sort_order: number
+          stage: string
+          storage_path: string
+          taken_on: string
+          tooth_number: string | null
+          treatment_id: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          patient_id: string
+          sort_order?: number
+          stage: string
+          storage_path: string
+          taken_on?: string
+          tooth_number?: string | null
+          treatment_id?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          patient_id?: string
+          sort_order?: number
+          stage?: string
+          storage_path?: string
+          taken_on?: string
+          tooth_number?: string | null
+          treatment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_timeline_media_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_timeline_media_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]
