@@ -17,6 +17,18 @@ export interface TreatmentCatalogOption {
   gst_rate?: number | null;
 }
 
+export interface MedicineCatalogOption {
+  id: string;
+  name: string;
+  generic_name?: string | null;
+  strength?: string | null;
+  form?: string | null;
+  default_dose?: string | null;
+  default_frequency?: string | null;
+  default_duration?: string | null;
+  category?: string | null;
+}
+
 export const ADULT_TEETH = {
   "Upper right": [18, 17, 16, 15, 14, 13, 12, 11],
   "Upper left": [21, 22, 23, 24, 25, 26, 27, 28],
@@ -108,6 +120,44 @@ export function TreatmentSelect({
           <SelectGroup key={category}>
             <SelectLabel>{category}</SelectLabel>
             {items.map((item) => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function MedicineSelect({
+  catalog,
+  value,
+  onValueChange,
+  className,
+}: {
+  catalog: MedicineCatalogOption[];
+  value?: string | null;
+  onValueChange: (name: string, item?: MedicineCatalogOption) => void;
+  className?: string;
+}) {
+  const groups = catalog.reduce<Record<string, MedicineCatalogOption[]>>((acc, item) => {
+    const category = item.category?.trim() || "Other medicines";
+    acc[category] = [...(acc[category] ?? []), item];
+    return acc;
+  }, {});
+
+  return (
+    <Select value={value || undefined} onValueChange={(name) => onValueChange(name, catalog.find((item) => item.name === name))}>
+      <SelectTrigger className={className} aria-label="Medicine">
+        <SelectValue placeholder={catalog.length ? "Select medicine" : "Type medicine below"} />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(groups).map(([category, items]) => (
+          <SelectGroup key={category}>
+            <SelectLabel>{category}</SelectLabel>
+            {items.map((item) => (
+              <SelectItem key={item.id} value={item.name}>
+                {item.name}{item.strength ? ` · ${item.strength}` : ""}{item.form ? ` · ${item.form}` : ""}
+              </SelectItem>
+            ))}
           </SelectGroup>
         ))}
       </SelectContent>
