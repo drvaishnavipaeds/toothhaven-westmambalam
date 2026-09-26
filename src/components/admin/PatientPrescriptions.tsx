@@ -7,26 +7,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
-import { ToothSelect, TreatmentSelect, type TreatmentCatalogOption } from "./ClinicalSelectors";
+import { MedicineSelect, ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
 
 type Drug = { name: string; dose: string; frequency: string; duration: string; notes?: string };
 
 const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patientId: string; patientName: string; patientPhone: string }) => {
   const [rows, setRows] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<TreatmentCatalogOption[]>([]);
+  const [medicines, setMedicines] = useState<MedicineCatalogOption[]>([]);
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string; template_type: string; treatment_name: string | null; drugs: unknown; instructions_en: string | null; instructions_ta: string | null; body_text: string | null }>>([]);
   const [open, setOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ prescribed_date: new Date().toISOString().slice(0, 10), drugs: [] as Drug[] });
 
   const load = async () => {
-    const [{ data, error }, { data: treatments }] = await Promise.all([
+    const [{ data, error }, { data: treatments }, { data: med }, { data: templateRows }] = await Promise.all([
       supabase.from("prescriptions").select("*").eq("patient_id", patientId).order("prescribed_date", { ascending: false }),
       supabase.from("treatment_catalog").select("id,name,category,default_price").eq("is_active", true).order("name"),
+      supabase.from("medicine_catalog").select("*").eq("is_active", true).order("name"),
+      supabase.from("clinical_templates").select("*").eq("is_active", true).in("template_type", ["prescription", "advice"]).order("name"),
     ]);
     if (error) { toast.error(error.message); return; }
     setRows(data ?? []);
     setCatalog((treatments as TreatmentCatalogOption[]) ?? []);
+    setMedicines((med as MedicineCatalogOption[]) ?? []);
+    setTemplates(templateRows ?? []);
   };
   useEffect(() => { load(); }, [patientId]);
 
@@ -166,16 +172,17 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
               <div><Label>Tooth</Label><ToothSelect value={form.tooth_number} onValueChange={(tooth_number) => setForm({ ...form, tooth_number })} /></div>
             </div>
             <div><Label>Diagnosis</Label><Input value={form.diagnosis ?? ""} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></div>
+            <div><Label>Prescription / advice template</Label><select aria-label="Clinical template" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" defaultValue="" onChange={(e) => { const selected = templates.find(t => t.id === e.target.value); if (selected) setForm((f: any) => ({ ...f, treatment_name: selected.treatment_name || f.treatment_name, drugs: selected.template_type === "prescription" && Array.isArray(selected.drugs) ? selected.drugs : f.drugs, instructions_en: selected.instructions_en || selected.body_text || f.instructions_en, instructions_ta: selected.instructions_ta || f.instructions_ta })); }}><option value="">Select a template (optional)</option>{templates.map(t => <option key={t.id} value={t.id}>{t.name} · {t.template_type}</option>)}</select></div>
             <div>
               <div className="flex justify-between items-center mb-2"><Label>Drugs</Label><Button size="sm" variant="outline" onClick={addDrug}><Plus className="w-3 h-3 mr-1" />Add</Button></div>
               <div className="space-y-2">
                 {form.drugs.map((d: Drug, i: number) => (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <Input className="col-span-4" placeholder="Drug" value={d.name} onChange={(e) => updateDrug(i, "name", e.target.value)} />
-                    <Input className="col-span-2" placeholder="Dose" value={d.dose} onChange={(e) => updateDrug(i, "dose", e.target.value)} />
-                    <Input className="col-span-2" placeholder="Freq" value={d.frequency} onChange={(e) => updateDrug(i, "frequency", e.target.value)} />
-                    <Input className="col-span-3" placeholder="Duration" value={d.duration} onChange={(e) => updateDrug(i, "duration", e.target.value)} />
-                    <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeDrug(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12 items-end">
+                    <div className="col-span-2 sm:col-span-4"><MedicineSelect catalog={medicines} value={d.name} onValueChange={(name, item) => setForm((f: any) => ({ ...f, drugs: f.drugs.map((drug: Drug, index: number) => index === i ? { ...drug, name, dose: item?.default_dose || drug.dose, frequency: item?.default_frequency || drug.frequency, duration: item?.default_duration || drug.duration } : drug) }))} /><Input className="mt-1" placeholder="Medicine / custom name" value={d.name} onChange={(e) => updateDrug(i, "name", e.target.value)} /></div>
+                    <Input className="sm:col-span-2" placeholder="Dose" value={d.dose} onChange={(e) => updateDrug(i, "dose", e.target.value)} />
+                    <Input className="sm:col-span-2" placeholder="Freq" value={d.frequency} onChange={(e) => updateDrug(i, "frequency", e.target.value)} />
+                    <Input className="sm:col-span-3" placeholder="Duration" value={d.duration} onChange={(e) => updateDrug(i, "duration", e.target.value)} />
+                    <Button variant="ghost" size="icon" className="sm:col-span-1" onClick={() => removeDrug(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 ))}
               </div>
