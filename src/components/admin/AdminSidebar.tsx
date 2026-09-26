@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-  CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone,
+   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -14,7 +14,7 @@ export type Tab =
   | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
-  | "testimonials" | "achievements" | "consents" | "approvals";
+  | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates";
 
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; mobile?: boolean; }
@@ -32,6 +32,8 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "recalls", label: "Recalls", icon: BellRing },
     { id: "treatments", label: "Treatments", icon: Stethoscope },
     { id: "prescriptions", label: "Prescriptions", icon: Pill },
+    { id: "medicines", label: "Medicine catalogue", icon: Pill },
+    { id: "clinical_templates", label: "Clinical templates", icon: BookOpen },
   ]},
 
   { label: "Finance", items: [

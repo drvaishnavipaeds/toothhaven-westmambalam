@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Eye, AlertTriangle } from "lucide-react";
+import { Search, Plus, Eye, AlertTriangle, Phone, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,7 +41,7 @@ const emptyForm = {
 
 const digits = (s: string) => s.replace(/\D/g, "");
 
-const PatientsList = () => {
+const PatientsList = ({ initialPatientId, registerRequested, onRequestHandled }: { initialPatientId?: string | null; registerRequested?: boolean; onRequestHandled?: () => void }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
@@ -62,6 +62,22 @@ const PatientsList = () => {
     supabase.from("branches").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => data && setBranches(data));
   }, []);
+
+  useEffect(() => {
+    if (!initialPatientId) return;
+    const known = patients.find(p => p.id === initialPatientId);
+    if (known) { setSelectedPatient(known); onRequestHandled?.(); return; }
+    supabase.from("patients").select("*").eq("id", initialPatientId).single().then(({ data }) => {
+      if (data) setSelectedPatient(data as Patient);
+      onRequestHandled?.();
+    });
+  }, [initialPatientId, patients]);
+
+  useEffect(() => {
+    if (!registerRequested) return;
+    openRegister();
+    onRequestHandled?.();
+  }, [registerRequested]);
 
   const filtered = patients.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -150,9 +166,11 @@ const PatientsList = () => {
               <p className="font-medium text-foreground text-sm">{p.name}</p>
               <p className="text-xs text-muted-foreground">{p.phone} {p.email && `• ${p.email}`}</p>
             </div>
-            <button onClick={() => setSelectedPatient(p)} className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <Eye className="w-4 h-4 text-muted-foreground" />
-            </button>
+            <div className="flex shrink-0 gap-1">
+              <Button size="icon" variant="ghost" asChild title="Call patient"><a href={`tel:${p.phone}`}><Phone className="h-4 w-4" /></a></Button>
+              <Button size="icon" variant="ghost" asChild title="WhatsApp patient"><a href={`https://wa.me/91${p.phone.replace(/\D/g, "").slice(-10)}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4" /></a></Button>
+              <Button size="icon" variant="ghost" onClick={() => setSelectedPatient(p)} title="Open patient"><Eye className="w-4 h-4" /></Button>
+            </div>
           </div>
         ))}
         {filtered.length === 0 && <p className="text-muted-foreground text-sm text-center py-8">No patients found.</p>}
