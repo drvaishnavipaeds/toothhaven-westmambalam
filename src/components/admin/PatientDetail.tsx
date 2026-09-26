@@ -1,4 +1,4 @@
-import { ArrowLeft, UserPlus } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DentalChart from "./DentalChart";
@@ -7,6 +7,8 @@ import TreatmentDetails from "./TreatmentDetails";
 import AdminInvestigations from "./AdminInvestigations";
 import PatientPrescriptions from "./PatientPrescriptions";
 import PlanBilling from "./PlanBilling";
+import PatientVoiceNotes from "./PatientVoiceNotes";
+import PatientTimeline from "./PatientTimeline";
 
 interface Patient {
   id: string;
@@ -32,9 +34,9 @@ const PatientDetail = ({
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <button onClick={onBack} className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm">
+        <Button variant="ghost" size="sm" onClick={onBack} className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm">
           <ArrowLeft className="w-4 h-4" /> Back to patients
-        </button>
+        </Button>
         {onRegisterNew && (
           <Button size="sm" variant="outline" onClick={onRegisterNew}>
             <UserPlus className="w-4 h-4 mr-1" /> Register patient
@@ -47,6 +49,10 @@ const PatientDetail = ({
         <p className="text-sm text-muted-foreground">
           {patient.phone}{patient.gender ? ` · ${patient.gender}` : ""}{patient.date_of_birth ? ` · DOB ${patient.date_of_birth}` : ""}
         </p>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" variant="outline" asChild><a href={`tel:${patient.phone}`}><Phone className="mr-1 h-4 w-4" />Call</a></Button>
+          <Button size="sm" variant="outline" asChild><a href={`https://wa.me/${patient.phone.replace(/\D/g, "").slice(-10).replace(/^/, "91")}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="mr-1 h-4 w-4" />WhatsApp</a></Button>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
@@ -56,6 +62,8 @@ const PatientDetail = ({
           <TabsTrigger value="rx">Prescription</TabsTrigger>
           <TabsTrigger value="investigations">Investigations</TabsTrigger>
           <TabsTrigger value="billing">Plan & Billing</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="voice">Voice notes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -91,6 +99,8 @@ const PatientDetail = ({
             <PlanBilling patientId={patient.id} patientName={patient.name} />
           </div>
         </TabsContent>
+        <TabsContent value="timeline"><PatientTimeline patientId={patient.id} /></TabsContent>
+        <TabsContent value="voice"><PatientVoiceNotes patientId={patient.id} /></TabsContent>
       </Tabs>
     </div>
   );

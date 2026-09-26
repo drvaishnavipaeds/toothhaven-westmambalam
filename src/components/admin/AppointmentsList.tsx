@@ -40,7 +40,7 @@ const sourceLabel = (source: string) => {
   }
 };
 
-const AppointmentsList = () => {
+const AppointmentsList = ({ addRequested, onRequestHandled }: { addRequested?: boolean; onRequestHandled?: () => void }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
@@ -61,6 +61,7 @@ const AppointmentsList = () => {
   };
 
   useEffect(() => { fetchAppointments(); }, [filter]);
+  useEffect(() => { if (addRequested) { setShowAdd(true); onRequestHandled?.(); } }, [addRequested]);
 
   const runWorkflow = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("appointment-workflow", { body });
@@ -206,6 +207,7 @@ const AppointmentsList = () => {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">{a.patient_phone}</p>
+                <div className="mt-1 flex gap-1"><Button size="icon" variant="ghost" className="h-7 w-7" asChild title="Call patient"><a href={`tel:${a.patient_phone}`}><PhoneIcon className="h-4 w-4" /></a></Button><Button size="icon" variant="ghost" className="h-7 w-7" asChild title="WhatsApp patient"><a href={`https://wa.me/91${a.patient_phone.replace(/\D/g, "").slice(-10)}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4" /></a></Button></div>
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <Calendar className="w-3 h-3" /> {a.appointment_date}
                   <Clock className="w-3 h-3 ml-1" /> {a.appointment_time}

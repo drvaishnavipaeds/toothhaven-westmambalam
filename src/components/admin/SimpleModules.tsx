@@ -20,6 +20,33 @@ export const TreatmentsManager = () => (
   />
 );
 
+export const MedicinesManager = () => (
+  <SimpleCrud title="Medicine catalogue" table="medicine_catalog" orderBy={{ column: "name", ascending: true }} defaultValues={{ is_active: true }} fields={[
+    { name: "name", label: "Medicine", required: true },
+    { name: "generic_name", label: "Generic name" },
+    { name: "strength", label: "Strength" },
+    { name: "form", label: "Form" },
+    { name: "category", label: "Category" },
+    { name: "default_dose", label: "Default dose" },
+    { name: "default_frequency", label: "Frequency" },
+    { name: "default_duration", label: "Duration" },
+    { name: "is_active", label: "Active", type: "boolean" },
+  ]} />
+);
+
+export const ClinicalTemplatesManager = () => (
+  <SimpleCrud title="Clinical templates" table="clinical_templates" orderBy={{ column: "name", ascending: true }} defaultValues={{ template_type: "advice", is_active: true }} fields={[
+    { name: "name", label: "Template name", required: true },
+    { name: "template_type", label: "Type", type: "select", required: true, options: [{ label: "Advice", value: "advice" }, { label: "Prescription", value: "prescription" }, { label: "Consent", value: "consent" }] },
+    { name: "treatment_name", label: "Treatment" },
+    { name: "diagnosis_tag", label: "Diagnosis tag" },
+    { name: "instructions_en", label: "English advice", type: "textarea", hideInTable: true },
+    { name: "instructions_ta", label: "Tamil advice", type: "textarea", hideInTable: true },
+    { name: "body_text", label: "Consent / template text", type: "textarea", hideInTable: true },
+    { name: "is_active", label: "Active", type: "boolean" },
+  ]} />
+);
+
 export const MembershipsManager = () => (
   <SimpleCrud
     title="Memberships"

@@ -8,6 +8,9 @@ interface Props {
   onTabChange: (tab: Tab) => void;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
+  pendingCount?: number;
+  messageCount?: number;
+  actions?: React.ReactNode;
 }
 
 const primaryTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -17,7 +20,7 @@ const primaryTabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = 
   { id: "whatsapp_inbox", label: "Messages", icon: MessageSquare },
 ];
 
-const MobileAdminNavigation = ({ activeTab, onTabChange, menuOpen, onMenuOpenChange }: Props) => {
+const MobileAdminNavigation = ({ activeTab, onTabChange, menuOpen, onMenuOpenChange, pendingCount = 0, messageCount = 0, actions }: Props) => {
   const changeTab = (tab: Tab) => {
     onTabChange(tab);
     onMenuOpenChange(false);
@@ -34,9 +37,7 @@ const MobileAdminNavigation = ({ activeTab, onTabChange, menuOpen, onMenuOpenCha
             <p className="truncate text-xs text-muted-foreground">Clinic workspace</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Open admin menu" onClick={() => onMenuOpenChange(true)}>
-          <Menu className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">{actions}<Button variant="ghost" size="icon" aria-label="Open admin menu" onClick={() => onMenuOpenChange(true)}><Menu className="h-5 w-5" /></Button></div>
       </header>
 
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 grid h-[calc(4.5rem+env(safe-area-inset-bottom))] grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur">
@@ -49,6 +50,7 @@ const MobileAdminNavigation = ({ activeTab, onTabChange, menuOpen, onMenuOpenCha
             aria-label={label}
           >
             <Icon className="h-5 w-5" />
+             {(id === "appointments" ? pendingCount : id === "whatsapp_inbox" ? messageCount : 0) > 0 && <span className="absolute mt-[-1.4rem] ml-6 min-w-4 rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground">{id === "appointments" ? pendingCount : messageCount}</span>}
             <span className="max-w-full truncate">{label}</span>
           </Button>
         ))}
