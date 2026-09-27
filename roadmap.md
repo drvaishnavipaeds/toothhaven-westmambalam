@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Repair public booking entry, verify clinic calendar connection and clear booking errors (authenticated submission remains untested without a patient OTP)
 - [x] Add appointment lifecycle fields and overlap protection
 - [x] Build fail-closed Google Calendar availability and booking endpoints
 - [x] Add patient date/time booking after portal sign-in
