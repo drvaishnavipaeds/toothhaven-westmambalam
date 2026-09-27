@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -12,6 +12,17 @@ import AchievementsWall from "@/components/portal/AchievementsWall";
 import ClinicFeed from "@/components/portal/ClinicFeed";
 import InvestigationsViewer from "@/components/portal/InvestigationsViewer";
 import { Button } from "@/components/ui/button";
+import { FunctionsHttpError } from "@supabase/supabase-js";
+
+const appointmentError = async (error: unknown, fallback: string) => {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      return { message: typeof body?.error === "string" ? body.error : fallback, calendarAuthorizationRequired: Boolean(body?.calendarAuthorizationRequired), alternatives: Array.isArray(body?.alternatives) ? body.alternatives as string[] : undefined };
+    } catch { /* An unavailable response body still has a safe fallback. */ }
+  }
+  return { message: fallback, calendarAuthorizationRequired: false, alternatives: undefined };
+};
 
 const SESSION_KEY = "portal_session_v1";
 
@@ -51,6 +62,7 @@ const PatientPortalContent = () => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingBusy, setBookingBusy] = useState(false);
   const [calendarRequired, setCalendarRequired] = useState(false);
+  const slotRequest = useRef(0);
 
   // Registration form fields
   const [regName, setRegName] = useState("");
@@ -84,17 +96,21 @@ const PatientPortalContent = () => {
 
   const loadSlots = async (date: string, durationMinutes = booking.durationMinutes) => {
     if (!session || !date) return;
+    const request = ++slotRequest.current;
     setBooking({ ...booking, date, time: "", durationMinutes });
+    setSlots([]);
     setLoadingSlots(true);
     setCalendarRequired(false);
     const { data, error } = await supabase.functions.invoke("appointment-workflow", {
       body: { action: "availability", portalToken: session.token, date, durationMinutes },
     });
+    if (request !== slotRequest.current) return;
     setLoadingSlots(false);
     if (error || data?.error) {
       setSlots([]);
-      setCalendarRequired(Boolean(data?.calendarAuthorizationRequired));
-      toast.error(data?.error || error?.message || "Could not check appointment times");
+      const detail = error ? await appointmentError(error, "Could not check appointment times. Please try again.") : null;
+      setCalendarRequired(Boolean(data?.calendarAuthorizationRequired || detail?.calendarAuthorizationRequired));
+      toast.error(data?.error || detail?.message || "Could not check appointment times");
       return;
     }
     setSlots(data.slots || []);
@@ -108,8 +124,10 @@ const PatientPortalContent = () => {
     });
     setBookingBusy(false);
     if (error || data?.error) {
-      if (Array.isArray(data?.alternatives)) setSlots(data.alternatives);
-      toast.error(data?.error || error?.message || "Could not request appointment");
+      const detail = error ? await appointmentError(error, "Could not request appointment. Please try again.") : null;
+      const alternatives = data?.alternatives ?? detail?.alternatives;
+      if (Array.isArray(alternatives)) { setSlots(alternatives); setBooking((current) => ({ ...current, time: "" })); }
+      toast.error(data?.error || detail?.message || "Could not request appointment");
       return;
     }
     toast.success(lang === "en" ? "Appointment requested. The clinic has 10 minutes to review it." : "முன்பதிவு கோரப்பட்டது. மருத்துவமனை 10 நிமிடங்களில் பரிசீலிக்கும்.");
