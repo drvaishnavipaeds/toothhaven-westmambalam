@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Repair public booking entry, verify genuine patient slots and clear booking errors
 - [x] Add appointment lifecycle fields and overlap protection
 - [x] Build fail-closed Google Calendar availability and booking endpoints
 - [x] Add patient date/time booking after portal sign-in
