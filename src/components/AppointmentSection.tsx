@@ -1,162 +1,27 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Calendar, User, Phone, MessageSquare, Send, Lock } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { CalendarDays, LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AppointmentSection = () => {
-  const { t } = useLanguage();
-  const [form, setForm] = useState({ name: "", phone: "", date: "", service: "", message: "" });
-  const [submitting, setSubmitting] = useState(false);
-
-  const services = [
-    "General Dentistry", "Dental Implants", "Root Canal", "Orthodontics",
-    "Cosmetic Dentistry", "CBCT Imaging", "Pediatric Dentistry", "Oral Surgery",
-    "Crowns & Bridges", "Digital Smile Design", "Home Visit"
-  ];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      // Check if patient exists by phone
-      const { data: existingPatients } = await supabase
-        .from("patients")
-        .select("id")
-        .eq("phone", form.phone.trim());
-
-      let patientId: string | null = null;
-
-      if (existingPatients && existingPatients.length > 0) {
-        patientId = existingPatients[0].id;
-      }
-
-      // Create appointment with source tracking. patient_id is intentionally
-      // NOT sent from the public form — only staff can link an appointment to
-      // an existing patient record (enforced by RLS). We still capture the
-      // matched patientId locally so it can be used elsewhere if needed.
-      void patientId;
-      const { data: inserted, error } = await supabase
-        .from("appointments")
-        .insert({
-          patient_name: form.name,
-          patient_phone: form.phone,
-          appointment_date: form.date,
-          appointment_time: "11:00",
-          treatment_type: form.service,
-          notes: form.message || null,
-          status: "pending",
-          source: "website",
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      // Notify staff by referencing the trusted appointment row.
-      try {
-        await supabase.functions.invoke("appointment-notification", {
-          body: { appointmentId: inserted?.id, event: "request" },
-        });
-      } catch (notifErr) {
-        console.error("Notification error:", notifErr);
-      }
-
-      toast.success("Appointment request submitted! We'll contact you shortly. / முன்பதிவு கோரிக்கை சமர்ப்பிக்கப்பட்டது!");
-      setForm({ name: "", phone: "", date: "", service: "", message: "" });
-    } catch (err) {
-      toast.error("Failed to submit. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { lang, t } = useLanguage();
 
   return (
-    <section id="appointment" className="py-20 bg-gradient-hero relative">
-      <div className="container mx-auto px-4">
-        <div className="max-w-xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-3">{t("appointment.title")}</h2>
-          </div>
-          <form onSubmit={handleSubmit} className="bg-card rounded-2xl p-6 md:p-8 shadow-elevated space-y-4">
-            <div className="relative">
-              <User className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={t("appointment.name")}
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="relative">
-              <Phone className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <input
-                type="tel"
-                placeholder={t("appointment.phone")}
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <select
-              value={form.service}
-              onChange={(e) => setForm({ ...form, service: e.target.value })}
-              required
-              className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">{t("appointment.service")}</option>
-              {services.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <div className="relative">
-              <MessageSquare className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <textarea
-                placeholder={t("appointment.message")}
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                rows={3}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              <Send className="w-5 h-5" />
-              {submitting ? "Submitting..." : t("appointment.submit")}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <Link
-              to="/patient-portal"
-              className="inline-flex items-center gap-2 text-sm text-primary-foreground/90 hover:text-white underline underline-offset-4 transition-colors"
-            >
-              <Lock className="w-4 h-4" />
-              {t("appointment.patientLogin")}
-            </Link>
-            <p className="mt-2 text-xs text-primary-foreground/70 max-w-sm mx-auto leading-relaxed">
-              {t("appointment.dataPreservation")}
-            </p>
-          </div>
-        </div>
+    <section id="appointment" className="relative bg-gradient-hero py-20">
+      <div className="container mx-auto px-4 text-center">
+        <h2 className="mb-4 text-3xl font-bold text-primary-foreground md:text-4xl">{t("appointment.title")}</h2>
+        <p className="mx-auto mb-7 max-w-lg text-primary-foreground/90">
+          {lang === "en"
+            ? "Sign in or register to choose an available date and time from Dr. Karthik’s calendar. The clinic will review your request."
+            : "டாக்டர் கார்த்திக்கின் காலெண்டரில் கிடைக்கும் தேதி மற்றும் நேரத்தைத் தேர்ந்தெடுக்க உள்நுழையவும் அல்லது பதிவு செய்யவும். உங்கள் கோரிக்கையை மருத்துவமனை பரிசீலிக்கும்."}
+        </p>
+        <Button asChild size="lg" variant="secondary" className="gap-2">
+          <Link to="/patient-portal"><CalendarDays className="h-5 w-5" />{t("appointment.submit")}</Link>
+        </Button>
+        <p className="mt-5 flex items-center justify-center gap-2 text-sm text-primary-foreground/80">
+          <LockKeyhole className="h-4 w-4" />
+          {lang === "en" ? "Your records and appointment requests stay in your patient account." : "உங்கள் பதிவுகளும் முன்பதிவு கோரிக்கைகளும் உங்கள் நோயாளி கணக்கில் இருக்கும்."}
+        </p>
       </div>
     </section>
   );
