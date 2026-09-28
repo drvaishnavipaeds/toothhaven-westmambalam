@@ -15,6 +15,8 @@ interface Plan {
   discount: number;
   accepted_at: string | null;
   created_at: string;
+  valid_until: string | null;
+  gst_amount: number;
 }
 
 interface PlanItem {
@@ -28,9 +30,10 @@ interface PlanItem {
   unit_cost: number;
   status: string;
   notes: string | null;
+  gst_rate: number;
 }
 
-interface CatalogItem { id: string; name: string; default_price: number }
+interface CatalogItem { id: string; name: string; default_price: number; gst_rate: number }
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -47,15 +50,15 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
   const [items, setItems] = useState<PlanItem[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [showPlan, setShowPlan] = useState(false);
-  const [planForm, setPlanForm] = useState({ title: "", notes: "", discount: "0" });
+  const [planForm, setPlanForm] = useState({ title: "", notes: "", discount: "0", valid_until: "" });
   const [itemTarget, setItemTarget] = useState<string | null>(null);
-  const [itemForm, setItemForm] = useState({ treatment_name: "", tooth_number: "", phase: "1", sittings: "1", quantity: "1", unit_cost: "" });
+  const [itemForm, setItemForm] = useState({ treatment_name: "", tooth_number: "", phase: "1", sittings: "1", quantity: "1", unit_cost: "", gst_rate: "0" });
   const [saving, setSaving] = useState(false);
 
   const fetchAll = async () => {
     const [{ data: p }, { data: c }] = await Promise.all([
       supabase.from("treatment_plans").select("*").eq("patient_id", patientId).order("created_at", { ascending: false }),
-      supabase.from("treatment_catalog").select("id,name,default_price").eq("is_active", true).order("name"),
+      supabase.from("treatment_catalog").select("id,name,default_price,gst_rate").eq("is_active", true).order("name"),
     ]);
     setPlans((p ?? []) as Plan[]);
     setCatalog((c ?? []) as CatalogItem[]);
@@ -74,9 +77,12 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
     return map;
   }, [items]);
 
-  const planTotal = (plan: Plan) => {
-    const sub = (itemsFor.get(plan.id) ?? []).reduce((s, i) => s + Number(i.unit_cost) * Number(i.quantity), 0);
-    return Math.max(0, sub - Number(plan.discount || 0));
+  const totals = (plan: Plan) => {
+    const rows = itemsFor.get(plan.id) ?? [];
+    const subtotal = rows.reduce((sum, i) => sum + Number(i.unit_cost) * Number(i.quantity), 0);
+    const discount = Math.min(subtotal, Math.max(0, Number(plan.discount || 0)));
+    const gst = rows.reduce((sum, i) => sum + (subtotal ? Math.max(0, Number(i.unit_cost) * Number(i.quantity) - discount * Number(i.unit_cost) * Number(i.quantity) / subtotal) : 0) * Number(i.gst_rate || 0) / 100, 0);
+    return { subtotal, discount, gst, total: subtotal - discount + gst };
   };
 
   const createPlan = async (e: React.FormEvent) => {
@@ -88,12 +94,13 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
       title: planForm.title,
       notes: planForm.notes || null,
       discount: Number(planForm.discount) || 0,
+      valid_until: planForm.valid_until || null,
       created_by: userData.user?.id ?? null,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     setShowPlan(false);
-    setPlanForm({ title: "", notes: "", discount: "0" });
+    setPlanForm({ title: "", notes: "", discount: "0", valid_until: "" });
     fetchAll();
   };
 
@@ -109,12 +116,13 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
       sittings: Number(itemForm.sittings) || 1,
       quantity: Number(itemForm.quantity) || 1,
       unit_cost: Number(itemForm.unit_cost) || 0,
+      gst_rate: Number(itemForm.gst_rate) || 0,
       sort_order: (itemsFor.get(itemTarget) ?? []).length,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     setItemTarget(null);
-    setItemForm({ treatment_name: "", tooth_number: "", phase: "1", sittings: "1", quantity: "1", unit_cost: "" });
+    setItemForm({ treatment_name: "", tooth_number: "", phase: "1", sittings: "1", quantity: "1", unit_cost: "", gst_rate: "0" });
     fetchAll();
   };
 
@@ -142,7 +150,8 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
     const rows = (itemsFor.get(plan.id) ?? [])
       .map((i) => `• Phase ${i.phase} — ${i.treatment_name}${i.tooth_number ? ` (#${i.tooth_number})` : ""} × ${i.quantity} = ${money(Number(i.unit_cost) * Number(i.quantity))}`)
       .join("\n");
-    return `Tooth Haven Advanced Dental Care\nTreatment plan for ${patientName}\n\n${plan.title}\n\n${rows}\n\n${Number(plan.discount) > 0 ? `Discount: -${money(Number(plan.discount))}\n` : ""}Total: ${money(planTotal(plan))}`;
+    const amount = totals(plan);
+    return `Tooth Haven Advanced Dental Care\nTreatment estimate for ${patientName}\nIssued: ${new Date(plan.created_at).toLocaleDateString("en-IN")}${plan.valid_until ? `\nValid until: ${plan.valid_until}` : ""}\n\n${plan.title}\n\n${rows}\n\nSubtotal: ${money(amount.subtotal)}\nDiscount: -${money(amount.discount)}\nGST: ${money(amount.gst)}\nEstimated total: ${money(amount.total)}${plan.notes ? `\n\nNotes: ${plan.notes}` : ""}\n\nThis is an estimate, not an invoice. Final charges may vary after clinical assessment.`;
   };
 
   const shareOnWhatsApp = (plan: Plan) => {
@@ -153,7 +162,10 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
   const printQuote = (plan: Plan) => {
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<pre style="font-family:system-ui;padding:24px;white-space:pre-wrap">${quoteText(plan)}</pre>`);
+    const pre = w.document.createElement("pre");
+    pre.style.cssText = "font-family:system-ui;padding:24px;white-space:pre-wrap;line-height:1.6";
+    pre.textContent = quoteText(plan);
+    w.document.body.appendChild(pre);
     w.document.close();
     w.print();
   };
@@ -189,7 +201,7 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
                   <p className="font-semibold text-sm text-foreground">{plan.title}</p>
-                  <p className="text-xs text-muted-foreground">{planItems.length} procedures · {money(planTotal(plan))}</p>
+                   <p className="text-xs text-muted-foreground">{planItems.length} procedures · Estimate {money(totals(plan).total)}{plan.valid_until ? ` · Valid until ${plan.valid_until}` : ""}</p>
                 </div>
                 <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_STYLES[plan.status] ?? STATUS_STYLES.draft}`}>{plan.status}</span>
               </div>
@@ -242,6 +254,7 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
             <Input placeholder="Plan title * (e.g. Full mouth rehabilitation)" required value={planForm.title} onChange={(e) => setPlanForm({ ...planForm, title: e.target.value })} />
             <Input placeholder="Notes" value={planForm.notes} onChange={(e) => setPlanForm({ ...planForm, notes: e.target.value })} />
             <Input placeholder="Discount (₹)" type="number" value={planForm.discount} onChange={(e) => setPlanForm({ ...planForm, discount: e.target.value })} />
+             <label className="block text-sm text-muted-foreground">Valid until<Input type="date" value={planForm.valid_until} onChange={(e) => setPlanForm({ ...planForm, valid_until: e.target.value })} /></label>
             <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving..." : "Create plan"}</Button>
           </form>
         </DialogContent>
@@ -251,7 +264,7 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
         <DialogContent>
           <DialogHeader><DialogTitle>Add procedure</DialogTitle></DialogHeader>
           <form onSubmit={addItem} className="space-y-3">
-            <TreatmentSelect catalog={catalog} value={itemForm.treatment_name} placeholder="Select procedure from catalog" onValueChange={(name, item) => setItemForm({ ...itemForm, treatment_name: name, unit_cost: String(item?.default_price ?? "") })} />
+             <TreatmentSelect catalog={catalog} value={itemForm.treatment_name} placeholder="Select procedure from catalog" onValueChange={(name, item) => setItemForm({ ...itemForm, treatment_name: name, unit_cost: String(item?.default_price ?? ""), gst_rate: String(item?.gst_rate ?? 0) })} />
             <div className="grid grid-cols-2 gap-2">
               <ToothSelect value={itemForm.tooth_number} onValueChange={(tooth_number) => setItemForm({ ...itemForm, tooth_number })} />
               <Input placeholder="Phase" type="number" min={1} value={itemForm.phase} onChange={(e) => setItemForm({ ...itemForm, phase: e.target.value })} />
@@ -259,6 +272,7 @@ const TreatmentPlans = ({ patientId, patientName, patientPhone }: { patientId: s
               <Input placeholder="Quantity" type="number" min={1} value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} />
             </div>
             <Input placeholder="Unit cost (₹) *" type="number" required value={itemForm.unit_cost} onChange={(e) => setItemForm({ ...itemForm, unit_cost: e.target.value })} />
+             <label className="block text-sm text-muted-foreground">GST rate (%)<Input type="number" min="0" max="100" step="0.01" value={itemForm.gst_rate} onChange={(e) => setItemForm({ ...itemForm, gst_rate: e.target.value })} /></label>
             <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving..." : "Add procedure"}</Button>
           </form>
         </DialogContent>

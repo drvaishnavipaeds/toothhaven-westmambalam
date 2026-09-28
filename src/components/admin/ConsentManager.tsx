@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { SignaturePad } from "./SignaturePad";
 
 const SCOPES = [
   { value: "internal_records", label: "Internal records use" },
@@ -23,6 +23,9 @@ interface Consent {
   granted_at: string;
   revoked_at: string | null;
   signature_url: string | null;
+  signature_path: string | null;
+  signed_by_name: string | null;
+  consent_text: string | null;
   notes: string | null;
 }
 
@@ -30,11 +33,12 @@ const ConsentManager = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ patient_id: "", scope: "internal_records", signature_url: "", notes: "" });
+  const [form, setForm] = useState({ patient_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
+  const [signature, setSignature] = useState<Blob | null>(null);
+  const [signedLinks, setSignedLinks] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
-  const { upload, uploading } = useMediaUpload("patient-media");
 
   const fetchAll = async () => {
     const [p, c] = await Promise.all([
@@ -46,20 +50,34 @@ const ConsentManager = () => {
   };
 
   useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    void Promise.all(consents.filter(c => c.signature_path).map(async c => {
+      const { data } = await supabase.storage.from("patient-media").createSignedUrl(c.signature_path as string, 3600);
+      return [c.id, data?.signedUrl] as const;
+    })).then(links => setSignedLinks(Object.fromEntries(links.filter(([, url]) => url))));
+  }, [consents]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await supabase.from("patient_consents").insert({
+    if (!signature || !form.signed_by_name.trim() || !form.consent_text.trim()) { toast({ title: "Signature, signer and consent text are required", variant: "destructive" }); setSaving(false); return; }
+    const path = `consents/${form.patient_id}/${crypto.randomUUID()}.png`;
+    const { error: uploadError } = await supabase.storage.from("patient-media").upload(path, signature, { contentType: "image/png", upsert: false });
+    if (uploadError) { toast({ title: uploadError.message, variant: "destructive" }); setSaving(false); return; }
+    const { error } = await supabase.from("patient_consents").insert({
       patient_id: form.patient_id,
       scope: form.scope,
       granted: true,
-      signature_url: form.signature_url || null,
+      signature_path: path,
+      signed_by_name: form.signed_by_name.trim(),
+      consent_text: form.consent_text.trim(),
       notes: form.notes || null,
     });
+    if (error) { await supabase.storage.from("patient-media").remove([path]); toast({ title: error.message, variant: "destructive" }); setSaving(false); return; }
     setSaving(false);
     setShowForm(false);
-    setForm({ patient_id: "", scope: "internal_records", signature_url: "", notes: "" });
+    setForm({ patient_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
+    setSignature(null);
     fetchAll();
     toast({ title: "Consent recorded" });
   };
@@ -77,14 +95,6 @@ const ConsentManager = () => {
     fetchAll();
   };
 
-  const onSignature = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = await upload(file, "consents");
-    if (url) setForm({ ...form, signature_url: url });
-    e.target.value = "";
-  };
-
   const patientName = (id: string) => patients.find(p => p.id === id)?.name || "Unknown";
   const filtered = consents.filter(c => {
     if (!search) return true;
@@ -97,7 +107,7 @@ const ConsentManager = () => {
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-foreground">Patient Consents</h2>
-          <p className="text-xs text-muted-foreground">DPDP/HIPAA-compliant two-tier consent tracking</p>
+          <p className="text-xs text-muted-foreground">Signed consent records</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-1" /> Record Consent
@@ -131,12 +141,14 @@ const ConsentManager = () => {
                       {c.revoked_at && ` · Revoked: ${new Date(c.revoked_at).toLocaleDateString()}`}
                     </p>
                     {c.notes && <p className="text-xs text-muted-foreground mt-1 italic">{c.notes}</p>}
-                    {c.signature_url && <a href={c.signature_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">View signature</a>}
+                    {c.signed_by_name && <p className="text-xs text-muted-foreground">Signed by {c.signed_by_name}</p>}
+                    {c.consent_text && <p className="text-xs text-muted-foreground mt-1">{c.consent_text}</p>}
+                    {(signedLinks[c.id] || c.signature_url) && <a href={signedLinks[c.id] || c.signature_url || ""} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">View signature</a>}
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  {c.granted && <button onClick={() => revoke(c)} className="text-xs px-2 py-1 rounded hover:bg-destructive/10 text-destructive">Revoke</button>}
-                  <button onClick={() => remove(c.id)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                  {c.granted && <Button size="sm" variant="ghost" onClick={() => revoke(c)} className="text-destructive">Revoke</Button>}
+                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)} title="Delete consent"><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                 </div>
               </div>
             </div>
@@ -162,20 +174,9 @@ const ConsentManager = () => {
                 {SCOPES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Signed consent form (optional, private)</label>
-              {form.signature_url ? (
-                <div className="flex items-center gap-2">
-                  <img src={form.signature_url} alt="signature" className="w-16 h-16 object-cover rounded" />
-                  <button type="button" onClick={() => setForm({ ...form, signature_url: "" })} className="text-xs text-destructive">Remove</button>
-                </div>
-              ) : (
-                <label className="cursor-pointer inline-flex items-center gap-2 text-xs px-3 py-2 rounded-lg border border-input hover:bg-muted">
-                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={onSignature} disabled={uploading} />
-                  <Upload className="w-3 h-3" /> {uploading ? "Uploading..." : "Upload signed form"}
-                </label>
-              )}
-            </div>
+            <Input required placeholder="Signer’s full name" value={form.signed_by_name} onChange={e => setForm({ ...form, signed_by_name: e.target.value })} />
+            <Textarea required placeholder="Consent statement shown to the patient" value={form.consent_text} onChange={e => setForm({ ...form, consent_text: e.target.value })} />
+            <SignaturePad onChange={setSignature} />
             <Textarea placeholder="Notes (witness, conditions, etc.)" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving..." : "Record Consent"}</Button>
           </form>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ToothSelect } from "./ClinicalSelectors";
+import InvestigationWorkbench from "./InvestigationWorkbench";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
 
@@ -21,6 +22,7 @@ export interface Investigation {
   tooth_number: string | null;
   taken_on: string | null;
   is_visible_to_patient: boolean;
+  series_paths: string[] | null;
 }
 
 const TYPES = ["clinical", "intraoral", "cbct", "xray", "opg"];
@@ -31,6 +33,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [seriesFiles, setSeriesFiles] = useState<File[]>([]);
+  const [comparisonId, setComparisonId] = useState("");
+  const [comparisonUrl, setComparisonUrl] = useState("");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -70,14 +75,21 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) { toast.error("Please choose a file to upload"); return; }
+    if (!file && !seriesFiles.length) { toast.error("Please choose files to upload"); return; }
     setSaving(true);
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    const path = `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("patient-media").upload(path, file, { cacheControl: "3600", upsert: false });
-    if (upErr) { toast.error(upErr.message); setSaving(false); return; }
-    const isDicom = file.type === "application/dicom" || ext === "dcm" || ext === "dicom";
-    const mediaType = isDicom ? "dicom" : file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "pdf";
+    const files = seriesFiles.length ? seriesFiles : file ? [file] : [];
+    const paths: string[] = [];
+    for (const current of files) {
+      const ext = current.name.split(".").pop()?.toLowerCase();
+      const path = `investigations/${patientId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("patient-media").upload(path, current, { cacheControl: "3600", upsert: false });
+      if (upErr) { if (paths.length) await supabase.storage.from("patient-media").remove(paths); toast.error(upErr.message); setSaving(false); return; }
+      paths.push(path);
+    }
+    const primary = files[0];
+    const ext = primary.name.split(".").pop()?.toLowerCase();
+    const isDicom = primary.type === "application/dicom" || ext === "dcm" || ext === "dicom";
+    const mediaType = isDicom ? "dicom" : primary.type.startsWith("video") ? "video" : primary.type.startsWith("image") ? "image" : "pdf";
     const { error } = await supabase.from("patient_investigations").insert({
       patient_id: patientId,
       title: form.title,
@@ -87,14 +99,17 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
       tooth_number: form.tooth_number || null,
       taken_on: form.taken_on || null,
       is_visible_to_patient: form.is_visible_to_patient,
-      url: path,
+      url: paths[0],
       media_type: mediaType,
+      series_paths: paths.length > 1 ? paths : null,
+      is_series: paths.length > 1,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { await supabase.storage.from("patient-media").remove(paths); toast.error(error.message); return; }
     toast.success("Investigation added");
     setShowAdd(false);
     setFile(null);
+    setSeriesFiles([]);
     setForm({ title: "", description: "", investigation_type: "clinical", procedure_category: "general", tooth_number: "", taken_on: "", is_visible_to_patient: true });
     fetchAll();
   };
@@ -121,6 +136,15 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const isDicom = selected
     ? selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct"
     : false;
+
+  useEffect(() => {
+    let cancelled = false;
+    const path = items.find(i => i.id === comparisonId)?.url;
+    if (!path) { setComparisonUrl(""); return; }
+    if (path.startsWith("http")) { setComparisonUrl(path); return; }
+    void supabase.storage.from("patient-media").createSignedUrl(path, 3600).then(({ data }) => { if (!cancelled) setComparisonUrl(data?.signedUrl ?? ""); });
+    return () => { cancelled = true; };
+  }, [comparisonId, items]);
 
   return (
     <div className="mt-6">
@@ -188,11 +212,16 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                 </div>
               </DialogHeader>
 
-              {isDicom && url ? (
+               {isDicom && url ? (
                 <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
                   <DicomViewer url={url} />
                 </Suspense>
-              ) : (
+               ) : selected.media_type === "image" && url ? (
+                 <div className={comparisonUrl ? "grid grid-cols-1 md:grid-cols-2 gap-2" : ""}>
+                   <InvestigationWorkbench key={selected.id} investigationId={selected.id} url={url} title={selected.title} />
+                   {comparisonUrl && <div><p className="p-2 text-sm">Comparison</p><img src={comparisonUrl} alt="Comparison investigation" className="w-full h-[55vh] object-contain bg-foreground" /></div>}
+                 </div>
+               ) : (
                 <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
                   {!url ? (
                     <div className="py-12 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin" /></div>
@@ -207,6 +236,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               )}
 
               <div className="p-4 space-y-3">
+                 {selected.media_type === "image" && <select aria-label="Compare with investigation" className="w-full border border-input bg-background rounded-md p-2 text-sm" value={comparisonId} onChange={e => setComparisonId(e.target.value)}><option value="">No comparison</option>{items.filter(i => i.id !== selected.id && i.media_type === "image").map(i => <option key={i.id} value={i.id}>{i.title}</option>)}</select>}
                 {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" disabled={openIndex === 0} onClick={() => setOpenIndex(i => (i ?? 0) - 1)}>
@@ -238,7 +268,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input type="file" accept="image/*,video/*,application/pdf,.dcm,.dicom,application/dicom" onChange={e => setFile(e.target.files?.[0] || null)} required />
+             <Input type="file" multiple accept="image/*,video/*,application/pdf,.dcm,.dicom,application/dicom" onChange={e => { const files = Array.from(e.target.files ?? []); setSeriesFiles(files.length > 1 ? files : []); setFile(files[0] ?? null); }} required />
             <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
