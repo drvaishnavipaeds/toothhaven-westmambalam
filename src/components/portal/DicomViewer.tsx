@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Sun, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Sun, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 // @ts-ignore
 import * as dicomParser from "dicom-parser";
 
@@ -56,6 +57,9 @@ const DicomViewer = ({ url }: Props) => {
   const [ww, setWw] = useState<number | null>(null);
   const [wc, setWc] = useState<number | null>(null);
   const baseRef = useRef<{ ww: number; wc: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number } | null>(null);
 
   const renderFrame = useCallback((frameIndex: number, windowWidth: number, windowCenter: number) => {
     const image = imageRef.current;
@@ -200,16 +204,22 @@ const DicomViewer = ({ url }: Props) => {
       setWc(baseRef.current.wc);
     }
     setFrame(0);
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
   };
 
   return (
     <div className="w-full bg-black flex flex-col">
       <div
         onWheel={onWheel}
+        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX - offset.x, y: e.clientY - offset.y }; }}
+        onPointerMove={e => { if (drag.current) setOffset({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y }); }}
+        onPointerUp={() => { drag.current = null; }}
+        onPointerCancel={() => { drag.current = null; }}
         className="relative flex h-[60vh] w-full select-none items-center justify-center overflow-hidden"
         style={{ touchAction: "none" }}
       >
-        <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" aria-label="DICOM image" />
+        <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }} aria-label="DICOM image" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center text-white">
             <Loader2 className="w-6 h-6 animate-spin" />
@@ -224,6 +234,12 @@ const DicomViewer = ({ url }: Props) => {
 
       {!error && (
         <div className="bg-background/95 backdrop-blur p-3 space-y-2 border-t border-border">
+          <div className="flex items-center gap-2">
+            <Button size="icon" variant="outline" title="Zoom out" onClick={() => setZoom(v => Math.max(0.5, v - 0.25))}><ZoomOut className="h-4 w-4" /></Button>
+            <span className="text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
+            <Button size="icon" variant="outline" title="Zoom in" onClick={() => setZoom(v => Math.min(5, v + 0.25))}><ZoomIn className="h-4 w-4" /></Button>
+            <Button size="icon" variant="ghost" title="Reset view" onClick={reset}><RotateCcw className="h-4 w-4" /></Button>
+          </div>
           {numFrames > 1 && (
             <div className="flex items-center gap-2">
               <button
