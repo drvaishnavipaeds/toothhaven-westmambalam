@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 interface Annotation { id: string; annotation_type: string; points: Array<{ x: number; y: number }>; value_mm: number | null; label: string | null; tooth_number: string | null; }
 
-const InvestigationWorkbench = ({ investigationId, url, title }: { investigationId: string; url: string; title: string }) => {
+const InvestigationWorkbench = ({ investigationId, frameIndex = 0, url, title }: { investigationId: string; frameIndex?: number; url: string; title: string }) => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [mode, setMode] = useState<"pan" | "measurement" | "marker">("pan");
@@ -22,10 +22,11 @@ const InvestigationWorkbench = ({ investigationId, url, title }: { investigation
   const stage = useRef<HTMLDivElement>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("investigation_annotations").select("*").eq("investigation_id", investigationId).order("created_at");
+    const { data, error } = await supabase.from("investigation_annotations").select("*").eq("investigation_id", investigationId).eq("frame_index", frameIndex).order("created_at");
+    if (error) { toast.error("Could not load annotations"); return; }
     setAnnotations((data ?? []) as unknown as Annotation[]);
   };
-  useEffect(() => { void load(); }, [investigationId]);
+  useEffect(() => { void load(); }, [investigationId, frameIndex]);
 
   const point = (event: React.PointerEvent) => {
     const rect = stage.current?.getBoundingClientRect();
@@ -46,9 +47,9 @@ const InvestigationWorkbench = ({ investigationId, url, title }: { investigation
     const dy = (points[1]?.y ?? points[0].y) - points[0].y;
     const rect = stage.current?.getBoundingClientRect();
     const img = image.current;
-    const fitted = img && rect ? Math.min(rect.width / img.naturalWidth, rect.height / img.naturalHeight) : 1;
+    const fitted = img?.naturalWidth && img?.naturalHeight && rect ? Math.min(rect.width / img.naturalWidth, rect.height / img.naturalHeight) : 1;
     const pixels = Math.hypot(dx * (rect?.width ?? 0), dy * (rect?.height ?? 0)) / fitted;
-    const { error } = await supabase.from("investigation_annotations").insert({ investigation_id: investigationId, frame_index: 0, annotation_type: type, points, value_mm: type === "measurement" && pixelsPerMm > 0 ? pixels / pixelsPerMm : null, label: label || null, tooth_number: tooth || null });
+    const { error } = await supabase.from("investigation_annotations").insert({ investigation_id: investigationId, frame_index: frameIndex, annotation_type: type, points, value_mm: type === "measurement" && pixelsPerMm > 0 ? pixels / pixelsPerMm : null, label: label || null, tooth_number: tooth || null });
     if (error) return toast.error(error.message);
     setLabel(""); setStart(null); void load();
   };
@@ -83,7 +84,7 @@ const InvestigationWorkbench = ({ investigationId, url, title }: { investigation
       </svg>
        </div>
     </div>
-    {annotations.length > 0 && <div className="max-h-32 space-y-1 overflow-y-auto px-2">{annotations.map((annotation) => <div key={annotation.id} className="flex items-center justify-between rounded-md bg-muted px-2 py-1 text-xs"><span><MessageSquarePlus className="mr-1 inline h-3 w-3" />{annotation.label || annotation.annotation_type}{annotation.value_mm != null ? ` · ${Number(annotation.value_mm).toFixed(1)} mm` : ""}{annotation.tooth_number ? ` · Tooth ${annotation.tooth_number}` : ""}</span><Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => { await supabase.from("investigation_annotations").delete().eq("id", annotation.id); void load(); }}><Trash2 className="h-3 w-3 text-destructive" /></Button></div>)}</div>}
+    {annotations.length > 0 && <div className="max-h-32 space-y-1 overflow-y-auto px-2">{annotations.map((annotation) => <div key={annotation.id} className="flex items-center justify-between rounded-md bg-muted px-2 py-1 text-xs"><span><MessageSquarePlus className="mr-1 inline h-3 w-3" />{annotation.label || annotation.annotation_type}{annotation.value_mm != null ? ` · ${Number(annotation.value_mm).toFixed(1)} mm` : ""}{annotation.tooth_number ? ` · Tooth ${annotation.tooth_number}` : ""}</span><Button size="icon" variant="ghost" title="Delete annotation" className="h-7 w-7" onClick={async () => { const { error } = await supabase.from("investigation_annotations").delete().eq("id", annotation.id); if (error) toast.error(error.message); else void load(); }}><Trash2 className="h-3 w-3 text-destructive" /></Button></div>)}</div>}
   </div>;
 };
 
