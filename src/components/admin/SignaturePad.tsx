@@ -16,10 +16,12 @@ export const SignaturePad = ({ onChange }: { onChange: (blob: Blob | null) => vo
     if (!ctx) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     const p = position(event);
-    ctx.strokeStyle = "#173438";
+    ctx.strokeStyle = getComputedStyle(event.currentTarget).color;
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + 0.01, p.y + 0.01); ctx.stroke();
+    setHasInk(true);
     drawing.current = true;
   };
   const move = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -42,6 +44,6 @@ export const SignaturePad = ({ onChange }: { onChange: (blob: Blob | null) => vo
   };
   return <div className="space-y-1">
     <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">Patient signature</span><Button type="button" size="sm" variant="ghost" onClick={clear} disabled={!hasInk} title="Clear signature"><RotateCcw className="h-4 w-4" /></Button></div>
-    <canvas ref={canvas} width={700} height={180} aria-label="Patient signature area" className="w-full h-36 touch-none rounded border border-input bg-background" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
+    <canvas ref={canvas} width={700} height={180} aria-label="Patient signature area" className="w-full h-36 touch-none rounded border border-input bg-background text-primary" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
   </div>;
 };

@@ -36,6 +36,8 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const [seriesFiles, setSeriesFiles] = useState<File[]>([]);
   const [comparisonId, setComparisonId] = useState("");
   const [comparisonUrl, setComparisonUrl] = useState("");
+  const [seriesIndex, setSeriesIndex] = useState(0);
+  const [seriesUrl, setSeriesUrl] = useState("");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -132,7 +134,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   };
 
   const selected = openIndex != null ? items[openIndex] : null;
-  const url = selected ? signed[selected.id] : undefined;
+  const url = selected && seriesIndex > 0 ? seriesUrl : selected ? signed[selected.id] : undefined;
   const isDicom = selected
     ? selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct"
     : false;
@@ -145,6 +147,26 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
     void supabase.storage.from("patient-media").createSignedUrl(path, 3600).then(({ data }) => { if (!cancelled) setComparisonUrl(data?.signedUrl ?? ""); });
     return () => { cancelled = true; };
   }, [comparisonId, items]);
+
+  useEffect(() => {
+    setSeriesIndex(0);
+    setSeriesUrl("");
+    setComparisonId("");
+  }, [selected?.id]);
+
+  useEffect(() => {
+    let active = true;
+    setSeriesUrl("");
+    const path = selected?.series_paths?.[seriesIndex];
+    if (!path || seriesIndex === 0) return;
+    if (path.startsWith("http")) { setSeriesUrl(path); return; }
+    void supabase.storage.from("patient-media").createSignedUrl(path, 3600).then(({ data, error }) => {
+      if (!active) return;
+      if (error) toast.error("Could not open this image in the series");
+      setSeriesUrl(data?.signedUrl ?? "");
+    });
+    return () => { active = false; };
+  }, [selected?.id, seriesIndex]);
 
   return (
     <div className="mt-6">
@@ -212,17 +234,17 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                 </div>
               </DialogHeader>
 
-               {isDicom && url ? (
+                {isDicom && url ? (
                 <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
-                  <DicomViewer url={url} />
+                   <DicomViewer key={url} url={url} />
                 </Suspense>
                ) : selected.media_type === "image" && url ? (
                  <div className={comparisonUrl ? "grid grid-cols-1 md:grid-cols-2 gap-2" : ""}>
-                   <InvestigationWorkbench key={selected.id} investigationId={selected.id} url={url} title={selected.title} />
+                    <InvestigationWorkbench key={`${selected.id}:${seriesIndex}`} investigationId={selected.id} frameIndex={seriesIndex} url={url} title={selected.title} />
                    {comparisonUrl && <div><p className="p-2 text-sm">Comparison</p><img src={comparisonUrl} alt="Comparison investigation" className="w-full h-[55vh] object-contain bg-foreground" /></div>}
                  </div>
                ) : (
-                <div className="bg-black flex items-center justify-center max-h-[70vh] overflow-auto">
+                 <div className="bg-foreground flex items-center justify-center max-h-[70vh] overflow-auto">
                   {!url ? (
                     <div className="py-12 text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin" /></div>
                   ) : selected.media_type === "image" ? (
@@ -230,12 +252,13 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                   ) : selected.media_type === "video" ? (
                     <video src={url} controls className="max-w-full max-h-[70vh]" />
                   ) : (
-                    <iframe src={url} className="w-full h-[70vh] bg-white" title={selected.title} />
+                     <iframe src={url} className="w-full h-[70vh] bg-background" title={selected.title} />
                   )}
                 </div>
               )}
 
               <div className="p-4 space-y-3">
+                  {(selected.series_paths?.length ?? 0) > 1 && <div className="flex items-center gap-2 text-sm"><Button size="icon" variant="outline" title="Previous image in series" disabled={seriesIndex === 0} onClick={() => setSeriesIndex(v => v - 1)}><ChevronLeft className="h-4 w-4" /></Button><span>Image {seriesIndex + 1} / {selected.series_paths?.length}</span><Button size="icon" variant="outline" title="Next image in series" disabled={seriesIndex >= (selected.series_paths?.length ?? 1) - 1} onClick={() => setSeriesIndex(v => v + 1)}><ChevronRight className="h-4 w-4" /></Button></div>}
                  {selected.media_type === "image" && <select aria-label="Compare with investigation" className="w-full border border-input bg-background rounded-md p-2 text-sm" value={comparisonId} onChange={e => setComparisonId(e.target.value)}><option value="">No comparison</option>{items.filter(i => i.id !== selected.id && i.media_type === "image").map(i => <option key={i.id} value={i.id}>{i.title}</option>)}</select>}
                 {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
                 <div className="flex flex-wrap items-center gap-2">
