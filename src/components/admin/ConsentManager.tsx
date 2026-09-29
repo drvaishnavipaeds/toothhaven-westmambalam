@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, ShieldCheck, ShieldOff, Upload } from "lucide-react";
+import { Plus, ShieldCheck, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,7 @@ interface Consent {
   revoked_at: string | null;
   signature_url: string | null;
   signature_path: string | null;
+  treatment_id: string | null;
   signed_by_name: string | null;
   consent_text: string | null;
   notes: string | null;
@@ -31,9 +32,10 @@ interface Consent {
 
 const ConsentManager = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [treatments, setTreatments] = useState<Array<{ id: string; treatment_name: string }>>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ patient_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
+  const [form, setForm] = useState({ patient_id: "", treatment_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
   const [signature, setSignature] = useState<Blob | null>(null);
   const [signedLinks, setSignedLinks] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -51,6 +53,12 @@ const ConsentManager = () => {
 
   useEffect(() => { fetchAll(); }, []);
   useEffect(() => {
+    if (!form.patient_id) { setTreatments([]); return; }
+    let active = true;
+    void supabase.from("treatments").select("id,treatment_name").eq("patient_id", form.patient_id).order("created_at", { ascending: false }).then(({ data }) => { if (active) setTreatments(data ?? []); });
+    return () => { active = false; };
+  }, [form.patient_id]);
+  useEffect(() => {
     void Promise.all(consents.filter(c => c.signature_path).map(async c => {
       const { data } = await supabase.storage.from("patient-media").createSignedUrl(c.signature_path as string, 3600);
       return [c.id, data?.signedUrl] as const;
@@ -66,6 +74,7 @@ const ConsentManager = () => {
     if (uploadError) { toast({ title: uploadError.message, variant: "destructive" }); setSaving(false); return; }
     const { error } = await supabase.from("patient_consents").insert({
       patient_id: form.patient_id,
+      treatment_id: form.treatment_id || null,
       scope: form.scope,
       granted: true,
       signature_path: path,
@@ -76,7 +85,7 @@ const ConsentManager = () => {
     if (error) { await supabase.storage.from("patient-media").remove([path]); toast({ title: error.message, variant: "destructive" }); setSaving(false); return; }
     setSaving(false);
     setShowForm(false);
-    setForm({ patient_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
+    setForm({ patient_id: "", treatment_id: "", scope: "internal_records", notes: "", signed_by_name: "", consent_text: "" });
     setSignature(null);
     fetchAll();
     toast({ title: "Consent recorded" });
@@ -84,15 +93,10 @@ const ConsentManager = () => {
 
   const revoke = async (c: Consent) => {
     if (!confirm("Revoke this consent? Any published media using it should be hidden.")) return;
-    await supabase.from("patient_consents").update({ granted: false, revoked_at: new Date().toISOString() }).eq("id", c.id);
+    const { error } = await supabase.from("patient_consents").update({ granted: false, revoked_at: new Date().toISOString() }).eq("id", c.id);
+    if (error) { toast({ title: error.message, variant: "destructive" }); return; }
     fetchAll();
     toast({ title: "Consent revoked" });
-  };
-
-  const remove = async (id: string) => {
-    if (!confirm("Permanently delete this consent record?")) return;
-    await supabase.from("patient_consents").delete().eq("id", id);
-    fetchAll();
   };
 
   const patientName = (id: string) => patients.find(p => p.id === id)?.name || "Unknown";
@@ -148,7 +152,6 @@ const ConsentManager = () => {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {c.granted && <Button size="sm" variant="ghost" onClick={() => revoke(c)} className="text-destructive">Revoke</Button>}
-                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)} title="Delete consent"><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                 </div>
               </div>
             </div>
@@ -163,11 +166,17 @@ const ConsentManager = () => {
           <form onSubmit={save} className="space-y-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Patient *</label>
-              <select required className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" value={form.patient_id} onChange={e => setForm({ ...form, patient_id: e.target.value })}>
+              <select required className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" value={form.patient_id} onChange={e => { setForm({ ...form, patient_id: e.target.value, treatment_id: "" }); setSignature(null); }}>
                 <option value="">Select patient...</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.phone})</option>)}
               </select>
             </div>
+            <label className="block text-xs text-muted-foreground">Treatment (optional)
+              <select className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.treatment_id} onChange={e => setForm({ ...form, treatment_id: e.target.value })}>
+                <option value="">General consent</option>
+                {treatments.map(t => <option key={t.id} value={t.id}>{t.treatment_name}</option>)}
+              </select>
+            </label>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Consent scope *</label>
               <select className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value })}>
