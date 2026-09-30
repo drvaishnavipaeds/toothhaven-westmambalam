@@ -1,5 +1,4 @@
-import markTealAsset from "@/assets/tooth-haven-mark-teal.png.asset.json";
-import markWhiteAsset from "@/assets/tooth-haven-mark-white.png.asset.json";
+import markAsset from "@/assets/tooth-haven-mark.png.asset.json";
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
@@ -18,14 +17,15 @@ const sizes = {
 
 const Logo = ({ tone = "teal", size = "md", showTagline = false, className }: LogoProps) => {
   const s = sizes[size];
-  const src = tone === "white" ? markWhiteAsset.url : markTealAsset.url;
+  // The asset proxy is not available on localhost; the published origin serves the same immutable asset in every preview.
+  const src = `https://toothhaven-in.lovable.app${markAsset.url}`;
 
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
       <img
         src={src}
         alt="Tooth Haven Advanced Dental Care logo"
-        className={cn(s.mark, "object-contain shrink-0")}
+        className={cn(s.mark, "object-contain shrink-0", tone === "white" && "brightness-0 invert")}
         loading="eager"
         decoding="async"
       />

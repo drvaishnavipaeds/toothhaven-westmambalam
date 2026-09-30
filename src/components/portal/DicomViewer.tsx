@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Sun, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// @ts-ignore
 import * as dicomParser from "dicom-parser";
+import { canDecodeCompressed, decodeDicomFrame } from "./decodeDicomFrame";
 
 interface Props {
   url: string;
@@ -25,6 +25,10 @@ interface DicomImage {
   intercept: number;
   windowWidth: number;
   windowCenter: number;
+  compressed: boolean;
+  dataset?: ReturnType<typeof dicomParser.parseDicom>;
+  pixelElement?: ReturnType<typeof dicomParser.parseDicom>["elements"]["x7fe00010"];
+  syntax: string;
 }
 
 const numberValue = (value: string | undefined, fallback: number) => {
@@ -54,6 +58,7 @@ const DicomViewer = ({ url }: Props) => {
   const [numFrames, setNumFrames] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
   const [ww, setWw] = useState<number | null>(null);
   const [wc, setWc] = useState<number | null>(null);
   const baseRef = useRef<{ ww: number; wc: number } | null>(null);
@@ -61,20 +66,26 @@ const DicomViewer = ({ url }: Props) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number } | null>(null);
 
-  const renderFrame = useCallback((frameIndex: number, windowWidth: number, windowCenter: number) => {
+  const renderFrame = useCallback(async (frameIndex: number, windowWidth: number, windowCenter: number) => {
     const image = imageRef.current;
     const canvas = canvasRef.current;
     if (!image || !canvas) return;
-
+    const sequence = ++renderSequence.current;
+    if (image.compressed) setRendering(true);
+    try {
+    const pixels = image.compressed && image.dataset && image.pixelElement
+      ? await decodeDicomFrame(image.dataset, image.pixelElement, frameIndex, image.frames, image.syntax, image.rows, image.columns, image.bitsAllocated, image.samplesPerPixel)
+      : image.bytes;
+    if (sequence !== renderSequence.current) return;
     const context = canvas.getContext("2d");
     if (!context) return;
     canvas.width = image.columns;
     canvas.height = image.rows;
     const output = context.createImageData(image.columns, image.rows);
-    const view = new DataView(image.bytes.buffer, image.bytes.byteOffset, image.bytes.byteLength);
+    const view = new DataView(pixels.buffer, pixels.byteOffset, pixels.byteLength);
     const bytesPerSample = image.bitsAllocated / 8;
     const pixelCount = image.rows * image.columns;
-    const frameOffset = image.offset + frameIndex * pixelCount * image.samplesPerPixel * bytesPerSample;
+    const frameOffset = image.compressed ? 0 : image.offset + frameIndex * pixelCount * image.samplesPerPixel * bytesPerSample;
     const lower = windowCenter - windowWidth / 2;
     const scale = 255 / Math.max(windowWidth, 1);
     const invert = image.photometricInterpretation === "MONOCHROME1";
@@ -99,12 +110,19 @@ const DicomViewer = ({ url }: Props) => {
       output.data[outputOffset + 3] = 255;
     }
     context.putImageData(output, 0, 0);
+    } catch (caught) {
+      if (sequence === renderSequence.current) setError(caught instanceof Error ? caught.message : "Unable to decode this scan");
+    } finally {
+      if (sequence === renderSequence.current) setRendering(false);
+    }
   }, []);
+  const renderSequence = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    imageRef.current = null;
 
     (async () => {
       try {
@@ -115,9 +133,6 @@ const DicomViewer = ({ url }: Props) => {
         const dataset = dicomParser.parseDicom(byteArray);
         const pixelData = dataset.elements.x7fe00010;
         if (!pixelData) throw new Error("This DICOM file does not contain image pixels");
-        if (pixelData.encapsulatedPixelData) {
-          throw new Error("This compressed DICOM format is not supported in the secure web viewer. Please upload an uncompressed DICOM file.");
-        }
 
         const rows = dataset.uint16("x00280010") || 0;
         const columns = dataset.uint16("x00280011") || 0;
@@ -129,6 +144,12 @@ const DicomViewer = ({ url }: Props) => {
 
         const frames = Math.max(1, Math.floor(numberValue(dataset.string("x00280008"), 1)));
         const transferSyntax = dataset.string("x00020010") || "1.2.840.10008.1.2.1";
+        if (pixelData.encapsulatedPixelData && !canDecodeCompressed(transferSyntax)) {
+          throw new Error(`Unsupported compressed DICOM transfer syntax (${transferSyntax}). Export as uncompressed DICOM to view it here.`);
+        }
+        if (samplesPerPixel !== 1 && !(samplesPerPixel === 3 && bitsAllocated === 8)) {
+          throw new Error("This DICOM sample format is not supported in the viewer");
+        }
         const littleEndian = transferSyntax !== "1.2.840.10008.1.2.2";
         const image: DicomImage = {
           bytes: byteArray,
@@ -147,9 +168,16 @@ const DicomViewer = ({ url }: Props) => {
           intercept: numberValue(dataset.string("x00281052"), 0),
           windowWidth: numberValue(dataset.string("x00281051"), 0),
           windowCenter: numberValue(dataset.string("x00281050"), 0),
+          compressed: Boolean(pixelData.encapsulatedPixelData),
+          dataset: pixelData.encapsulatedPixelData ? dataset : undefined,
+          pixelElement: pixelData.encapsulatedPixelData ? pixelData : undefined,
+          syntax: transferSyntax,
         };
 
-        if (!image.windowWidth) {
+        if (!image.windowWidth && image.compressed) {
+          image.windowWidth = bitsAllocated === 8 ? 255 : 4095;
+          image.windowCenter = image.windowWidth / 2;
+        } else if (!image.windowWidth) {
           const view = new DataView(byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
           const bytesPerSample = bitsAllocated / 8;
           let minimum = Number.POSITIVE_INFINITY;
@@ -170,7 +198,6 @@ const DicomViewer = ({ url }: Props) => {
         baseRef.current = { ww: image.windowWidth, wc: image.windowCenter };
         setWw(image.windowWidth);
         setWc(image.windowCenter);
-        renderFrame(0, image.windowWidth, image.windowCenter);
         setLoading(false);
       } catch (caught) {
         if (cancelled) return;
@@ -182,13 +209,14 @@ const DicomViewer = ({ url }: Props) => {
 
     return () => {
       cancelled = true;
+      renderSequence.current += 1;
       imageRef.current = null;
     };
   }, [renderFrame, url]);
 
   useEffect(() => {
     if (ww == null || wc == null) return;
-    renderFrame(frame, ww, wc);
+    void renderFrame(frame, ww, wc);
   }, [frame, renderFrame, ww, wc]);
 
   // Scroll wheel to navigate slices
@@ -220,7 +248,7 @@ const DicomViewer = ({ url }: Props) => {
         style={{ touchAction: "none" }}
       >
         <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }} aria-label="DICOM image" />
-        {loading && (
+        {(loading || rendering) && (
           <div className="absolute inset-0 flex items-center justify-center text-white">
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
@@ -242,13 +270,12 @@ const DicomViewer = ({ url }: Props) => {
           </div>
           {numFrames > 1 && (
             <div className="flex items-center gap-2">
-              <button
+              <Button size="icon" variant="outline" aria-label="Previous slice"
                 onClick={() => setFrame(f => Math.max(0, f - 1))}
                 disabled={frame === 0}
-                className="p-1.5 rounded-md bg-muted hover:bg-muted/80 disabled:opacity-40"
               >
                 <ChevronLeft className="w-4 h-4" />
-              </button>
+              </Button>
               <input
                 type="range"
                 min={0}
@@ -257,13 +284,12 @@ const DicomViewer = ({ url }: Props) => {
                 onChange={(e) => setFrame(Number(e.target.value))}
                 className="flex-1 accent-primary"
               />
-              <button
+              <Button size="icon" variant="outline" aria-label="Next slice"
                 onClick={() => setFrame(f => Math.min(numFrames - 1, f + 1))}
                 disabled={frame === numFrames - 1}
-                className="p-1.5 rounded-md bg-muted hover:bg-muted/80 disabled:opacity-40"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </Button>
               <span className="text-xs font-mono w-16 text-right text-muted-foreground">
                 {frame + 1} / {numFrames}
               </span>
@@ -293,9 +319,9 @@ const DicomViewer = ({ url }: Props) => {
                   onChange={(e) => setWc(Number(e.target.value))}
                   className="flex-1 accent-primary"
                 />
-                <button onClick={reset} className="p-1 rounded-md bg-muted hover:bg-muted/80" title="Reset">
+                <Button size="icon" variant="ghost" onClick={reset} title="Reset">
                   <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </label>
             </div>
           )}
