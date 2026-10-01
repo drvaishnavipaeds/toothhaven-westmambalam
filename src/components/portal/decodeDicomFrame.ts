@@ -1,7 +1,7 @@
 import * as dicomParser from "dicom-parser";
 
 type DataSet = ReturnType<typeof dicomParser.parseDicom>;
-type PixelElement = NonNullable<DataSet["elements"]["x7fe00010"];
+type PixelElement = NonNullable<DataSet["elements"]["x7fe00010"]>;
 
 const jpeg2000 = new Set(["1.2.840.10008.1.2.4.90", "1.2.840.10008.1.2.4.91"]);
 const jpegLossless = new Set(["1.2.840.10008.1.2.4.57", "1.2.840.10008.1.2.4.70"]);
