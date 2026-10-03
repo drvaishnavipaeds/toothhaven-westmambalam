@@ -82,7 +82,7 @@ const CbctVolumeViewer = ({ urls }: { urls: string[] }) => {
     return () => { disposed = true; cleanup(); };
   }, [urls]);
 
-   return <div className="relative h-[60vh] min-h-80 w-full overflow-hidden bg-foreground" style={{ backgroundColor: "hsl(var(--foreground))" }}>
+   return <div className="relative h-[60vh] min-h-80 w-full overflow-hidden bg-foreground">
     <div ref={host} className="h-full w-full touch-none" aria-label="Interactive 3D CBCT volume" />
     {(loading || error) && <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-background">{loading ? <Loader2 className="h-7 w-7 animate-spin" /> : error}</div>}
     {!loading && !error && <div className="absolute left-3 top-3 flex items-center gap-2 rounded-md bg-background/90 px-2 py-1 text-xs text-foreground"><Box className="h-3.5 w-3.5" />{dimensions}</div>}
