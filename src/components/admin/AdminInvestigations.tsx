@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, ScanLine, Loader2, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Hash, Calendar } from "lucide-react";
+import { Plus, Trash2, ScanLine, Loader2, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Hash, Calendar, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { ToothSelect } from "./ClinicalSelectors";
 import InvestigationWorkbench from "./InvestigationWorkbench";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
+const CbctVolumeViewer = lazy(() => import("@/components/portal/CbctVolumeViewer"));
 
 export interface Investigation {
   id: string;
@@ -37,7 +38,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const [comparisonId, setComparisonId] = useState("");
   const [comparisonUrl, setComparisonUrl] = useState("");
   const [seriesIndex, setSeriesIndex] = useState(0);
-  const [seriesUrl, setSeriesUrl] = useState("");
+  const [seriesUrls, setSeriesUrls] = useState<string[]>([]);
+  const [seriesError, setSeriesError] = useState("");
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -80,6 +83,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
     if (!file && !seriesFiles.length) { toast.error("Please choose files to upload"); return; }
     setSaving(true);
     const files = seriesFiles.length ? seriesFiles : file ? [file] : [];
+    if (files.length > 1 && files.some(current => !/\.(dcm|dicom)$/i.test(current.name))) {
+      toast.error("Choose only DICOM files for a scan series"); setSaving(false); return;
+    }
     const paths: string[] = [];
     for (const current of files) {
       const ext = current.name.split(".").pop()?.toLowerCase();
@@ -134,7 +140,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   };
 
   const selected = openIndex != null ? items[openIndex] : null;
-  const url = selected && seriesIndex > 0 ? seriesUrl : selected ? signed[selected.id] : undefined;
+  const url = selected?.series_paths?.length ? seriesUrls[seriesIndex] : selected ? signed[selected.id] : undefined;
   const isDicom = selected
     ? selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct"
     : false;
@@ -150,23 +156,28 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
 
   useEffect(() => {
     setSeriesIndex(0);
-    setSeriesUrl("");
+    setSeriesUrls([]);
+    setSeriesError("");
+    setViewMode("2d");
     setComparisonId("");
   }, [selected?.id]);
 
   useEffect(() => {
     let active = true;
-    setSeriesUrl("");
-    const path = selected?.series_paths?.[seriesIndex];
-    if (!path || seriesIndex === 0) return;
-    if (path.startsWith("http")) { setSeriesUrl(path); return; }
-    void supabase.storage.from("patient-media").createSignedUrl(path, 3600).then(({ data, error }) => {
-      if (!active) return;
-      if (error) toast.error("Could not open this image in the series");
-      setSeriesUrl(data?.signedUrl ?? "");
+    const paths = selected?.series_paths;
+    if (!paths?.length) return;
+    setSeriesUrls([]);
+    setSeriesError("");
+    void Promise.all(paths.map(async path => {
+      if (path.startsWith("http")) return path;
+      const { data, error } = await supabase.storage.from("patient-media").createSignedUrl(path, 3600);
+      if (error || !data?.signedUrl) throw new Error("Could not open every image in this series. Please retry.");
+      return data.signedUrl;
+    })).then(urls => { if (active) setSeriesUrls(urls); }).catch(error => {
+      if (active) setSeriesError(error instanceof Error ? error.message : "Could not open this scan series");
     });
     return () => { active = false; };
-  }, [selected?.id, seriesIndex]);
+  }, [selected?.id, selected?.series_paths]);
 
   return (
     <div className="mt-6">
@@ -218,7 +229,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
 
       {/* Viewer */}
       <Dialog open={openIndex != null} onOpenChange={(o) => !o && setOpenIndex(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+         <DialogContent className="max-w-4xl max-h-[95dvh] overflow-y-auto p-0">
           {selected && (
             <>
               <DialogHeader className="p-4 pb-2">
@@ -234,7 +245,13 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                 </div>
               </DialogHeader>
 
-                {isDicom && url ? (
+                 {isDicom && (selected.series_paths?.length ?? 0) > 1 && selected.investigation_type === "cbct" && <div className="flex gap-2 px-4" role="group" aria-label="CBCT view mode">
+                   <Button size="sm" variant={viewMode === "2d" ? "default" : "outline"} onClick={() => setViewMode("2d")}>2D slices</Button>
+                   <Button size="sm" variant={viewMode === "3d" ? "default" : "outline"} onClick={() => setViewMode("3d")}><Box className="mr-1 h-4 w-4" />3D volume</Button>
+                 </div>}
+                 {seriesError ? <p role="alert" className="p-4 text-destructive">{seriesError}</p> : viewMode === "3d" && isDicom && selected.investigation_type === "cbct" && seriesUrls.length === selected.series_paths?.length ? (
+                   <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>}><CbctVolumeViewer urls={seriesUrls} /></Suspense>
+                 ) : isDicom && url && viewMode === "2d" ? (
                 <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
                    <DicomViewer key={url} url={url} />
                 </Suspense>
@@ -243,6 +260,8 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                     <InvestigationWorkbench key={`${selected.id}:${seriesIndex}`} investigationId={selected.id} frameIndex={seriesIndex} url={url} title={selected.title} />
                    {comparisonUrl && <div><p className="p-2 text-sm">Comparison</p><img src={comparisonUrl} alt="Comparison investigation" className="w-full h-[55vh] object-contain bg-foreground" /></div>}
                  </div>
+               ) : viewMode === "3d" || (isDicom && !url) ? (
+                 <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
                ) : (
                  <div className="bg-foreground flex items-center justify-center max-h-[70vh] overflow-auto">
                   {!url ? (
@@ -258,7 +277,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               )}
 
               <div className="p-4 space-y-3">
-                  {(selected.series_paths?.length ?? 0) > 1 && <div className="flex items-center gap-2 text-sm"><Button size="icon" variant="outline" title="Previous image in series" disabled={seriesIndex === 0} onClick={() => setSeriesIndex(v => v - 1)}><ChevronLeft className="h-4 w-4" /></Button><span>Image {seriesIndex + 1} / {selected.series_paths?.length}</span><Button size="icon" variant="outline" title="Next image in series" disabled={seriesIndex >= (selected.series_paths?.length ?? 1) - 1} onClick={() => setSeriesIndex(v => v + 1)}><ChevronRight className="h-4 w-4" /></Button></div>}
+                   {viewMode === "2d" && (selected.series_paths?.length ?? 0) > 1 && <div className="flex items-center gap-2 text-sm"><Button size="icon" variant="outline" title="Previous image in series" disabled={seriesIndex === 0} onClick={() => setSeriesIndex(v => v - 1)}><ChevronLeft className="h-4 w-4" /></Button><span>Image {seriesIndex + 1} / {selected.series_paths?.length}</span><Button size="icon" variant="outline" title="Next image in series" disabled={seriesIndex >= (selected.series_paths?.length ?? 1) - 1} onClick={() => setSeriesIndex(v => v + 1)}><ChevronRight className="h-4 w-4" /></Button></div>}
                  {selected.media_type === "image" && <select aria-label="Compare with investigation" className="w-full border border-input bg-background rounded-md p-2 text-sm" value={comparisonId} onChange={e => setComparisonId(e.target.value)}><option value="">No comparison</option>{items.filter(i => i.id !== selected.id && i.media_type === "image").map(i => <option key={i.id} value={i.id}>{i.title}</option>)}</select>}
                 {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
                 <div className="flex flex-wrap items-center gap-2">
@@ -291,7 +310,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Investigation</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-             <Input type="file" multiple accept="image/*,video/*,application/pdf,.dcm,.dicom,application/dicom" onChange={e => { const files = Array.from(e.target.files ?? []); setSeriesFiles(files.length > 1 ? files : []); setFile(files[0] ?? null); }} required />
+              <Input type="file" multiple accept="image/*,video/*,application/pdf,.dcm,.dicom,application/dicom" onChange={e => { const files = Array.from(e.target.files ?? []); setSeriesFiles(files.length > 1 ? files : []); setFile(files[0] ?? null); }} required aria-label="Investigation files" />
             <Input placeholder="Title *" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">

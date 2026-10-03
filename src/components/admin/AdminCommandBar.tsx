@@ -15,16 +15,27 @@ const AdminCommandBar = ({ onNavigate, onOpenPatient, onRegisterPatient, onAddAp
 }) => {
   const [open, setOpen] = useState(false);
   const [patients, setPatients] = useState<PatientHit[]>([]);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    supabase.from("patients").select("id,name,phone").order("created_at", { ascending: false }).limit(100)
-      .then(({ data }) => setPatients((data ?? []) as PatientHit[]));
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setOpen(true); }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const term = query.trim().replace(/[%,()]/g, "");
+      const request = supabase.from("patients").select("id,name,phone").order("created_at", { ascending: false }).limit(30);
+      const { data } = await (term ? request.or(`name.ilike.%${term}%,phone.ilike.%${term}%`) : request);
+      if (active) setPatients((data ?? []) as PatientHit[]);
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [open, query]);
 
   const selectPatient = (id: string) => { setOpen(false); onOpenPatient(id); };
   return <>
@@ -34,7 +45,7 @@ const AdminCommandBar = ({ onNavigate, onOpenPatient, onRegisterPatient, onAddAp
       <Button variant="outline" size="icon" onClick={onAddAppointment} aria-label="Add appointment"><CalendarPlus className="h-4 w-4" /></Button>
     </div>
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search patient name or phone…" />
+       <CommandInput placeholder="Search patient name or phone…" value={query} onValueChange={setQuery} />
       <CommandList><CommandEmpty>No patient found.</CommandEmpty><CommandGroup heading="Patients">
         {patients.map((patient) => <CommandItem key={patient.id} value={`${patient.name} ${patient.phone}`} onSelect={() => selectPatient(patient.id)}>
           <span className="min-w-0 flex-1"><span className="block truncate font-medium">{patient.name}</span><span className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{patient.phone}</span></span>

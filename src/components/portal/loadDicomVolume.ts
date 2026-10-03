@@ -23,6 +23,7 @@ interface ParsedSlice {
 }
 
 const numberValue = (value: string | undefined, fallback: number) => {
+  if (!value?.trim()) return fallback;
   const parsed = Number(value?.split("\\")[0]);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
@@ -32,7 +33,7 @@ const numberList = (value: string | undefined) => (value ?? "").split("\\").map(
 const storedValue = (view: DataView, offset: number, bits: number, bitsStored: number, signed: boolean, littleEndian: boolean) => {
   if (bits === 8) return signed ? view.getInt8(offset) : view.getUint8(offset);
   const raw = view.getUint16(offset, littleEndian);
-  if (!signed) return raw;
+  if (!signed) return bitsStored < 16 ? raw & ((1 << bitsStored) - 1) : raw;
   const signBit = 1 << (bitsStored - 1);
   const mask = (1 << bitsStored) - 1;
   const stored = raw & mask;
@@ -92,6 +93,8 @@ export async function loadDicomVolume(urls: string[]): Promise<DicomVolume> {
   if (parsed.some(slice => slice.rows !== first.rows || slice.columns !== first.columns)) throw new Error("All CBCT slices must have matching dimensions");
   parsed.sort((a, b) => a.position - b.position);
   const sourceDepth = parsed.reduce((total, slice) => total + slice.frames, 0);
+  if (sourceDepth < 2) throw new Error("3D viewing requires at least two scan slices");
+  if (parsed.reduce((total, slice) => total + slice.values.byteLength, 0) > 512 * 1024 * 1024) throw new Error("This scan is too large for browser 3D viewing");
   const maxAxis = 160;
   const stepX = Math.max(1, Math.ceil(first.columns / maxAxis));
   const stepY = Math.max(1, Math.ceil(first.rows / maxAxis));
