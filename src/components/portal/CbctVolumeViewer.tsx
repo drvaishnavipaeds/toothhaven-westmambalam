@@ -9,8 +9,8 @@ type Props = {
 };
 
 type MeasureState = {
-  start: THREE.Vector3 | null;
-  end: THREE.Vector3 | null;
+  start: any | null;
+  end: any | null;
 };
 
 const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
@@ -145,15 +145,10 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
             uniform float cutDepth;
             varying vec3 vPosition;
 
-            float sampleVolume(vec3 p) {
-              return texture(map, p + vec3(0.5)).r;
-            }
-
             void main() {
               vec3 rayOrigin = vPosition;
               vec3 rayDir = normalize(rayOrigin - cameraPos);
 
-              float depth = 0.0;
               vec4 accum = vec4(0.0);
 
               for (int i = 0; i < 180; i++) {
@@ -166,7 +161,7 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
 
                 if (uv.z < cutDepth) continue;
 
-                float value = sampleVolume(uv);
+                float value = texture(map, uv).r;
                 if (value > threshold) {
                   vec3 color = vec3(value, value, value);
                   vec4 sample = vec4(color, 1.0);
@@ -190,6 +185,7 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
 
         const updateLine = () => {
           if (!measure.start || !measure.end) return;
+
           if (lineRef.current) {
             scene.remove(lineRef.current);
             lineRef.current.geometry.dispose();
@@ -197,7 +193,11 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
           }
 
           const geometry = new THREE.BufferGeometry().setFromPoints([measure.start, measure.end]);
-          const material = new THREE.LineBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.9 });
+          const material = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9,
+          });
           const line = new THREE.Line(geometry, material);
           line.renderOrder = 1000;
           scene.add(line);
@@ -217,10 +217,7 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
           if (!hit) return;
 
           const point = hit.point.clone();
-          setMeasure({
-            start: point,
-            end: point,
-          });
+          setMeasure({ start: point, end: point });
           updateLine();
         };
 
@@ -243,12 +240,9 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
 
         const handlePointerUp = () => {
           if (!measure.start || !measure.end) return;
-          const distance = measure.start.distanceTo(measure.end);
 
-          // Convert from world units to approximate mm using voxel spacing approx
-          // Normalize dimensions to physical size approx from volume spacing.
-          // loadDicomVolume returns spacing per voxel in mm, so use it here.
-          const mm = distance * (volume.spacing[0] + volume.spacing[1] + volume.spacing[2]) / 3;
+          const distance = measure.start.distanceTo(measure.end);
+          const mm = distance * ((volume.spacing[0] + volume.spacing[1] + volume.spacing[2]) / 3);
           setMeasurement(Number(mm.toFixed(2)));
         };
 
@@ -285,9 +279,7 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
         window.addEventListener("resize", handleResize);
 
         setLoading(false);
-        setInfo(
-          `Volume ${volume.dimensions[0]}×${volume.dimensions[1]}×${volume.dimensions[2]} • ${title}`
-        );
+        setInfo(`Volume ${volume.dimensions[0]}×${volume.dimensions[1]}×${volume.dimensions[2]} • ${title}`);
 
         return () => {
           window.removeEventListener("resize", handleResize);
@@ -322,13 +314,16 @@ const CbctVolumeViewer = ({ urls, title = "CBCT volume" }: Props) => {
     setMeasureMode(false);
     setMeasurement(null);
     setMeasure({ start: null, end: null });
+
     if (controlsRef.current) {
       controlsRef.current.reset();
       controlsRef.current.target.set(0, 0, 0);
     }
+
     if (cameraRef.current) {
       cameraRef.current.position.set(160, 120, 180);
     }
+
     if (lineRef.current) {
       lineRef.current.geometry.dispose();
       lineRef.current.material.dispose();
