@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { ToothSelect } from "./ClinicalSelectors";
 import InvestigationWorkbench from "./InvestigationWorkbench";
+import CbctVolumeViewer from "@/components/portal/CbctVolumeViewer";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
 
