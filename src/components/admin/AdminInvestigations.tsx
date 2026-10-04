@@ -195,7 +195,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               type="button"
               onClick={() => setOpenIndex(idx)}
               className="aspect-square bg-muted relative w-full group"
-              title="Open viewer"
+              title={`Open viewer: ${it.title}`}
             >
               {it.media_type === "image" && signed[it.id] ? (
                 <img src={signed[it.id]} alt={it.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -208,13 +208,13 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
             <div className="p-2">
               <div className="flex items-start justify-between gap-1">
                 <p className="text-xs font-medium truncate">{it.title}</p>
-                <button
+                <Button size="icon" variant="ghost"
                   onClick={() => handleDelete(it.id)}
-                  className="p-1 rounded-md text-destructive hover:bg-destructive/10 shrink-0"
-                  title="Delete"
+                  className="text-destructive shrink-0 h-7 w-7"
+                  title={`Delete ${it.title}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
               <div className="flex flex-wrap gap-1 mt-1">
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">{it.investigation_type}</span>

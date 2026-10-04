@@ -275,7 +275,7 @@ const DicomViewer = ({ url }: Props) => {
   };
 
   return (
-    <div className="w-full bg-black flex flex-col" data-testid="dicom-viewer">
+    <div className="w-full bg-foreground flex flex-col" data-testid="dicom-viewer">
       <div
         tabIndex={0}
         onWheel={onWheel}
@@ -286,9 +286,9 @@ const DicomViewer = ({ url }: Props) => {
         className="relative flex h-[60vh] w-full select-none items-center justify-center overflow-hidden outline-none"
         style={{ touchAction: "none", cursor: drag.current ? "grabbing" : "grab" }}
       >
-        <canvas ref={canvasRef} className="max-h-full max-w-full object-contain" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }} aria-label="DICOM image" />
+        <canvas ref={canvasRef} className="h-full w-full object-contain" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }} aria-label="DICOM image" />
         {(loading || rendering) && (
-          <div className="absolute inset-0 flex items-center justify-center text-white">
+          <div className="absolute inset-0 flex items-center justify-center text-background">
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         )}
