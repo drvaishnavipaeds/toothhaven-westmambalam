@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Sun, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Sun,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
+  Ruler,
+  Crosshair,
+  Bone,
+  ScanLine,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as dicomParser from "dicom-parser";
 import { canDecodeCompressed, decodeDicomFrame } from "./decodeDicomFrame";
@@ -31,6 +43,23 @@ interface DicomImage {
   syntax: string;
 }
 
+type PresetKey = "bone" | "soft" | "dental" | "auto";
+
+interface MeasurePoint {
+  x: number;
+  y: number;
+}
+
+const PRESETS: Record<
+  PresetKey,
+  { label: string; ww: number; wc: number; icon: typeof Bone }
+> = {
+  bone: { label: "Bone", ww: 2000, wc: 500, icon: Bone },
+  soft: { label: "Soft", ww: 400, wc: 40, icon: ScanLine },
+  dental: { label: "Dental", ww: 1600, wc: 200, icon: Crosshair },
+  auto: { label: "Auto", ww: 0, wc: 0, icon: Sun },
+};
+
 const numberValue = (value: string | undefined, fallback: number) => {
   const parsed = Number(value?.split("\\")[0]);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -44,12 +73,15 @@ const getStoredValue = (view: DataView, offset: number, image: DicomImage) => {
 
   const raw = view.getUint16(offset, image.littleEndian);
   if (!image.signed) return raw * image.slope + image.intercept;
+
   const signBit = 1 << (image.bitsStored - 1);
   const mask = (1 << image.bitsStored) - 1;
   const stored = raw & mask;
   const value = stored & signBit ? stored - (1 << image.bitsStored) : stored;
   return value * image.slope + image.intercept;
 };
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const DicomViewer = ({ url }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,6 +98,13 @@ const DicomViewer = ({ url }: Props) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number } | null>(null);
   const renderSequence = useRef(0);
+  const viewerRef = useRef<HTMLDivElement>(null);
+
+  const [mode, setMode] = useState<"pan" | "measure">("pan");
+  const [measureStart, setMeasureStart] = useState<MeasurePoint | null>(null);
+  const [measureEnd, setMeasureEnd] = useState<MeasurePoint | null>(null);
+  const [pixelsPerMm, setPixelsPerMm] = useState<number>(0);
+  const [preset, setPreset] = useState<PresetKey>("bone");
 
   const renderFrame = useCallback(async (frameIndex: number, windowWidth: number, windowCenter: number) => {
     const image = imageRef.current;
@@ -76,6 +115,7 @@ const DicomViewer = ({ url }: Props) => {
 
     try {
       setRendering(image.compressed);
+
       const pixels =
         image.compressed && image.dataset && image.pixelElement
           ? await decodeDicomFrame(
@@ -146,7 +186,7 @@ const DicomViewer = ({ url }: Props) => {
       const message =
         caught instanceof Error
           ? caught.message
-          : "Failed to decode this DICOM frame. Please try a different slice or uncompressed file.";
+          : "Unable to decode this DICOM frame. Please try a different slice or an uncompressed file.";
 
       setError(message);
     } finally {
@@ -155,6 +195,26 @@ const DicomViewer = ({ url }: Props) => {
       }
     }
   }, []);
+
+  const measureDistance = (a: MeasurePoint, b: MeasurePoint) => {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.hypot(dx, dy);
+  };
+
+  const getCanvasPoint = (event: React.PointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
+
+    return {
+      x: clamp(x, 0, canvas.width),
+      y: clamp(y, 0, canvas.height),
+    };
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -173,7 +233,7 @@ const DicomViewer = ({ url }: Props) => {
         const pixelData = dataset.elements.x7fe00010;
 
         if (!pixelData) {
-          throw new Error("This DICOM file does not contain image pixels.");
+          throw new Error("This DICOM file does not contain image pixels");
         }
 
         const rows = dataset.uint16("x00280010") || 0;
@@ -182,7 +242,7 @@ const DicomViewer = ({ url }: Props) => {
         const samplesPerPixel = dataset.uint16("x00280002") || 1;
 
         if (!rows || !columns || ![8, 16].includes(bitsAllocated)) {
-          throw new Error("This DICOM pixel format is not supported in the web viewer.");
+          throw new Error("This DICOM pixel format is not supported in the web viewer");
         }
 
         const frames = Math.max(1, Math.floor(numberValue(dataset.string("x00280008"), 1)));
@@ -195,7 +255,7 @@ const DicomViewer = ({ url }: Props) => {
         }
 
         if (samplesPerPixel !== 1 && !(samplesPerPixel === 3 && bitsAllocated === 8)) {
-          throw new Error("This DICOM sample format is not supported by the viewer.");
+          throw new Error("This DICOM sample format is not supported by the viewer");
         }
 
         const littleEndian = transferSyntax !== "1.2.840.10008.1.2.2";
@@ -275,6 +335,45 @@ const DicomViewer = ({ url }: Props) => {
     void renderFrame(frame, ww, wc);
   }, [frame, renderFrame, ww, wc]);
 
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (!document.activeElement || ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        event.preventDefault();
+        setFrame((f) => Math.max(0, Math.min(numFrames - 1, f + 1)));
+      }
+
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        setFrame((f) => Math.max(0, Math.min(numFrames - 1, f - 1)));
+      }
+
+      if (event.key === "+" || event.key === "=") {
+        event.preventDefault();
+        setZoom((v) => Math.min(5, v + 0.25));
+      }
+
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        setZoom((v) => Math.max(0.5, v - 0.25));
+      }
+
+      if (event.key.toLowerCase() === "r") {
+        event.preventDefault();
+        reset();
+      }
+
+      if (event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        setMode((current) => (current === "pan" ? "measure" : "pan"));
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [numFrames]);
+
   const onWheel = (e: React.WheelEvent) => {
     if (numFrames <= 1) return;
     e.preventDefault();
@@ -289,27 +388,75 @@ const DicomViewer = ({ url }: Props) => {
     setFrame(0);
     setZoom(1);
     setOffset({ x: 0, y: 0 });
+    setMeasureStart(null);
+    setMeasureEnd(null);
+    setPreset("bone");
   };
+
+  const handlePreset = (key: PresetKey) => {
+    setPreset(key);
+
+    if (key === "auto") {
+      if (baseRef.current) {
+        setWw(baseRef.current.ww);
+        setWc(baseRef.current.wc);
+      }
+      return;
+    }
+
+    const preset = PRESETS[key];
+    setWw(preset.ww);
+    setWc(preset.wc);
+  };
+
+  const onPointerDown = (event: React.PointerEvent) => {
+    if (mode === "pan") {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      drag.current = { x: event.clientX - offset.x, y: event.clientY - offset.y };
+      return;
+    }
+
+    const point = getCanvasPoint(event);
+    if (!point) return;
+
+    setMeasureStart(point);
+    setMeasureEnd(point);
+  };
+
+  const onPointerMove = (event: React.PointerEvent) => {
+    if (mode === "pan" && drag.current) {
+      setOffset({
+        x: event.clientX - drag.current.x,
+        y: event.clientY - drag.current.y,
+      });
+      return;
+    }
+
+    if (mode === "measure" && measureStart) {
+      const point = getCanvasPoint(event);
+      if (point) setMeasureEnd(point);
+    }
+  };
+
+  const onPointerUp = () => {
+    drag.current = null;
+  };
+
+  const measurePx = measureStart && measureEnd ? measureDistance(measureStart, measureEnd) : 0;
+  const measureMm =
+    measurePx && pixelsPerMm > 0 ? (measurePx / pixelsPerMm).toFixed(2) : measurePx ? "pixels" : "0";
 
   return (
     <div className="w-full bg-black flex flex-col">
       <div
+        ref={viewerRef}
         onWheel={onWheel}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
-        }}
-        onPointerMove={(e) => {
-          if (drag.current) setOffset({ x: e.clientX - drag.current.x, y: e.clientY - drag.current.y });
-        }}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
-        onPointerCancel={() => {
-          drag.current = null;
-        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         className="relative flex h-[60vh] w-full select-none items-center justify-center overflow-hidden"
-        style={{ touchAction: "none", cursor: drag.current ? "grabbing" : "grab" }}
+        style={{ touchAction: "none", cursor: mode === "pan" ? "grab" : "crosshair" }}
       >
         <canvas
           ref={canvasRef}
@@ -322,21 +469,65 @@ const DicomViewer = ({ url }: Props) => {
           }}
           aria-label="DICOM image"
         />
+
+        {measureStart && measureEnd && (
+          <svg className="pointer-events-none absolute inset-0 h-full w-full">
+            <line
+              x1={(measureStart.x / canvasRef.current?.width || 1) * 100 + "%"}
+              y1={(measureStart.y / canvasRef.current?.height || 1) * 100 + "%"}
+              x2={(measureEnd.x / canvasRef.current?.width || 1) * 100 + "%"}
+              y2={(measureEnd.y / canvasRef.current?.height || 1) * 100 + "%"}
+              stroke="rgba(255,255,255,0.95)"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+            />
+            <circle cx={`${(measureStart.x / (canvasRef.current?.width || 1)) * 100}%`} cy={`${(measureStart.y / (canvasRef.current?.height || 1)) * 100}%`} r="4" fill="#fff" />
+            <circle cx={`${(measureEnd.x / (canvasRef.current?.width || 1)) * 100}%`} cy={`${(measureEnd.y / (canvasRef.current?.height || 1)) * 100}%`} r="4" fill="#fff" />
+          </svg>
+        )}
+
         {(loading || rendering) && (
           <div className="absolute inset-0 flex items-center justify-center text-white">
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         )}
+
         {error && (
           <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm text-destructive">
             {error}
           </div>
         )}
+
+        <div className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
+          {mode === "pan" ? "Pan mode" : "Measure mode"} • {numFrames > 1 ? `Slice ${frame + 1}/${numFrames}` : "Single frame"}
+        </div>
+
+        <div className="absolute right-3 top-3 rounded-md bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
+          {measurePx ? `${measurePx.toFixed(1)} px` : "No measurement"}
+        </div>
       </div>
 
       {!error && (
         <div className="bg-background/95 backdrop-blur p-3 space-y-2 border-t border-border">
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="icon"
+              variant={mode === "pan" ? "default" : "outline"}
+              title="Pan"
+              onClick={() => setMode("pan")}
+            >
+              <ScanLine className="h-4 w-4" />
+            </Button>
+
+            <Button
+              size="icon"
+              variant={mode === "measure" ? "default" : "outline"}
+              title="Measure"
+              onClick={() => setMode("measure")}
+            >
+              <Ruler className="h-4 w-4" />
+            </Button>
+
             <Button size="icon" variant="outline" title="Zoom out" onClick={() => setZoom((v) => Math.max(0.5, v - 0.25))}>
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -344,9 +535,71 @@ const DicomViewer = ({ url }: Props) => {
             <Button size="icon" variant="outline" title="Zoom in" onClick={() => setZoom((v) => Math.min(5, v + 0.25))}>
               <ZoomIn className="h-4 w-4" />
             </Button>
+
             <Button size="icon" variant="ghost" title="Reset view" onClick={reset}>
               <RotateCcw className="w-3.5 h-3.5" />
             </Button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(Object.keys(PRESETS) as PresetKey[]).map((key) => (
+              <Button
+                key={key}
+                size="sm"
+                variant={preset === key ? "default" : "outline"}
+                onClick={() => handlePreset(key)}
+              >
+                {PRESETS[key].label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sun className="w-3.5 h-3.5" />
+              <span className="w-10">W:</span>
+              <input
+                type="range"
+                min={1}
+                max={Math.max(4000, (baseRef.current?.ww || 400) * 4)}
+                value={ww ?? 0}
+                onChange={(e) => setWw(Number(e.target.value))}
+                className="flex-1 accent-primary"
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-10">C:</span>
+              <input
+                type="range"
+                min={-1000}
+                max={3000}
+                value={wc ?? 0}
+                onChange={(e) => setWc(Number(e.target.value))}
+                className="flex-1 accent-primary"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={pixelsPerMm || ""}
+                placeholder="px/mm"
+                onChange={(e) => setPixelsPerMm(Number(e.target.value) || 0)}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Measure:</span>
+              <span className="font-mono text-foreground">
+                {measureMm}
+              </span>
+            </div>
           </div>
 
           {numFrames > 1 && (
@@ -371,42 +624,9 @@ const DicomViewer = ({ url }: Props) => {
             </div>
           )}
 
-          {ww != null && wc != null && (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <label className="flex items-center gap-2">
-                <Sun className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground w-10">W:</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={Math.max(4000, (baseRef.current?.ww || 400) * 4)}
-                  value={ww}
-                  onChange={(e) => setWw(Number(e.target.value))}
-                  className="flex-1 accent-primary"
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="text-muted-foreground w-10">C:</span>
-                <input
-                  type="range"
-                  min={-1000}
-                  max={3000}
-                  value={wc}
-                  onChange={(e) => setWc(Number(e.target.value))}
-                  className="flex-1 accent-primary"
-                />
-                <Button size="icon" variant="ghost" onClick={reset} title="Reset">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </Button>
-              </label>
-            </div>
-          )}
-
-          {numFrames > 1 && (
-            <p className="text-[10px] text-muted-foreground text-center">
-              Scroll or drag the slider to navigate slices
-            </p>
-          )}
+          <p className="text-[10px] text-muted-foreground text-center">
+            Scroll, drag, or use arrow keys to navigate slices • + / - to zoom • M to toggle measure mode • R to reset
+          </p>
         </div>
       )}
     </div>
