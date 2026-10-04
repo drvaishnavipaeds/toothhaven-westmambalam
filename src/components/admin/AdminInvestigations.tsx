@@ -23,7 +23,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { ToothSelect } from "./ClinicalSelectors";
 import InvestigationWorkbench from "./InvestigationWorkbench";
-import CbctVolumeViewer from "@/components/portal/CbctVolumeViewer";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
 
@@ -361,13 +360,18 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               title="Open viewer"
             >
               {it.media_type === "image" && signed[it.id] ? (
-                <img src={signed[it.id]} alt={it.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <img
+                  src={signed[it.id]}
+                  alt={it.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs uppercase">
                   {it.media_type}
                 </div>
               )}
             </button>
+
             <div className="p-2">
               <div className="flex items-start justify-between gap-1">
                 <p className="text-xs font-medium truncate">{it.title}</p>
@@ -379,6 +383,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+
               <div className="flex flex-wrap gap-1 mt-1">
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">
                   {it.investigation_type}
@@ -387,7 +392,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                   {it.procedure_category}
                 </span>
                 {!it.is_visible_to_patient && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">hidden</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    hidden
+                  </span>
                 )}
               </div>
             </div>
@@ -395,7 +402,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
         ))}
 
         {items.length === 0 && (
-          <p className="text-muted-foreground text-sm col-span-full text-center py-4">No investigations yet.</p>
+          <p className="text-muted-foreground text-sm col-span-full text-center py-4">
+            No investigations yet. Upload your first image or document.
+          </p>
         )}
       </div>
 
@@ -435,7 +444,13 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               </DialogHeader>
 
               {isDicom && url ? (
-                <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  }
+                >
                   <DicomViewer key={url} url={url} />
                 </Suspense>
               ) : selected.media_type === "image" && url ? (
@@ -496,7 +511,9 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                       variant="outline"
                       title="Next image in series"
                       disabled={seriesIndex >= (selected.series_paths?.length ?? 1) - 1}
-                      onClick={() => setSeriesIndex((i) => Math.min((selected.series_paths?.length ?? 1) - 1, i + 1))}
+                      onClick={() =>
+                        setSeriesIndex((i) => Math.min((selected.series_paths?.length ?? 1) - 1, i + 1))
+                      }
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -511,21 +528,33 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                     onChange={(e) => setComparisonId(e.target.value)}
                   >
                     <option value="">Compare with another investigation</option>
-                    {items.filter((item) => item.id !== selected.id).map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title}
-                      </option>
-                    ))}
+                    {items
+                      .filter((item) => item.id !== selected.id)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.title}
+                        </option>
+                      ))}
                   </select>
                 )}
 
                 {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" disabled={openIndex === 0} onClick={() => setOpenIndex((i) => (i ?? 0) - 1)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={openIndex === 0}
+                    onClick={() => setOpenIndex((i) => (i ?? 0) - 1)}
+                  >
                     <ChevronLeft className="w-4 h-4 mr-1" /> Previous
                   </Button>
-                  <Button size="sm" variant="outline" disabled={openIndex === items.length - 1} onClick={() => setOpenIndex((i) => (i ?? 0) + 1)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={openIndex === items.length - 1}
+                    onClick={() => setOpenIndex((i) => (i ?? 0) + 1)}
+                  >
                     Next <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => toggleVisibility(selected)}>
@@ -560,7 +589,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
       </Dialog>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload Investigation</DialogTitle>
           </DialogHeader>
@@ -587,8 +616,12 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               />
               <label htmlFor="investigation-upload" className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                 <UploadCloud className="h-7 w-7 text-primary" />
-                <span className="font-medium text-foreground">{formatUploadState(file?.name ?? null, seriesFiles.length)}</span>
-                <span className="text-xs">Supports DICOM, image, video, and PDF files up to {MAX_FILE_SIZE_MB}MB</span>
+                <span className="font-medium text-foreground">
+                  {formatUploadState(file?.name ?? null, seriesFiles.length)}
+                </span>
+                <span className="text-xs">
+                  Supports DICOM, image, video, and PDF files up to {MAX_FILE_SIZE_MB}MB
+                </span>
                 <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1">
                     <FileImage className="h-3 w-3" /> Images
@@ -603,32 +636,71 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               </label>
             </div>
 
-            <Input placeholder="Title *" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <Input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <Input
+              placeholder="Title *"
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+
+            <Input
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+
             <div className="grid grid-cols-2 gap-2">
-              <select className="border border-input bg-background rounded-md px-3 py-2 text-sm" value={form.investigation_type} onChange={(e) => setForm({ ...form, investigation_type: e.target.value })}>
+              <select
+                className="border border-input bg-background rounded-md px-3 py-2 text-sm"
+                value={form.investigation_type}
+                onChange={(e) => setForm({ ...form, investigation_type: e.target.value })}
+              >
                 {TYPES.map((t) => (
-                  <option key={t} value={t}>{t.toUpperCase()}</option>
+                  <option key={t} value={t}>
+                    {t.toUpperCase()}
+                  </option>
                 ))}
               </select>
-              <select className="border border-input bg-background rounded-md px-3 py-2 text-sm" value={form.procedure_category} onChange={(e) => setForm({ ...form, procedure_category: e.target.value })}>
+
+              <select
+                className="border border-input bg-background rounded-md px-3 py-2 text-sm"
+                value={form.procedure_category}
+                onChange={(e) => setForm({ ...form, procedure_category: e.target.value })}
+              >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="capitalize">{c}</option>
+                  <option key={c} value={c} className="capitalize">
+                    {c}
+                  </option>
                 ))}
               </select>
             </div>
+
             <div className="grid grid-cols-2 gap-2">
-              <ToothSelect value={form.tooth_number} onValueChange={(tooth_number) => setForm({ ...form, tooth_number })} />
-              <Input type="date" value={form.taken_on} onChange={(e) => setForm({ ...form, taken_on: e.target.value })} />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_visible_to_patient}
-                onChange={(e) => setForm({ ...form, is_visible_to_patient: e.target.checked })}
+              <ToothSelect
+                value={form.tooth_number}
+                onValueChange={(tooth_number) => setForm({ ...form, tooth_number })}
               />
-              Visible to patient in portal
-            </label>
+              <Input
+                type="date"
+                value={form.taken_on}
+                onChange={(e) => setForm({ ...form, taken_on: e.target.value })}
+              />
+            </div>
+
+            <div className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.is_visible_to_patient}
+                  onChange={(e) => setForm({ ...form, is_visible_to_patient: e.target.checked })}
+                />
+                Visible to patient in portal
+              </label>
+              <p className="mt-2">
+                This controls whether the patient can see this item in their portal.
+              </p>
+            </div>
+
             <Button type="submit" className="w-full" disabled={saving}>
               {saving ? "Uploading..." : "Upload"}
             </Button>
