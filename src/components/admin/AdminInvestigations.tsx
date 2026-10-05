@@ -23,9 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { ToothSelect } from "./ClinicalSelectors";
 import InvestigationWorkbench from "./InvestigationWorkbench";
-import CbctVolumeViewer from "@/components/portal/CbctVolumeViewer";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
+const CbctVolumeViewer = lazy(() => import("@/components/portal/CbctVolumeViewer"));
 
 export interface Investigation {
   id: string;
@@ -89,6 +89,8 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const [comparisonUrl, setComparisonUrl] = useState("");
   const [seriesIndex, setSeriesIndex] = useState(0);
   const [seriesUrl, setSeriesUrl] = useState("");
+  const [seriesUrls, setSeriesUrls] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -310,8 +312,25 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   useEffect(() => {
     setSeriesIndex(0);
     setSeriesUrl("");
+    setSeriesUrls([]);
+    setViewMode("2d");
     setComparisonId("");
   }, [selected?.id]);
+
+  useEffect(() => {
+    let active = true;
+    const paths = selected?.series_paths;
+    if (!paths?.length || viewMode !== "3d") return;
+    void Promise.all(paths.map(async path => {
+      if (path.startsWith("http")) return path;
+      const { data, error } = await supabase.storage.from("patient-media").createSignedUrl(path, 3600);
+      if (error || !data?.signedUrl) throw new Error("Could not open every scan slice");
+      return data.signedUrl;
+    })).then(urls => { if (active) setSeriesUrls(urls); }).catch(() => {
+      if (active) toast.error("Could not open every scan slice");
+    });
+    return () => { active = false; };
+  }, [selected?.id, viewMode]);
 
   useEffect(() => {
     let active = true;
@@ -444,7 +463,20 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
                 </div>
               </DialogHeader>
 
-              {isDicom && url ? (
+              {isDicom && selected.investigation_type === "cbct" && (selected.series_paths?.length ?? 0) > 1 && (
+                <div className="flex gap-2 px-4 pb-2">
+                  <Button size="sm" variant={viewMode === "2d" ? "default" : "outline"} onClick={() => setViewMode("2d")}>2D slices</Button>
+                  <Button size="sm" variant={viewMode === "3d" ? "default" : "outline"} onClick={() => setViewMode("3d")}>3D volume</Button>
+                </div>
+              )}
+
+              {isDicom && viewMode === "3d" ? (
+                seriesUrls.length === selected.series_paths?.length ? (
+                  <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+                    <CbctVolumeViewer urls={seriesUrls} />
+                  </Suspense>
+                ) : <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : isDicom && url ? (
                 <Suspense
                   fallback={
                     <div className="flex items-center justify-center py-12">
@@ -491,7 +523,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               )}
 
               <div className="p-4 space-y-3">
-                {(selected.series_paths?.length ?? 0) > 1 && (
+                {viewMode === "2d" && (selected.series_paths?.length ?? 0) > 1 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Button
                       size="icon"
