@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { sendText } from "../_shared/whatsapp.ts";
+import { verifyPortalSession } from "../_shared/portal-session.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const gatewayKey = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
@@ -13,6 +14,7 @@ const TZ = "+05:30";
 const bookingSchema = z.object({ action: z.literal("book"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/), service: z.string().trim().min(2).max(100), durationMinutes: z.number().int().min(30).max(180).default(30), notes: z.string().trim().max(500).optional() });
 const availabilitySchema = z.object({ action: z.literal("availability"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), durationMinutes: z.number().int().min(30).max(180).default(30) });
 const portalDataSchema = z.object({ action: z.literal("portal_data"), portalToken: z.string().min(10) });
+const portalImagingSchema = z.object({ action: z.literal("portal_investigations"), portalToken: z.string().min(10).max(512) });
 const staffSchema = z.object({ action: z.enum(["confirm", "reschedule", "cancel", "retry"]), appointmentId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), time: z.string().regex(/^\d{2}:\d{2}$/).optional(), reason: z.string().trim().min(2).max(300).optional() });
 
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
@@ -40,16 +42,7 @@ async function calendar(path: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : {};
 }
 async function verifyPortal(token: string) {
-  try {
-    const decoded = atob(token); const parts = decoded.split(".");
-    if (parts.length < 3) return null;
-    const phone = parts[0], expires = Number(parts[1]), signature = parts.slice(2).join(".");
-    if (!/^\d{10}$/.test(phone) || expires < Date.now()) return null;
-    const raw = `${phone}.${expires}` + Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
-    const expected = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    return signature === expected ? phone : null;
-  } catch { return null; }
+  return verifyPortalSession(token, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 }
 async function isStaff(req: Request) {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -72,6 +65,42 @@ async function portalData(portalToken: string) {
   if (appointments.error) throw appointments.error;
   if (treatments.error) throw treatments.error;
   return { ok: true, patient, appointments: appointments.data ?? [], treatments: treatments.data ?? [] };
+}
+async function portalInvestigations(portalToken: string) {
+  const phone = await verifyPortal(portalToken);
+  if (!phone) return { error: "Patient session expired", status: 401 };
+  const { data: patient, error: patientError } = await admin.from("patients").select("id").eq("phone", phone).maybeSingle();
+  if (patientError) throw patientError;
+  if (!patient) return { error: "Patient record not found", status: 404 };
+  const { data: rows, error } = await admin.from("patient_investigations")
+    .select("id,investigation_type,procedure_category,title,description,url,thumbnail_url,media_type,tooth_number,taken_on,created_at,series_paths,is_series")
+    .eq("patient_id", patient.id).eq("is_visible_to_patient", true)
+    .order("taken_on", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
+  if (error) throw error;
+  const sign = async (path: string | null) => {
+    if (!path) return null;
+    let storagePath = path;
+    if (/^https?:\/\//i.test(path)) {
+      const url = new URL(path);
+      const origin = new URL(Deno.env.get("SUPABASE_URL") ?? "").origin;
+      const match = url.pathname.match(/^\/storage\/v1\/object\/(?:sign|authenticated|public)\/patient-media\/(.+)$/);
+      if (url.origin !== origin || !match) throw new Error("Shared investigation file needs clinic review");
+      storagePath = decodeURIComponent(match[1]);
+    }
+    if (storagePath.split("/").includes("..")) throw new Error("Invalid investigation file path");
+    const { data, error: signError } = await admin.storage.from("patient-media").createSignedUrl(storagePath, 1800);
+    if (signError || !data?.signedUrl) throw new Error("Could not open shared investigation file");
+    return data.signedUrl;
+  };
+  const investigations = await Promise.all((rows ?? []).map(async (row) => {
+    const { url, thumbnail_url, series_paths, ...metadata } = row;
+    try {
+      return { ...metadata, signedUrl: await sign(url), thumbnailUrl: await sign(thumbnail_url), seriesUrls: await Promise.all((series_paths ?? []).map(sign)) };
+    } catch {
+      return { ...metadata, signedUrl: null, thumbnailUrl: null, seriesUrls: [], fileError: "This file is unavailable. Please contact the clinic." };
+    }
+  }));
+  return { ok: true, investigations };
 }
 async function busy(date: string, duration: number, excludeId?: string) {
   const timeMin = scheduledAt(date, "00:00").toISOString();
@@ -144,6 +173,11 @@ Deno.serve(async (req) => {
     if (raw.action === "portal_data") {
       const input = portalDataSchema.parse(raw);
       const result = await portalData(input.portalToken);
+      return json(result, "status" in result ? result.status : 200);
+    }
+    if (raw.action === "portal_investigations") {
+      const input = portalImagingSchema.parse(raw);
+      const result = await portalInvestigations(input.portalToken);
       return json(result, "status" in result ? result.status : 200);
     }
     if (!configured()) return json({ error: "Google Calendar authorization is required before online slots can be shown.", calendarAuthorizationRequired: true }, 503);

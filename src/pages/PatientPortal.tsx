@@ -193,13 +193,6 @@ const PatientPortalContent = () => {
       toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP அனுப்பப்பட்டது");
       setStep("otp");
     } else {
-      const { data: existing } = await supabase.from("patients").select("id").or(`phone.eq.${phone.trim()},email.eq.${e}`).limit(1);
-      if (existing && existing.length > 0) {
-        setSending(false);
-        toast.error(lang === "en" ? "An account already exists. Please sign in." : "கணக்கு ஏற்கனவே உள்ளது. உள்நுழையவும்.");
-        switchToSignIn({ email: e });
-        return;
-      }
       const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
       setSending(false);
       if (error) { toast.error(error.message); return; }
@@ -233,13 +226,6 @@ const PatientPortalContent = () => {
         return;
       }
       setSending(true);
-      // Verify a patient with this email exists before sending
-      const { data: pats } = await supabase.from("patients").select("id,email").ilike("email", e).limit(1);
-      if (!pats || pats.length === 0) {
-        setSending(false);
-        toast.error(lang === "en" ? "No patient found with this email. Please register or contact the clinic." : "இந்த மின்னஞ்சலுடன் நோயாளி இல்லை.");
-        return;
-      }
       const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
       setSending(false);
       if (error) {
@@ -283,6 +269,7 @@ const PatientPortalContent = () => {
           return;
         }
         const { data, error: fnErr } = await supabase.functions.invoke("portal-otp", {
+          headers: { Authorization: `Bearer ${verifyData.session.access_token}` },
           body: {
             action: "register_finalize",
             name: regName.trim(), phone: phone.trim(), email: e,
@@ -328,14 +315,17 @@ const PatientPortalContent = () => {
         toast.error(error?.message || "Invalid code");
         return;
       }
-      const { data: pats } = await supabase.from("patients").select("*").ilike("email", e).limit(1);
+      const { data, error: exchangeError } = await supabase.functions.invoke("portal-otp", {
+        headers: { Authorization: `Bearer ${verifyData.session.access_token}` },
+        body: { action: "email_session" },
+      });
       setVerifying(false);
-      if (!pats || pats.length === 0) {
-        toast.error(lang === "en" ? "No patient record linked to this email" : "இந்த மின்னஞ்சலுடன் பதிவு இல்லை");
+      if (exchangeError || data?.error || !data?.token) {
+        const detail = exchangeError ? await appointmentError(exchangeError, "Could not verify patient account") : null;
+        toast.error(data?.error || detail?.message || "Could not verify patient account");
         return;
       }
-      const pat = pats[0];
-      const sess: PortalSession = { phone: pat.phone, token: verifyData.session.access_token, expiresAt: Date.now() + 30 * 60 * 1000 };
+      const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: data.expiresAt };
       localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
       setSession(sess);
       setStep("in");
@@ -774,7 +764,7 @@ const PatientPortalContent = () => {
                 )}
               </section>
 
-              {patient && <InvestigationsViewer patientId={patient.id} />}
+              {patient && session && <InvestigationsViewer portalToken={session.token} />}
 
               <SuccessStoriesSection />
               <PortalTestimonials />
