@@ -1,11 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { sendOtpTemplate } from "../_shared/whatsapp.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { issuePortalSession } from "../_shared/portal-session.ts";
 
 const DEFAULT_COUNTRY_CODE = Deno.env.get("DEFAULT_COUNTRY_CODE") ?? "91";
 
@@ -31,6 +28,7 @@ function validEmail(e: string) { return typeof e === "string" && /^[^\s@]+@[^\s@
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -40,6 +38,21 @@ serve(async (req) => {
 
     const body = await req.json();
     const action = body.action as string;
+
+    // Only the verified email in the auth session can resolve a patient.
+    // Never trust an email/phone supplied in the exchange request.
+    if (action === "email_session") {
+      const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      if (!bearer) return json({ error: "Unauthorized" }, 401);
+      const { data: auth, error: authError } = await supabase.auth.getUser(bearer);
+      const verifiedEmail = auth.user?.email?.trim().toLowerCase();
+      if (authError || !verifiedEmail || !auth.user?.email_confirmed_at) return json({ error: "Verify your email to continue" }, 401);
+      const { data: patients, error } = await supabase.from("patients").select("phone").ilike("email", verifiedEmail.replace(/[%_]/g, "\\$&")).limit(2);
+      if (error) return json({ error: "Could not load patient account" }, 500);
+      if (!patients?.length) return json({ error: "No patient record linked to this email. Please register or contact the clinic." }, 404);
+      if (patients.length !== 1 || !validPhone(patients[0].phone)) return json({ error: "Please contact the clinic to verify your patient account" }, 409);
+      return json({ ok: true, ...await issuePortalSession(patients[0].phone, SERVICE_KEY) });
+    }
 
     // ---------- REGISTER: send OTP (WhatsApp only; email path uses register_finalize) ----------
     if (action === "register_send") {
@@ -112,7 +125,7 @@ serve(async (req) => {
         .limit(1);
 
       const otp = otps?.[0];
-      if (!otp || otp.code_hash !== code_hash) {
+      if (!otp || (otp.attempts ?? 0) >= 5 || otp.code_hash !== code_hash) {
         if (otp) await supabase.from("portal_otp_codes").update({ attempts: (otp.attempts ?? 0) + 1 }).eq("id", otp.id);
         return json({ error: "Invalid or expired code" }, 401);
       }
@@ -137,10 +150,7 @@ serve(async (req) => {
 
       await supabase.from("portal_otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", otp.id);
 
-      const sessionToken = `${pending.phone}.${Date.now() + 30 * 60 * 1000}`;
-      const tokenSig = await hashCode(sessionToken + SERVICE_KEY);
-      const token = btoa(`${sessionToken}.${tokenSig}`);
-      return json({ ok: true, token, phone: pending.phone });
+      return json({ ok: true, ...await issuePortalSession(pending.phone, SERVICE_KEY) });
     }
 
     // ---------- REGISTER: finalize after Supabase email OTP verified (Email path) ----------
@@ -151,7 +161,7 @@ serve(async (req) => {
         global: { headers: { Authorization: authHeader } },
       });
       const { data: userData, error: userErr } = await userClient.auth.getUser();
-      if (userErr || !userData?.user?.email) return json({ error: "Unauthorized" }, 401);
+      if (userErr || !userData?.user?.email || !userData.user.email_confirmed_at) return json({ error: "Unauthorized" }, 401);
       const sessionEmail = userData.user.email.toLowerCase();
 
       const name = String(body.name || "").trim();
@@ -179,10 +189,7 @@ serve(async (req) => {
       });
       if (insErr) return json({ error: `Registration failed: ${insErr.message}` }, 500);
 
-      const sessionToken = `${phone}.${Date.now() + 30 * 60 * 1000}`;
-      const tokenSig = await hashCode(sessionToken + SERVICE_KEY);
-      const token = btoa(`${sessionToken}.${tokenSig}`);
-      return json({ ok: true, token, phone });
+      return json({ ok: true, ...await issuePortalSession(phone, SERVICE_KEY) });
     }
 
     // ---------- Existing sign-in flows ----------
@@ -226,16 +233,13 @@ serve(async (req) => {
         .order("created_at", { ascending: false }).limit(1);
 
       const otp = otps?.[0];
-      if (!otp || otp.code_hash !== code_hash) {
+      if (!otp || (otp.attempts ?? 0) >= 5 || otp.code_hash !== code_hash) {
         if (otp) await supabase.from("portal_otp_codes").update({ attempts: (otp.attempts ?? 0) + 1 }).eq("id", otp.id);
         return json({ error: "Invalid or expired code" }, 401);
       }
       await supabase.from("portal_otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", otp.id);
 
-      const sessionToken = `${phone}.${Date.now() + 30 * 60 * 1000}`;
-      const tokenSig = await hashCode(sessionToken + SERVICE_KEY);
-      const token = btoa(`${sessionToken}.${tokenSig}`);
-      return json({ ok: true, token });
+      return json({ ok: true, ...await issuePortalSession(phone, SERVICE_KEY) });
     }
 
     return json({ error: "Unknown action" }, 400);

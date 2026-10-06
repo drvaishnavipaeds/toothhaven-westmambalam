@@ -4,21 +4,22 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileImage, ScanLine, Camera, X, Calendar, Hash, Download, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 const DicomViewer = lazy(() => import("./DicomViewer"));
 
 interface Investigation {
   id: string;
-  patient_id: string;
   investigation_type: string;
   procedure_category: string;
   title: string;
   description: string | null;
-  url: string;
-  thumbnail_url: string | null;
+  signedUrl: string | null;
+  thumbnailUrl: string | null;
+  seriesUrls: string[];
+  fileError?: string;
   media_type: string;
   tooth_number: string | null;
   taken_on: string | null;
-  is_visible_to_patient: boolean;
   created_at: string;
 }
 
@@ -32,7 +33,7 @@ const TYPE_META: Record<string, { en: string; ta: string; icon: any }> = {
 
 const PROCEDURES = ["all", "orthodontics", "implants", "rct", "cosmetic", "pediatric", "surgery", "general"] as const;
 
-const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
+const InvestigationsViewer = ({ portalToken }: { portalToken: string }) => {
   const { lang } = useLanguage();
   const [items, setItems] = useState<Investigation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,30 +41,27 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selected, setSelected] = useState<Investigation | null>(null);
 
-  const [signed, setSigned] = useState<Record<string, string>>({});
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("patient_investigations")
-        .select("*")
-        .eq("patient_id", patientId)
-        .eq("is_visible_to_patient", true)
-        .order("taken_on", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      const list = data || [];
-      setItems(list);
-      const urls: Record<string, string> = {};
-      await Promise.all(list.map(async (i) => {
-        if (i.url.startsWith("http")) { urls[i.id] = i.url; return; }
-        const { data: s } = await supabase.storage.from("patient-media").createSignedUrl(i.url, 3600);
-        if (s?.signedUrl) urls[i.id] = s.signedUrl;
-      }));
-      setSigned(urls);
-      setLoading(false);
+      setItems([]);
+      setSelected(null);
+      setLoadError(false);
+      try {
+        const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+          body: { action: "portal_investigations", portalToken },
+        });
+        if (cancelled) return;
+        if (error || data?.error) { setLoadError(true); return; }
+        setItems(data?.investigations ?? []);
+      } catch { if (!cancelled) setLoadError(true); }
+      finally { if (!cancelled) setLoading(false); }
     })();
-  }, [patientId]);
+    return () => { cancelled = true; };
+  }, [portalToken]);
 
   const types = useMemo(() => {
     const set = new Set(items.map(i => i.investigation_type));
@@ -99,6 +97,10 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-square rounded-lg" />)}
         </div>
+      ) : loadError ? (
+        <p role="alert" className="text-sm text-destructive py-6">
+          {lang === "en" ? "Could not load shared investigations. Please sign in again or contact the clinic." : "ஆய்வுகளை ஏற்ற முடியவில்லை. மீண்டும் உள்நுழையவும் அல்லது மருத்துவமனையைத் தொடர்புகொள்ளவும்."}
+        </p>
       ) : items.length === 0 ? (
         <div className="text-center py-8">
           <FileImage className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
@@ -171,7 +173,7 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
                         >
                           {isImage ? (
                             <img
-                              src={signed[item.id] || item.thumbnail_url || ""}
+                               src={item.thumbnailUrl || item.signedUrl || undefined}
                               alt={item.title}
                               loading="lazy"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
@@ -222,8 +224,9 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
                 </div>
               </DialogHeader>
               {(() => {
-                const url = signed[selected.id];
-                const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(selected.url) || selected.investigation_type === "cbct";
+                 const url = selected.signedUrl;
+                 if (!url) return <p role="alert" className="p-4 text-sm text-destructive">{selected.fileError || "This file is unavailable. Please contact the clinic."}</p>;
+                 const isDicom = selected.media_type === "dicom" || /\.dcm($|\?)/i.test(url);
                 if (isDicom && url) return (
                   <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
                     <DicomViewer url={url} />
@@ -241,20 +244,20 @@ const InvestigationsViewer = ({ patientId }: { patientId: string }) => {
                   </div>
                 );
               })()}
-              {(selected.description || signed[selected.id]) && (
+               {(selected.description || selected.signedUrl) && (
                 <div className="p-4 space-y-3">
                   {selected.description && (
                     <p className="text-sm text-muted-foreground">{selected.description}</p>
                   )}
-                  <a
-                    href={signed[selected.id]}
+                   {selected.signedUrl && <Button asChild variant="link" className="p-0"><a
+                     href={selected.signedUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                   >
                     <Download className="w-4 h-4" />
                     {lang === "en" ? "Open / Download" : "திற / பதிவிறக்கு"}
-                  </a>
+                   </a></Button>}
                 </div>
               )}
             </>
