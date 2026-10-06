@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Unify verified email and WhatsApp patient sessions for records and booking
+- [ ] Route patient investigation records and private media through patient-scoped verification
+- [ ] Verify patient identity/access restrictions and booking availability; live OTP-to-confirmation remains separately tracked
 - [x] Repair public booking entry, verify clinic calendar connection and clear booking errors (authenticated submission remains untested without a patient OTP)
 - [x] Add appointment lifecycle fields and overlap protection
 - [x] Build fail-closed Google Calendar availability and booking endpoints
