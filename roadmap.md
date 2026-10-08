@@ -3,7 +3,8 @@
 - [x] Route patient investigation records and private media through patient-scoped verification
 - [x] Verify invalid-session rejection, patient investigation isolation, and signed-in phone/desktop admin screens (six regression tests passed)
 - [ ] Verify a registered patient's live OTP → available slot → booking → confirmation; requires patient verification and approved notification templates
-- [ ] Route legacy WhatsApp booking tool through verified booking instead of its invalid "To be confirmed" direct appointment insert
+- [x] Route legacy WhatsApp booking tool to verified portal booking; remove invalid direct appointment inserts and reservation claims
+- [x] Reject missing/error/malformed calendar responses instead of showing false availability; deploy both functions and pass 16 booking/access regression tests
 - [x] Repair public booking entry, verify clinic calendar connection and clear booking errors (authenticated submission remains untested without a patient OTP)
 - [x] Add appointment lifecycle fields and overlap protection
 - [x] Build fail-closed Google Calendar availability and booking endpoints
