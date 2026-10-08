@@ -1,6 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { last10, logMessage, sendText, toE164 } from "../_shared/whatsapp.ts";
+import { patientBookingEntry } from "../_shared/booking-entry.ts";
 
 const VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -12,7 +13,7 @@ Rules:
 - Reply in the same language the patient wrote in (Tamil script if they wrote Tamil).
 - Keep replies under 4 short lines; this is WhatsApp.
 - Never diagnose or prescribe. For pain/swelling/trauma, ask them to call +91 89251 66149 right away.
-- Use book_appointment only when you have the patient's name, a preferred date (YYYY-MM-DD) and the service. Ask for whatever is missing first.
+- For booking requests, use book_appointment to provide the verified patient portal link. It never creates or reserves an appointment. Never claim a request was saved or a slot is free; patients must sign in/register and select a genuinely available date and time in the portal.
 - Use request_human whenever the patient asks for a person, complains, disputes a bill, or you are unsure.
 - Patients can stop promotional messages any time by replying STOP.`;
 
@@ -26,7 +27,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "book_appointment",
-      description: "Create a pending appointment request for this patient.",
+      description: "Return the verified patient booking link. Does not create an appointment or reserve a time.",
       parameters: {
         type: "object",
         properties: {
@@ -35,7 +36,7 @@ const TOOLS = [
           treatment_type: { type: "string" },
           notes: { type: "string" },
         },
-        required: ["name", "appointment_date", "treatment_type"],
+        required: [],
         additionalProperties: false,
       },
     },
@@ -88,42 +89,6 @@ async function patientContext(phone: string): Promise<string> {
   return lines.join("\n");
 }
 
-async function bookAppointment(phone: string, args: Record<string, string>) {
-  const digits = last10(phone);
-  const { data: patient } = await admin.from("patients").select("id, name").ilike("phone", `%${digits}`).maybeSingle();
-  const { data, error } = await admin.from("appointments").insert({
-    patient_id: patient?.id ?? null,
-    patient_name: String(args.name ?? patient?.name ?? "WhatsApp patient").slice(0, 100),
-    patient_phone: digits,
-    appointment_date: args.appointment_date,
-    appointment_time: "To be confirmed",
-    treatment_type: String(args.treatment_type ?? "Consultation").slice(0, 100),
-    notes: `Requested via WhatsApp (Haven AI). ${String(args.notes ?? "").slice(0, 300)}`.trim(),
-    status: "pending",
-    source: "whatsapp",
-  }).select("id").maybeSingle();
-  if (error) {
-    console.error("WhatsApp booking failed:", error.message);
-    return { ok: false, message: "Could not save the request." };
-  }
-  if (data?.id) {
-    try {
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/appointment-notification`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceKey}`,
-        },
-        body: JSON.stringify({ appointmentId: data.id, event: "request" }),
-      });
-    } catch (notifyError) {
-      console.error("WhatsApp appointment request notification failed:", notifyError);
-    }
-  }
-  return { ok: true, id: data?.id, message: "Appointment request saved; the clinic will confirm the time." };
-}
-
 async function callModel(messages: unknown[]) {
   const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -174,7 +139,7 @@ async function aiReply(phone: string, message: string): Promise<{ text: string |
 
       let result: unknown;
       if (name === "book_appointment") {
-        result = await bookAppointment(phone, args);
+        return { text: patientBookingEntry().message, escalate };
       } else if (name === "request_human") {
         escalate = true;
         result = { ok: true, message: "A team member has been notified and will reply shortly." };

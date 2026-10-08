@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { sendText } from "../_shared/whatsapp.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
+import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const gatewayKey = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
@@ -109,7 +110,7 @@ async function busy(date: string, duration: number, excludeId?: string) {
   let query = admin.from("appointments").select("id,appointment_time,duration_minutes").eq("appointment_date", date).in("status", ["pending", "tentative", "confirmed", "rescheduled"]);
   if (excludeId) query = query.neq("id", excludeId);
   const { data: local, error } = await query; if (error) throw error;
-  return { google: external?.calendars?.primary?.busy ?? [], local: local ?? [], duration };
+  return { google: calendarBusyPeriods(external), local: local ?? [], duration };
 }
 function overlaps(start: Date, end: Date, bStart: Date, bEnd: Date) { return start < bEnd && end > bStart; }
 async function available(date: string, duration: number, excludeId?: string) {
