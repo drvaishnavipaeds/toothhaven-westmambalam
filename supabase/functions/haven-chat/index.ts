@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isBookingIntent } from "../_shared/chat-booking-flow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,7 +31,7 @@ Services offered:
 
 Your responsibilities:
 1. Answer patient queries about services, timings, location
-2. Help patients book appointments by collecting: name, phone, preferred date, and service
+2. For booking, direct patients to the Book an appointment button in this chat, which verifies their account and checks live clinic times.
 3. Provide general dental health tips
 4. Redirect emergency cases to call the clinic directly
 5. Always offer the WhatsApp booking link: https://wa.me/918925166149
@@ -40,7 +41,7 @@ Important rules:
 - Always recommend visiting the clinic for proper examination
 - Be warm, professional, and reassuring
 - Keep responses concise and helpful
-- For appointment booking, collect details and confirm you'll pass them to the clinic
+- Never claim an appointment is saved, reserved, or confirmed from conversation alone. Only the verified booking form creates a pending request.
 - UPI Payment ID: Q42218734@ybl (PhonePe) for advance payments
 - IMPORTANT: If a patient mentions calling or contacting 9884166149 for appointments, inform them that all appointment queries to 9884166149 are now redirected to +91 8925166149. Ask them to contact +91 8925166149 directly.
 - IMPORTANT: When users want to book via WhatsApp, share this link: https://wa.me/918925166149
@@ -111,6 +112,10 @@ serve(async (req) => {
 
   try {
     const { messages, lang } = await req.json();
+    const last = Array.isArray(messages) ? messages[messages.length - 1] : null;
+    if (typeof last?.content === "string" && isBookingIntent(last.content)) {
+      return new Response(JSON.stringify({ booking: true, content: lang === "ta" ? "முன்பதிவு பொத்தானில் கணக்கை சரிபார்த்து நேரத்தை தேர்ந்தெடுக்கவும். மருத்துவரின் உறுதி தேவை." : "Use Book an appointment in this chat to verify your account and choose an available time. Your request still needs clinic confirmation." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
