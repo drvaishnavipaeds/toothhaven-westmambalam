@@ -1,4 +1,8 @@
 # Roadmap
+- [ ] Add verified website-chat booking with Email/WhatsApp OTP and live time selection
+- [ ] Add verified WhatsApp in-chat booking through the same appointment workflow
+- [ ] Track doctor WhatsApp alerts to 8925166149 with secure appointment-review links
+- [ ] Verify chat booking safeguards, phone/desktop screens, and remaining notification dependencies
 - [x] Unify verified email and WhatsApp patient sessions for records and booking
 - [x] Route patient investigation records and private media through patient-scoped verification
 - [x] Verify invalid-session rejection, patient investigation isolation, and signed-in phone/desktop admin screens (six regression tests passed)
