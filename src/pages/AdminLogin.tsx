@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Phone, ShieldCheck, ArrowLeft, Mail, Lock, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,12 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const { signInWithPhone, verifyOtp, signInWithEmail, sendEmailOtp, verifyEmailOtp, sendPasswordReset, isAdmin, user } = useAdminAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const destination = `/admin/dashboard?${params.toString()}`;
   const { toast } = useToast();
 
   if (user && isAdmin) {
-    navigate("/admin/dashboard", { replace: true });
+    navigate(destination, { replace: true });
     return null;
   }
 
@@ -50,7 +52,7 @@ const AdminLogin = () => {
     if (error) {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     } else {
-      navigate("/admin/dashboard", { replace: true });
+      navigate(destination, { replace: true });
     }
   };
 
@@ -62,7 +64,7 @@ const AdminLogin = () => {
     if (error) {
       toast({ title: "Login Failed", description: error, variant: "destructive" });
     } else {
-      navigate("/admin/dashboard", { replace: true });
+      navigate(destination, { replace: true });
     }
   };
 
@@ -91,7 +93,7 @@ const AdminLogin = () => {
     if (error) {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     } else {
-      navigate("/admin/dashboard", { replace: true });
+      navigate(destination, { replace: true });
     }
   };
 

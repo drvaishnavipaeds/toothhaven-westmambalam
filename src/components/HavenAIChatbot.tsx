@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Send, Mic, MicOff, Volume2, Globe } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import drKarthikAvatar from "@/assets/dr-karthik-avatar.png";
+import ChatAppointmentBooking from "@/components/ChatAppointmentBooking";
+import { Button } from "@/components/ui/button";
+import { isBookingIntent } from "../../supabase/functions/_shared/chat-booking-flow";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type ChatLang = "en" | "ta";
@@ -10,6 +13,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/haven-chat`;
 
 const HavenAIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
   const [chatLang, setChatLang] = useState<ChatLang>("en");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -136,6 +140,10 @@ const HavenAIChatbot = () => {
     const updatedMessages = [...base, userMsg];
     setMessages(updatedMessages);
     setInput("");
+    if (isBookingIntent(text)) {
+      setBookingOpen(true);
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -220,6 +228,7 @@ const HavenAIChatbot = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {bookingOpen ? <ChatAppointmentBooking lang={chatLang} onClose={() => setBookingOpen(false)} /> : <>
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
@@ -260,10 +269,12 @@ const HavenAIChatbot = () => {
               </div>
             )}
             <div ref={messagesEndRef} />
+            </>}
           </div>
 
-          {/* WhatsApp booking banner */}
+          {/* Verified in-chat booking entry */}
           <div className="px-3 py-2 bg-muted/50 border-t border-border">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setBookingOpen(true)}>{chatLang === "ta" ? "முன்பதிவு செய்யுங்கள்" : "Book an appointment"}</Button>
             <a
               href="https://wa.me/918925166149?text=Hi%2C%20I%20would%20like%20to%20book%20an%20appointment%20at%20Tooth%20Haven%20Dental%20Care."
               target="_blank"
@@ -280,7 +291,7 @@ const HavenAIChatbot = () => {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-border shrink-0">
+          {!bookingOpen && <div className="p-3 border-t border-border shrink-0">
             <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex items-center gap-2">
               {hasSpeechRecognition && (
                 <button
@@ -312,7 +323,7 @@ const HavenAIChatbot = () => {
                 <Send className="w-4 h-4" />
               </button>
             </form>
-          </div>
+          </div>}
         </div>
       )}
     </>
