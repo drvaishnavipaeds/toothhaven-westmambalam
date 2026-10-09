@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { sendText } from "../_shared/whatsapp.ts";
+import { sendDoctorAlert, submitDoctorTemplate } from "../_shared/doctor-alert.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 
@@ -9,10 +9,9 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
 const gatewayKey = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
 const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 const GATEWAY = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
-const ADMIN_PHONE = "8925166149";
 const TZ = "+05:30";
 
-const bookingSchema = z.object({ action: z.literal("book"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/), service: z.string().trim().min(2).max(100), durationMinutes: z.number().int().min(30).max(180).default(30), notes: z.string().trim().max(500).optional() });
+const bookingSchema = z.object({ action: z.literal("book"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/), service: z.string().trim().min(2).max(100), durationMinutes: z.number().int().min(30).max(180).default(30), notes: z.string().trim().max(500).optional(), source: z.enum(["patient_portal", "website_chat", "whatsapp"]).default("patient_portal") });
 const availabilitySchema = z.object({ action: z.literal("availability"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), durationMinutes: z.number().int().min(30).max(180).default(30) });
 const portalDataSchema = z.object({ action: z.literal("portal_data"), portalToken: z.string().min(10) });
 const portalImagingSchema = z.object({ action: z.literal("portal_investigations"), portalToken: z.string().min(10).max(512) });
@@ -134,7 +133,10 @@ async function notify(id: string, event: string, extra: Record<string, string> =
   const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/appointment-notification`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` }, body: JSON.stringify({ appointmentId: id, event, ...extra }) });
   return await res.json().catch(() => ({ ok: false }));
 }
-async function alertAdmin(appt: any, message: string) { return await sendText(ADMIN_PHONE, `${message}\n${appt.patient_name} • ${appt.patient_phone}\n${appt.treatment_type ?? "Dental consultation"}\n${appt.appointment_date} at ${appt.appointment_time}\nOpen Admin > Appointments to Confirm, Reschedule or Cancel.`); }
+async function alertAdmin(appt: any, message: string) {
+  try { return await sendDoctorAlert(admin, appt, message); }
+  catch { return { ok: false, error: "Doctor notification could not be sent" }; }
+}
 
 async function runLifecycle() {
   const now = new Date(); let processed = 0;
@@ -170,6 +172,18 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const raw = await req.json().catch(() => ({}));
+    if (raw.action === "setup_doctor_template") {
+      if (!await isStaff(req)) return json({ error: "Only clinic staff can configure notifications" }, 403);
+      const result = await submitDoctorTemplate();
+      return json(result, result.ok ? 200 : 502);
+    }
+    if (raw.action === "retry_doctor_alert") {
+      if (!await isStaff(req)) return json({ error: "Only clinic staff can resend notifications" }, 403);
+      const id = z.string().uuid().parse(raw.appointmentId);
+      const { data: appt } = await admin.from("appointments").select("*").eq("id", id).maybeSingle();
+      if (!appt || appt.status !== "pending") return json({ error: "Pending appointment not found" }, 404);
+      return json(await alertAdmin(appt, "New appointment request — please review."));
+    }
     if (raw.action === "lifecycle") { if (!isServiceRequest(req)) return json({ error: "Forbidden" }, 403); return json(await runLifecycle()); }
     if (raw.action === "portal_data") {
       const input = portalDataSchema.parse(raw);
@@ -190,9 +204,11 @@ Deno.serve(async (req) => {
       const input = bookingSchema.parse(raw); const phone = await verifyPortal(input.portalToken); if (!phone) return json({ error: "Patient session expired" }, 401);
       const slots = await available(input.date, input.durationMinutes); if (!slots.includes(input.time)) return json({ error: "This slot is no longer available", alternatives: slots.slice(0, 3) }, 409);
       const { data: patient } = await admin.from("patients").select("id,name,phone").eq("phone", phone).maybeSingle(); if (!patient) return json({ error: "Patient record not found" }, 404);
-      const { data: appt, error } = await admin.from("appointments").insert({ patient_id: patient.id, patient_name: patient.name, patient_phone: patient.phone, appointment_date: input.date, appointment_time: input.time, duration_minutes: input.durationMinutes, treatment_type: input.service, notes: input.notes ?? null, status: "pending", source: "patient_portal", confirmation_deadline: new Date(Date.now() + 10 * 60000).toISOString(), calendar_sync_status: "not_synced" }).select("*").single();
+      const { data: appt, error } = await admin.from("appointments").insert({ patient_id: patient.id, patient_name: patient.name, patient_phone: patient.phone, appointment_date: input.date, appointment_time: input.time, duration_minutes: input.durationMinutes, treatment_type: input.service, notes: input.notes ?? null, status: "pending", source: input.source, confirmation_deadline: new Date(Date.now() + 10 * 60000).toISOString(), calendar_sync_status: "not_synced" }).select("*").single();
       if (error) return json({ error: error.message }, error.message.includes("no longer available") ? 409 : 400);
-      await alertAdmin(appt, "New appointment request — please act within 10 minutes."); return json({ ok: true, appointment: appt }, 201);
+      const adminNotification = await alertAdmin(appt, "New appointment request — please act within 10 minutes.");
+      await notify(appt.id, "request");
+      return json({ ok: true, appointment: appt, adminNotification }, 201);
     }
     const input = staffSchema.parse(raw); if (!await isStaff(req)) return json({ error: "Only clinic staff can manage appointments" }, 403);
     const { data: appt } = await admin.from("appointments").select("*").eq("id", input.appointmentId).maybeSingle(); if (!appt) return json({ error: "Appointment not found" }, 404);

@@ -40,7 +40,7 @@ const sourceLabel = (source: string) => {
   }
 };
 
-const AppointmentsList = ({ addRequested, onRequestHandled }: { addRequested?: boolean; onRequestHandled?: () => void }) => {
+const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId }: { addRequested?: boolean; onRequestHandled?: () => void; initialAppointmentId?: string }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
@@ -57,10 +57,10 @@ const AppointmentsList = ({ addRequested, onRequestHandled }: { addRequested?: b
     let query = supabase.from("appointments").select("*").order("appointment_date", { ascending: false });
     if (filter !== "all") query = query.eq("status", filter);
     const { data } = await query;
-    if (data) setAppointments(data as Appointment[]);
+    if (data) setAppointments((data as Appointment[]).sort((a, b) => Number(b.id === initialAppointmentId) - Number(a.id === initialAppointmentId)));
   };
 
-  useEffect(() => { fetchAppointments(); }, [filter]);
+  useEffect(() => { fetchAppointments(); }, [filter, initialAppointmentId]);
   useEffect(() => { if (addRequested) { setShowAdd(true); onRequestHandled?.(); } }, [addRequested]);
 
   const runWorkflow = async (body: Record<string, unknown>) => {
@@ -197,7 +197,7 @@ const AppointmentsList = ({ addRequested, onRequestHandled }: { addRequested?: b
 
       <div className="space-y-2">
         {appointments.map(a => (
-          <div key={a.id} className="bg-card rounded-md border border-border p-3 shadow-sm sm:p-4">
+          <div key={a.id} className={`bg-card rounded-md border border-border p-3 shadow-sm sm:p-4 ${a.id === initialAppointmentId ? "ring-2 ring-primary" : ""}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

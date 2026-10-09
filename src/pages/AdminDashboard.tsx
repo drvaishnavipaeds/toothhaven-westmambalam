@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useSearchParams } from "react-router-dom";
 import { Home, LogOut, UserCircle } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import AdminSidebar, { Tab } from "@/components/admin/AdminSidebar";
@@ -35,6 +35,7 @@ import {
 
 const AdminDashboard = () => {
   const { user, isAdmin, isLoading, signOut } = useAdminAuth();
+  const [params] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [openPatientId, setOpenPatientId] = useState<string | null>(null);
@@ -42,6 +43,8 @@ const AdminDashboard = () => {
   const [addRequested, setAddRequested] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
+  const appointmentId = params.get("appointment") ?? undefined;
+  useEffect(() => { if (params.get("tab") === "appointments" || appointmentId) setActiveTab("appointments"); }, [params, appointmentId]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -63,7 +66,7 @@ const AdminDashboard = () => {
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading...</p></div>;
   }
-  if (!user || !isAdmin) return <Navigate to="/admin" replace />;
+  if (!user || !isAdmin) return <Navigate to={`/admin?${params.toString()}`} replace />;
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -87,7 +90,7 @@ const AdminDashboard = () => {
         {activeTab === "overview" && <DashboardOverview onNavigate={setActiveTab} />}
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList initialPatientId={openPatientId} registerRequested={registerRequested} onRequestHandled={() => { setOpenPatientId(null); setRegisterRequested(false); }} />}
-        {activeTab === "appointments" && <AppointmentsList addRequested={addRequested} onRequestHandled={() => setAddRequested(false)} />}
+        {activeTab === "appointments" && <AppointmentsList initialAppointmentId={appointmentId} addRequested={addRequested} onRequestHandled={() => setAddRequested(false)} />}
         {activeTab === "schedule" && <ScheduleManager />}
         {activeTab === "waitlist" && <WaitlistManager />}
         {activeTab === "recalls" && <RecallsManager />}

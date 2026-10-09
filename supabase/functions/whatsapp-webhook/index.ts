@@ -2,6 +2,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { last10, logMessage, sendText, toE164 } from "../_shared/whatsapp.ts";
 import { patientBookingEntry } from "../_shared/booking-entry.ts";
+import { handleChatBooking } from "../_shared/whatsapp-booking.ts";
+import { validMetaSignature } from "../_shared/webhook-signature.ts";
 
 const VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -228,7 +230,11 @@ async function handleInbound(value: Record<string, any>) {
       .gte("created_at", twoHoursAgo);
     if ((takeover ?? 0) > 0) continue;
 
-    const { text: reply, escalate } = await aiReply(phone, body);
+    // Booking and OTP steps are deterministic, never sent to the language model.
+    let bookingReply: string | null = null;
+    try { bookingReply = await handleChatBooking(admin, digits, body); }
+    catch { bookingReply = "Booking could not continue safely. Please contact the clinic before trying again: 8925166149."; }
+    const { text: reply, escalate } = bookingReply ? { text: bookingReply, escalate: false } : await aiReply(phone, body);
 
     if (escalate) {
       await admin.from("whatsapp_messages")
@@ -294,7 +300,11 @@ Deno.serve(async (req) => {
 
   if (req.method === "POST") {
     try {
-      const body = await req.json();
+      const raw = await req.text();
+      const secret = Deno.env.get("META_APP_SECRET");
+      if (!secret) return new Response("Webhook signature verification is not configured", { status: 503, headers: corsHeaders });
+      if (!await validMetaSignature(raw, req.headers.get("x-hub-signature-256"), secret)) return new Response("Invalid webhook signature", { status: 401, headers: corsHeaders });
+      const body = JSON.parse(raw);
       const values = (body?.entry ?? []).flatMap((e: any) => (e?.changes ?? []).map((c: any) => c?.value)).filter(Boolean);
       // Meta requires a 200 within 20s — process in the background.
       const work = (async () => {
