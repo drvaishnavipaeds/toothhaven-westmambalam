@@ -219,9 +219,10 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     .eq("appointment_id", appt.id)
     .eq("event_key", key)
     .maybeSingle();
-  if (existing && existing.status !== "failed") {
+  if (existing && ["sent", "delivered", "read"].includes(existing.status)) {
     return { ok: true, duplicate: true, status: existing.status, messageId: existing.wa_message_id };
   }
+  if (existing && existing.status !== "failed") return { ok: false, inProgress: true, status: existing.status };
 
   const templates = await listApprovedTemplates();
   const template = templates.find((item) => item.name === config.template && item.language === DEFAULT_LANG)
@@ -243,7 +244,7 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     return { ok: false, configurationRequired: true, error };
   }
 
-  await admin.from("appointment_notifications").upsert({
+  const claim = {
     appointment_id: appt.id,
     event_type: event,
     event_key: key,
@@ -253,7 +254,11 @@ async function sendEvent(appt: Appointment, event: EventName, input: z.infer<typ
     status: "sending",
     error: null,
     metadata: input,
-  }, { onConflict: "appointment_id,event_key" });
+  };
+  const { data: claimed, error: claimError } = existing
+    ? await admin.from("appointment_notifications").update(claim).eq("id", existing.id).eq("status", "failed").select("id").maybeSingle()
+    : await admin.from("appointment_notifications").insert(claim).select("id").single();
+  if (claimError || !claimed) return { ok: false, inProgress: true, error: "Appointment notification is already being processed" };
 
   const configuredValues = valuesFor(appt, event, input);
   const params = bodyParams(template, config.names, configuredValues);
