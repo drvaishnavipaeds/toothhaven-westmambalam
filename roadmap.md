@@ -1,8 +1,10 @@
 # Roadmap
-- [ ] Add verified website-chat booking with Email/WhatsApp OTP and live time selection
-- [ ] Add verified WhatsApp in-chat booking through the same appointment workflow
-- [ ] Track doctor WhatsApp alerts to 8925166149 with secure appointment-review links
-- [ ] Verify chat booking safeguards, phone/desktop screens, and remaining notification dependencies
+- [x] Add verified website-chat booking with Email/WhatsApp OTP and live time selection
+- [x] Add verified WhatsApp in-chat booking through the same appointment workflow
+- [x] Track doctor WhatsApp alerts to 8925166149 with secure appointment-review links; atomically claim sends and preserve saved bookings when notification transport fails
+- [x] Verify chat booking safeguards (23 regression tests), simulated website submissions and signed-in review links on phone/desktop; reject invalid sessions and unsigned webhooks on deployed functions
+- [ ] Meta approval for th_doctor_appointment_review_v1 — submitted 10 October 2026; status PENDING
+- [ ] Fresh real in-chat OTP → booking → doctor alert delivery test — requires patient OTP interaction and approved doctor template; no real appointment created during simulated UI tests
 - [x] Unify verified email and WhatsApp patient sessions for records and booking
 - [x] Route patient investigation records and private media through patient-scoped verification
 - [x] Verify invalid-session rejection, patient investigation isolation, and signed-in phone/desktop admin screens (six regression tests passed)
@@ -18,7 +20,7 @@
 - [x] Add 10-minute tentative holds, 24-hour expiry, and 24h/2h reminder logic
 - [x] Keep WhatsApp notification delivery/error tracking idempotent
 - [x] Authorize karthiktoothhaven25@gmail.com in the Google Calendar connector
-- [ ] Meta approval pending for the submitted tentative, expiry, alternatives, and 2-hour templates
+- [x] Verify Meta approval for tentative, expiry, alternatives, and 2-hour templates — all APPROVED on 10 October 2026
 - [x] Deploy and verify the appointment functions and five-minute lifecycle worker
 - [x] Add shared treatment-catalog and FDI tooth selectors across admin clinical and billing forms
 - [x] Add treatment and tooth context to prescription/advice workflows

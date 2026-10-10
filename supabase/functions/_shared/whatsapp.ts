@@ -206,9 +206,9 @@ export function sendTemplate(opts: {
 
 let templateCache: { expiresAt: number; templates: WaTemplate[] } | null = null;
 
-export async function listApprovedTemplates(force = false): Promise<WaTemplate[]> {
+export async function listApprovedTemplates(force = false, includeUnapproved = false): Promise<WaTemplate[]> {
   if (!WA_WABA_ID || !WA_TOKEN) return [];
-  if (!force && templateCache && templateCache.expiresAt > Date.now()) return templateCache.templates;
+  if (!includeUnapproved && !force && templateCache && templateCache.expiresAt > Date.now()) return templateCache.templates;
   try {
     const url = new URL(await graphUrl(`${WA_WABA_ID}/message_templates`));
     url.searchParams.set("fields", "name,status,language,category,components");
@@ -220,9 +220,9 @@ export async function listApprovedTemplates(force = false): Promise<WaTemplate[]
       return [];
     }
     const templates: WaTemplate[] = Array.isArray(data?.data)
-      ? data.data.filter((t: WaTemplate) => t.status === "APPROVED")
+      ? data.data.filter((t: WaTemplate) => includeUnapproved || t.status === "APPROVED")
       : [];
-    templateCache = { expiresAt: Date.now() + 5 * 60 * 1000, templates };
+    if (!includeUnapproved) templateCache = { expiresAt: Date.now() + 5 * 60 * 1000, templates };
     return templates;
   } catch (e) {
     console.error("Unable to list WhatsApp templates:", e);

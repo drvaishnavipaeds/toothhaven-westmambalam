@@ -190,7 +190,7 @@ const HavenAIChatbot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full shadow-elevated flex items-center justify-center hover:scale-105 transition-transform animate-bounce overflow-hidden"
+          className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full shadow-elevated flex items-center justify-center hover:scale-105 transition-transform motion-reduce:transition-none overflow-hidden"
           aria-label="Open Haven AI Chat"
         >
           <img src={drKarthikAvatar} alt="Dr. Karthik" className="w-full h-full object-cover" />

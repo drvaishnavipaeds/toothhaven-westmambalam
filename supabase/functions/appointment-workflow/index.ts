@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { sendDoctorAlert, submitDoctorTemplate } from "../_shared/doctor-alert.ts";
+import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus } from "../_shared/doctor-alert.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 
@@ -172,6 +172,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const raw = await req.json().catch(() => ({}));
+    if (raw.action === "doctor_template_status") {
+      if (!await isStaff(req)) return json({ error: "Only clinic staff can inspect notifications" }, 403);
+      return json(await doctorTemplateStatus());
+    }
     if (raw.action === "setup_doctor_template") {
       if (!await isStaff(req)) return json({ error: "Only clinic staff can configure notifications" }, 403);
       const result = await submitDoctorTemplate();
@@ -207,8 +211,9 @@ Deno.serve(async (req) => {
       const { data: appt, error } = await admin.from("appointments").insert({ patient_id: patient.id, patient_name: patient.name, patient_phone: patient.phone, appointment_date: input.date, appointment_time: input.time, duration_minutes: input.durationMinutes, treatment_type: input.service, notes: input.notes ?? null, status: "pending", source: input.source, confirmation_deadline: new Date(Date.now() + 10 * 60000).toISOString(), calendar_sync_status: "not_synced" }).select("*").single();
       if (error) return json({ error: error.message }, error.message.includes("no longer available") ? 409 : 400);
       const adminNotification = await alertAdmin(appt, "New appointment request — please act within 10 minutes.");
-      await notify(appt.id, "request");
-      return json({ ok: true, appointment: appt, adminNotification }, 201);
+      // Notification transport failures must never turn a saved booking into a failure.
+      const patientNotification = await notify(appt.id, "request").catch(() => ({ ok: false, error: "Patient acknowledgement could not be sent" }));
+      return json({ ok: true, appointment: appt, adminNotification, patientNotification }, 201);
     }
     const input = staffSchema.parse(raw); if (!await isStaff(req)) return json({ error: "Only clinic staff can manage appointments" }, 403);
     const { data: appt } = await admin.from("appointments").select("*").eq("id", input.appointmentId).maybeSingle(); if (!appt) return json({ error: "Appointment not found" }, 404);
