@@ -207,8 +207,9 @@ Deno.serve(async (req) => {
       const { data: appt, error } = await admin.from("appointments").insert({ patient_id: patient.id, patient_name: patient.name, patient_phone: patient.phone, appointment_date: input.date, appointment_time: input.time, duration_minutes: input.durationMinutes, treatment_type: input.service, notes: input.notes ?? null, status: "pending", source: input.source, confirmation_deadline: new Date(Date.now() + 10 * 60000).toISOString(), calendar_sync_status: "not_synced" }).select("*").single();
       if (error) return json({ error: error.message }, error.message.includes("no longer available") ? 409 : 400);
       const adminNotification = await alertAdmin(appt, "New appointment request — please act within 10 minutes.");
-      await notify(appt.id, "request");
-      return json({ ok: true, appointment: appt, adminNotification }, 201);
+      // Notification transport failures must never turn a saved booking into a failure.
+      const patientNotification = await notify(appt.id, "request").catch(() => ({ ok: false, error: "Patient acknowledgement could not be sent" }));
+      return json({ ok: true, appointment: appt, adminNotification, patientNotification }, 201);
     }
     const input = staffSchema.parse(raw); if (!await isStaff(req)) return json({ error: "Only clinic staff can manage appointments" }, 403);
     const { data: appt } = await admin.from("appointments").select("*").eq("id", input.appointmentId).maybeSingle(); if (!appt) return json({ error: "Appointment not found" }, 404);

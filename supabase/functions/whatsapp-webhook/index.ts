@@ -117,7 +117,7 @@ async function aiReply(phone: string, message: string): Promise<{ text: string |
   const messages: any[] = [
     { role: "system", content: SYSTEM },
     { role: "system", content: await patientContext(phone) },
-    ...(history ?? []).reverse().filter((m) => m.body).map((m) => ({
+    ...(history ?? []).reverse().filter((m) => m.body && m.body !== "[Verification code redacted]").map((m) => ({
       role: m.direction === "inbound" ? "user" : "assistant",
       content: m.body as string,
     })),
@@ -183,6 +183,10 @@ async function handleInbound(value: Record<string, any>) {
       : msg.button?.text ?? msg.interactive?.list_reply?.title ?? msg.interactive?.button_reply?.title ?? null;
 
     const digits = last10(phone);
+    // OTPs are used only by verification, not persisted into inbox/model history.
+    const verificationCode = type === "text" && /^\d{6}$/.test((body ?? "").trim());
+    const storedBody = verificationCode ? "[Verification code redacted]" : body;
+    const storedRaw = verificationCode ? { id: msg.id, from: msg.from, type: msg.type, timestamp: msg.timestamp } : msg;
     const { data: patient } = await admin
       .from("patients").select("id").ilike("phone", `%${digits}`).maybeSingle();
 
@@ -191,10 +195,10 @@ async function handleInbound(value: Record<string, any>) {
       direction: "inbound",
       phone: toE164(phone),
       profile_name: profileName,
-      body,
+      body: storedBody,
       message_type: type,
       patient_id: patient?.id ?? null,
-      raw: msg,
+      raw: storedRaw,
     }).select("id").maybeSingle();
 
     if (error) {
@@ -234,7 +238,7 @@ async function handleInbound(value: Record<string, any>) {
     let bookingReply: string | null = null;
     try { bookingReply = await handleChatBooking(admin, digits, body); }
     catch { bookingReply = "Booking could not continue safely. Please contact the clinic before trying again: 8925166149."; }
-    const { text: reply, escalate } = bookingReply ? { text: bookingReply, escalate: false } : await aiReply(phone, body);
+    const { text: reply, escalate } = bookingReply ? { text: bookingReply, escalate: false } : verificationCode ? { text: "No active verification was found. Reply BOOK to start a secure booking.", escalate: false } : await aiReply(phone, body);
 
     if (escalate) {
       await admin.from("whatsapp_messages")
