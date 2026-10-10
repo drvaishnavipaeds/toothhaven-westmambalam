@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { sendDoctorAlert, submitDoctorTemplate } from "../_shared/doctor-alert.ts";
+import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus } from "../_shared/doctor-alert.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 
@@ -172,6 +172,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const raw = await req.json().catch(() => ({}));
+    if (raw.action === "doctor_template_status") {
+      if (!await isStaff(req)) return json({ error: "Only clinic staff can inspect notifications" }, 403);
+      return json(await doctorTemplateStatus());
+    }
     if (raw.action === "setup_doctor_template") {
       if (!await isStaff(req)) return json({ error: "Only clinic staff can configure notifications" }, 403);
       const result = await submitDoctorTemplate();

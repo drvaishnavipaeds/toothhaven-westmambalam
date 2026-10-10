@@ -32,7 +32,14 @@ export async function sendDoctorAlert(admin: any, appt: any, message: string) {
   return updateError ? { ok: false, error: "Doctor notification sent but tracking failed" } : result;
 }
 
-export function submitDoctorTemplate() {
+export async function doctorTemplateStatus() {
+  const templates = await listApprovedTemplates(true, true);
+  return { templates: templates.filter(t => t.name === DOCTOR_ALERT_TEMPLATE || t.name.startsWith("th_appointment_")).map(t => ({ name: t.name, language: t.language, status: t.status })) };
+}
+
+export async function submitDoctorTemplate() {
+  const existing = (await listApprovedTemplates(true, true)).find(t => t.name === DOCTOR_ALERT_TEMPLATE && t.language === DEFAULT_LANG);
+  if (existing) return { ok: true, existing: true, status: existing.status };
   return createMessageTemplate({ name: DOCTOR_ALERT_TEMPLATE, category: "UTILITY", language: DEFAULT_LANG,
     body: "Tooth Haven clinic appointment review: patient {{1}}, contact {{2}}, has requested service {{3}} at {{4}}. Clinic update: {{5}}. Please securely sign in to review this request and choose Confirm, Reschedule or Cancel using the appointment link: {{6}}. This message does not confirm the patient's appointment.",
     examples: ["Sample Patient", "9000000000", "Dental consultation", "2026-10-15 19:00", "New appointment request awaiting clinic approval", "https://www.toothhaven.in/admin/dashboard?tab=appointments&appointment=00000000-0000-0000-0000-000000000000"],
