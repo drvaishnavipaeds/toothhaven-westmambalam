@@ -116,7 +116,8 @@ async function aiReply(phone: string, message: string): Promise<{ text: string |
 
   const messages: any[] = [
     { role: "system", content: SYSTEM },
-    { role: "system", content: await patientContext(phone) },
+    // General chat does not disclose private patient records based on sender digits.
+    { role: "system", content: "Private patient records are available only after verified sign-in at https://www.toothhaven.in/patient-portal." },
     ...(history ?? []).reverse().filter((m) => m.body && m.body !== "[Verification code redacted]").map((m) => ({
       role: m.direction === "inbound" ? "user" : "assistant",
       content: m.body as string,
@@ -236,7 +237,7 @@ async function handleInbound(value: Record<string, any>) {
 
     // Booking and OTP steps are deterministic, never sent to the language model.
     let bookingReply: string | null = null;
-    try { bookingReply = await handleChatBooking(admin, digits, body); }
+    try { bookingReply = /^91\d{10}$/.test(phone) ? await handleChatBooking(admin, digits, body) : "For secure appointment booking, please sign in at https://www.toothhaven.in/patient-portal."; }
     catch { bookingReply = "Booking could not continue safely. Please contact the clinic before trying again: 8925166149."; }
     const { text: reply, escalate } = bookingReply ? { text: bookingReply, escalate: false } : verificationCode ? { text: "No active verification was found. Reply BOOK to start a secure booking.", escalate: false } : await aiReply(phone, body);
 
