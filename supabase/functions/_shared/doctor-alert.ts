@@ -3,14 +3,15 @@ import { createMessageTemplate, DEFAULT_LANG, isWindowOpen, listApprovedTemplate
 
 export async function sendDoctorAlert(admin: any, appt: any, message: string) {
   const eventKey = message.startsWith("New appointment request") ? "admin_request" : `admin_alert:${appt.status}`;
-  const { data: existing, error: readError } = await admin.from("appointment_notifications").select("id,status").eq("appointment_id", appt.id).eq("event_key", eventKey).maybeSingle();
+  const { data: existing, error: readError } = await admin.from("appointment_notifications").select("id,status,metadata").eq("appointment_id", appt.id).eq("event_key", eventKey).maybeSingle();
   if (readError) return { ok: false, error: "Could not read doctor notification status" };
   if (existing && ["sent", "delivered", "read"].includes(existing.status)) return { ok: true, duplicate: true };
   if (existing?.status === "sending") return { ok: false, inProgress: true, error: "Doctor notification is already being sent" };
   const url = appointmentReviewUrl(appt.id);
   const phone = toE164(DOCTOR_PHONE);
   const body = `${message}\n${appt.patient_name} • ${appt.patient_phone}\n${appt.treatment_type ?? "Dental consultation"}\n${appt.appointment_date} at ${appt.appointment_time}\nReview, Confirm, Reschedule or Cancel: ${url}`;
-  const claim = { appointment_id: appt.id, event_type: eventKey === "admin_request" ? "admin_request" : "admin_alert", event_key: eventKey, phone, template_name: DOCTOR_ALERT_TEMPLATE, status: "sending", metadata: { reviewUrl: url }, error: null };
+  const attempts = Number(existing?.metadata?.attempts ?? 0) + 1;
+  const claim = { appointment_id: appt.id, event_type: eventKey === "admin_request" ? "admin_request" : "admin_alert", event_key: eventKey, phone, template_name: DOCTOR_ALERT_TEMPLATE, status: "sending", metadata: { reviewUrl: url, message, appointmentStatus: appt.status, attempts, lastAttemptAt: new Date().toISOString() }, error: null };
   const { data: claimed, error: ledgerError } = existing
     ? await admin.from("appointment_notifications").update(claim).eq("id", existing.id).eq("status", "failed").select("id").maybeSingle()
     : await admin.from("appointment_notifications").insert(claim).select("id").single();
@@ -30,6 +31,32 @@ export async function sendDoctorAlert(admin: any, appt: any, message: string) {
   const { error: updateError } = await admin.from("appointment_notifications").update(result.ok ? { status: "sent", wa_message_id: result.id ?? null, sent_at: now, error: null, failed_at: null } : { status: "failed", error: result.error, failed_at: now }).eq("appointment_id", appt.id).eq("event_key", eventKey);
   if (result.ok) await logMessage(admin, { direction: "outbound", phone, wa_message_id: result.id ?? null, body, patient_id: appt.patient_id, template_name: DOCTOR_ALERT_TEMPLATE });
   return updateError ? { ok: false, error: "Doctor notification sent but tracking failed" } : result;
+}
+
+export async function retryFailedDoctorAlerts(admin: any, now = new Date()) {
+  const { data: rows, error } = await admin.from("appointment_notifications")
+    .select("id,appointment_id,event_key,metadata,failed_at")
+    .in("event_type", ["admin_request", "admin_alert"]).eq("status", "failed")
+    .eq("phone", toE164(DOCTOR_PHONE))
+    .lte("failed_at", new Date(now.getTime() - 5 * 60000).toISOString())
+    .order("failed_at", { ascending: true }).limit(50);
+  if (error) throw new Error("Could not load failed doctor alerts");
+  let retried = 0;
+  for (const row of rows ?? []) {
+    if (Number(row.metadata?.attempts ?? 1) >= 6) continue;
+    const { data: appt, error: appointmentError } = await admin.from("appointments").select("*").eq("id", row.appointment_id).maybeSingle();
+    if (appointmentError) continue;
+    const expectedStatus = row.metadata?.appointmentStatus;
+    const applicable = appt && (row.event_key === "admin_request" ? appt.status === "pending" : expectedStatus === appt.status);
+    if (!applicable) {
+      await admin.from("appointment_notifications").update({ status: "skipped", error: "Appointment has moved beyond this alert" }).eq("id", row.id).eq("status", "failed");
+      continue;
+    }
+    if (typeof row.metadata?.message !== "string" && row.event_key !== "admin_request") continue;
+    await sendDoctorAlert(admin, appt, row.metadata?.message ?? "New appointment request — please review.");
+    retried++;
+  }
+  return { retried };
 }
 
 export async function doctorTemplateStatus() {

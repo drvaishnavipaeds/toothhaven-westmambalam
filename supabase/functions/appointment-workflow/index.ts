@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus } from "../_shared/doctor-alert.ts";
+import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus, retryFailedDoctorAlerts } from "../_shared/doctor-alert.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 
@@ -140,6 +140,8 @@ async function alertAdmin(appt: any, message: string) {
 
 async function runLifecycle() {
   const now = new Date(); let processed = 0;
+  // Retry transport failures without changing appointment/calendar state.
+  const doctorAlerts = await retryFailedDoctorAlerts(admin, now).catch(() => ({ retried: 0, error: "Doctor alert retry check failed" }));
   const { data: rows } = await admin.from("appointments").select("*").in("status", ["pending", "tentative", "confirmed", "rescheduled"]);
   for (const appt of rows ?? []) {
     try {
@@ -148,15 +150,15 @@ async function runLifecycle() {
         if (slots.includes(appt.appointment_time)) {
           const event = await eventWrite(appt, true); const expiry = new Date(now.getTime() + 24 * 3600000).toISOString();
           await admin.from("appointments").update({ status: "tentative", google_event_id: event.id, calendar_sync_status: "synced", calendar_sync_error: null, tentative_created_at: now.toISOString(), tentative_expires_at: expiry, last_lifecycle_action: "tentative_created", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "pending");
-          await notify(appt.id, "tentative"); await alertAdmin(appt, "Tentative hold created after 10 minutes.");
+          await notify(appt.id, "tentative"); await alertAdmin({ ...appt, status: "tentative" }, "Tentative hold created after 10 minutes.");
         } else {
           const alternatives = slots.slice(0, 3); await admin.from("appointments").update({ status: "conflict", proposed_alternatives: alternatives, calendar_sync_status: "conflict", last_lifecycle_action: "slot_conflict", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "pending");
-          await notify(appt.id, "alternatives"); await alertAdmin(appt, `Requested slot became unavailable. Alternatives: ${alternatives.join(", ") || "none"}.`);
+          await notify(appt.id, "alternatives"); await alertAdmin({ ...appt, status: "conflict" }, `Requested slot became unavailable. Alternatives: ${alternatives.join(", ") || "none"}.`);
         }
         processed++;
       } else if (appt.status === "tentative" && appt.tentative_expires_at && new Date(appt.tentative_expires_at) <= now) {
         await removeEvent(appt.google_event_id); await admin.from("appointments").update({ status: "expired", expired_at: now.toISOString(), calendar_sync_status: "released", google_event_id: null, last_lifecycle_action: "tentative_expired", lifecycle_processed_at: now.toISOString() }).eq("id", appt.id).eq("status", "tentative");
-        await notify(appt.id, "expired"); await alertAdmin(appt, "Tentative hold expired and needs follow-up."); processed++;
+        await notify(appt.id, "expired"); await alertAdmin({ ...appt, status: "expired" }, "Tentative hold expired and needs follow-up."); processed++;
       } else if (["confirmed", "rescheduled"].includes(appt.status)) {
         const hours = (scheduledAt(appt.appointment_date, appt.appointment_time).getTime() - now.getTime()) / 3600000;
         if (!appt.reminder_24h_sent_at && hours > 2 && hours <= 24) { const r = await notify(appt.id, "reminder_24h"); if (r.ok) await admin.from("appointments").update({ reminder_24h_sent_at: now.toISOString() }).eq("id", appt.id); }
@@ -164,7 +166,7 @@ async function runLifecycle() {
       }
     } catch (error) { await admin.from("appointments").update({ calendar_sync_status: "failed", calendar_sync_error: error instanceof Error ? error.message : "Lifecycle failed" }).eq("id", appt.id); }
   }
-  return { ok: true, checked: rows?.length ?? 0, processed };
+  return { ok: true, checked: rows?.length ?? 0, processed, doctorAlerts };
 }
 
 Deno.serve(async (req) => {
