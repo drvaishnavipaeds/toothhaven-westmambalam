@@ -33,7 +33,7 @@
 - [x] Upgrade the admin home dashboard and appointment actions
 - [x] Verify PWA metadata, appointment lifecycle, desktop/mobile UI, and build
 
-- [ ] Add medicine catalogue and reusable clinical templates
+- [x] Seed and verify 20 active generic medicines and 15 English/Tamil clinical templates (12 advice, 3 prescription-review); preserve existing entries, leave regimens unset and drugs unselected for dentist review
 - [ ] Add voice notes, digital consent, estimates, and treatment timeline
 - [ ] Add imaging zoom, pan, measurements, annotations, series, and comparison
 - [ ] Add global search, quick actions, contact actions, secure re-entry, and badges
