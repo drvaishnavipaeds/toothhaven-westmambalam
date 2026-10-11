@@ -6,5 +6,6 @@
 - WhatsApp booking uses a server-only deterministic conversation state with existing OTP verification and appointment workflow calls; booking codes never go to the language model, and signed Meta callbacks are required before processing sender identity.
 - Doctor notification links open only authenticated admin review, never approve via GET; alert delivery/error tracking reuses the appointment notification ledger.
 - Notification senders atomically claim each ledger event before external sends, because concurrent reviews must not send duplicate billed messages.
+- Failed doctor alerts retry through the existing five-minute lifecycle worker with bounded attempts; sent or ambiguous in-flight sends are never reclaimed automatically, to prevent duplicate billed messages.
 - WhatsApp verification codes are redacted from stored inbox payloads and excluded from AI history; general chat does not resolve private records by sender digits.
 - Calendar availability rejects missing, malformed, or per-calendar error responses rather than interpreting them as empty busy periods, so connection failures cannot create false availability.

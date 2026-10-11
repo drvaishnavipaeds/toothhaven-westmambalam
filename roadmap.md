@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Close doctor-alert reliability gap: immediate sends to 8925166149, bounded retries, distinct lifecycle alerts, and current Meta approval verification
 - [x] Add verified website-chat booking with Email/WhatsApp OTP and live time selection
 - [x] Add verified WhatsApp in-chat booking through the same appointment workflow
 - [x] Track doctor WhatsApp alerts to 8925166149 with secure appointment-review links; atomically claim sends and preserve saved bookings when notification transport fails
