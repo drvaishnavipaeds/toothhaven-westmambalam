@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Add medicine dropdowns with Other/new medicine catalogue saving in both prescription screens; verify persistence and reuse
 - [x] Preserve immediate doctor sends to 8925166149; add bounded five-minute failed-send retries and distinct lifecycle alerts; 32 regression tests passed
 - [ ] Recheck current doctor-template approval and verify real delivery — requires clinic staff sign-in; automatic sign-in unavailable for the requesting account
 - [x] Add verified website-chat booking with Email/WhatsApp OTP and live time selection
