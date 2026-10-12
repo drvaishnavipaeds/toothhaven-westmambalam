@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Add shared medicine dropdowns with Other/new medicine catalogue saving in both prescription screens; seven persistence/reuse/error-handling tests passed and preview build OK
+- [ ] Verify new medicine save and reuse in signed-in clinic UI — requesting user has no clinic auth account; requires admin sign-in in preview
 - [x] Preserve immediate doctor sends to 8925166149; add bounded five-minute failed-send retries and distinct lifecycle alerts; 32 regression tests passed
 - [ ] Recheck current doctor-template approval and verify real delivery — requires clinic staff sign-in; automatic sign-in unavailable for the requesting account
 - [x] Add verified website-chat booking with Email/WhatsApp OTP and live time selection

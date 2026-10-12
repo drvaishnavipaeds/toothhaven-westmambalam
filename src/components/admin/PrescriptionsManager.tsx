@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
-import { ToothSelect, TreatmentSelect, type TreatmentCatalogOption } from "./ClinicalSelectors";
+import { ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
+import { PrescriptionMedicineSelect } from "./PrescriptionMedicineSelect";
 
 type Drug = { name: string; dose: string; frequency: string; duration: string; notes?: string };
 
@@ -16,20 +17,24 @@ const PrescriptionsManager = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<TreatmentCatalogOption[]>([]);
+  const [medicines, setMedicines] = useState<MedicineCatalogOption[]>([]);
   const [open, setOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ prescribed_date: new Date().toISOString().slice(0, 10), drugs: [] as Drug[] });
 
   const load = async () => {
-    const [{ data }, { data: p }, { data: treatments }] = await Promise.all([
+    const [{ data }, { data: p }, { data: treatments }, { data: med, error: medicineError }] = await Promise.all([
       supabase.from("prescriptions").select("*, patients(name, phone)").order("prescribed_date", { ascending: false }),
       supabase.from("patients").select("id,name,phone").order("name"),
       supabase.from("treatment_catalog").select("id,name,category,default_price").eq("is_active", true).order("name"),
+      supabase.from("medicine_catalog").select("*").eq("is_active", true).order("name"),
     ]);
     setRows(data ?? []);
     setPatients(p ?? []);
     setCatalog((treatments as TreatmentCatalogOption[]) ?? []);
+    if (medicineError) toast.error(medicineError.message);
+    setMedicines(med ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -180,12 +185,12 @@ const PrescriptionsManager = () => {
               <div className="flex justify-between items-center mb-2"><Label>Drugs</Label><Button size="sm" variant="outline" onClick={addDrug}><Plus className="w-3 h-3 mr-1" />Add</Button></div>
               <div className="space-y-2">
                 {form.drugs.map((d: Drug, i: number) => (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <Input className="col-span-4" placeholder="Drug" value={d.name} onChange={(e) => updateDrug(i, "name", e.target.value)} />
-                    <Input className="col-span-2" placeholder="Dose" value={d.dose} onChange={(e) => updateDrug(i, "dose", e.target.value)} />
-                    <Input className="col-span-2" placeholder="Freq" value={d.frequency} onChange={(e) => updateDrug(i, "frequency", e.target.value)} />
-                    <Input className="col-span-3" placeholder="Duration" value={d.duration} onChange={(e) => updateDrug(i, "duration", e.target.value)} />
-                    <Button variant="ghost" size="icon" className="col-span-1" onClick={() => removeDrug(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12 items-end">
+                    <div className="col-span-2 sm:col-span-4"><PrescriptionMedicineSelect catalog={medicines} value={d.name} onAdded={(item) => setMedicines((current) => [...current.filter((medicine) => medicine.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name)))} onValueChange={(name, item) => setForm((f: any) => ({ ...f, drugs: f.drugs.map((drug: Drug, index: number) => index === i ? { ...drug, name, dose: item?.default_dose || drug.dose, frequency: item?.default_frequency || drug.frequency, duration: item?.default_duration || drug.duration } : drug) }))} /></div>
+                    <Input className="sm:col-span-2" placeholder="Dose" value={d.dose} onChange={(e) => updateDrug(i, "dose", e.target.value)} />
+                    <Input className="sm:col-span-2" placeholder="Freq" value={d.frequency} onChange={(e) => updateDrug(i, "frequency", e.target.value)} />
+                    <Input className="sm:col-span-3" placeholder="Duration" value={d.duration} onChange={(e) => updateDrug(i, "duration", e.target.value)} />
+                    <Button variant="ghost" size="icon" className="sm:col-span-1" onClick={() => removeDrug(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 ))}
               </div>

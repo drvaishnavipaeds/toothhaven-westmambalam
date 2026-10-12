@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
-import { MedicineSelect, ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
+import { ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
+import { PrescriptionMedicineSelect } from "./PrescriptionMedicineSelect";
 
 type Drug = { name: string; dose: string; frequency: string; duration: string; notes?: string };
 
@@ -178,7 +179,7 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
               <div className="space-y-2">
                 {form.drugs.map((d: Drug, i: number) => (
                   <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12 items-end">
-                    <div className="col-span-2 sm:col-span-4"><MedicineSelect catalog={medicines} value={d.name} onValueChange={(name, item) => setForm((f: any) => ({ ...f, drugs: f.drugs.map((drug: Drug, index: number) => index === i ? { ...drug, name, dose: item?.default_dose || drug.dose, frequency: item?.default_frequency || drug.frequency, duration: item?.default_duration || drug.duration } : drug) }))} /><Input className="mt-1" placeholder="Medicine / custom name" value={d.name} onChange={(e) => updateDrug(i, "name", e.target.value)} /></div>
+                    <div className="col-span-2 sm:col-span-4"><PrescriptionMedicineSelect catalog={medicines} value={d.name} onAdded={(item) => setMedicines((current) => [...current.filter((medicine) => medicine.id !== item.id), item].sort((a, b) => a.name.localeCompare(b.name)))} onValueChange={(name, item) => setForm((f: any) => ({ ...f, drugs: f.drugs.map((drug: Drug, index: number) => index === i ? { ...drug, name, dose: item?.default_dose || drug.dose, frequency: item?.default_frequency || drug.frequency, duration: item?.default_duration || drug.duration } : drug) }))} /></div>
                     <Input className="sm:col-span-2" placeholder="Dose" value={d.dose} onChange={(e) => updateDrug(i, "dose", e.target.value)} />
                     <Input className="sm:col-span-2" placeholder="Freq" value={d.frequency} onChange={(e) => updateDrug(i, "frequency", e.target.value)} />
                     <Input className="sm:col-span-3" placeholder="Duration" value={d.duration} onChange={(e) => updateDrug(i, "duration", e.target.value)} />

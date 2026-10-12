@@ -132,11 +132,13 @@ export function MedicineSelect({
   value,
   onValueChange,
   className,
+  onOther,
 }: {
   catalog: MedicineCatalogOption[];
   value?: string | null;
   onValueChange: (name: string, item?: MedicineCatalogOption) => void;
   className?: string;
+  onOther?: () => void;
 }) {
   const groups = catalog.reduce<Record<string, MedicineCatalogOption[]>>((acc, item) => {
     const category = item.category?.trim() || "Other medicines";
@@ -145,11 +147,12 @@ export function MedicineSelect({
   }, {});
 
   return (
-    <Select value={value || undefined} onValueChange={(name) => onValueChange(name, catalog.find((item) => item.name === name))}>
+    <Select value={value || undefined} onValueChange={(name) => name === "__add_medicine__" ? onOther?.() : onValueChange(name, catalog.find((item) => item.name === name))}>
       <SelectTrigger className={className} aria-label="Medicine">
-        <SelectValue placeholder={catalog.length ? "Select medicine" : "Type medicine below"} />
+        <SelectValue placeholder="Select medicine">{value || undefined}</SelectValue>
       </SelectTrigger>
       <SelectContent>
+        {onOther && <SelectItem value="__add_medicine__">Other / add new medicine</SelectItem>}
         {Object.entries(groups).map(([category, items]) => (
           <SelectGroup key={category}>
             <SelectLabel>{category}</SelectLabel>
