@@ -9,4 +9,4 @@
 - Failed doctor alerts retry through the existing five-minute lifecycle worker with bounded attempts; sent or ambiguous in-flight sends are never reclaimed automatically, to prevent duplicate billed messages.
 - WhatsApp verification codes are redacted from stored inbox payloads and excluded from AI history; general chat does not resolve private records by sender digits.
 - Calendar availability rejects missing, malformed, or per-calendar error responses rather than interpreting them as empty busy periods, so connection failures cannot create false availability.
-- Both prescription screens share catalogue-backed medicine selection and explicit new-medicine persistence through the existing staff-protected catalogue; patient regimens never become shared defaults.
+- Both prescription screens share catalogue-backed medicine selection and explicit new-medicine persistence through the existing staff-protected catalogue; patient regimens never become shared defaults.- The offline app shell uses vite-plugin-pwa generateSW registered only through src/lib/register-sw.ts, because service workers must never run in dev, preview, or iframes.

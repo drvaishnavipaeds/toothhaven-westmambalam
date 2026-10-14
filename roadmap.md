@@ -41,3 +41,6 @@
 - [ ] Add global search, quick actions, contact actions, secure re-entry, and badges
 - [ ] Verify premium workflows, policies, dependency safety, mobile/desktop UI, and build
 - [ ] Verify authenticated consent, estimates, and imaging on phone and desktop; restore homepage mark and compressed DICOM viewing
+- [ ] Verify "Other" medicine appears in prescription dropdowns while signed in (blocked: backend paused)
+- [ ] Enable live updates for appointment/message counters (blocked: backend paused)
+- [ ] Closed-app push alerts need a web-push service (not set up)
