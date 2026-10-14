@@ -130,6 +130,13 @@ const AdminDashboard = () => {
         </div>
         <div className="p-3 sm:p-4 md:p-6">
         <AdminAppLock />
+        {offline && <div role="status" className="mb-3 rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">You're offline. Showing the saved app; changes and new data will load when the connection returns.</div>}
+        {notifyPermission === "default" && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Get phone alerts for new appointment requests and patient messages.</span>
+            <button onClick={enableAlerts} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">Turn on alerts</button>
+          </div>
+        )}
         {activeTab === "overview" && <DashboardOverview onNavigate={setActiveTab} />}
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList initialPatientId={openPatientId} registerRequested={registerRequested} onRequestHandled={() => { setOpenPatientId(null); setRegisterRequested(false); }} />}
