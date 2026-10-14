@@ -48,18 +48,61 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
+    let first = true;
+    let last = { pending: 0, messages: 0 };
+    const alert = (title: string, body: string, tab: Tab) => {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      if (document.visibilityState === "visible" && document.hasFocus()) return;
+      const n = new Notification(title, { body, icon: "/admin-icon-192.png", tag: `th-${tab}` });
+      n.onclick = () => { window.focus(); setActiveTab(tab); n.close(); };
+    };
     const refresh = async () => {
       const [{ count: pending }, { count: messages }] = await Promise.all([
         supabase.from("appointments").select("id", { count: "exact", head: true }).in("status", ["pending", "conflict"]),
         supabase.from("whatsapp_messages").select("id", { count: "exact", head: true }).eq("direction", "inbound").eq("handled_by_staff", false),
       ]);
-      setPendingCount(pending ?? 0);
-      setMessageCount(messages ?? 0);
+      const next = { pending: pending ?? 0, messages: messages ?? 0 };
+      if (!first) {
+        if (next.pending > last.pending) alert("New appointment request", `${next.pending} awaiting review`, "appointments");
+        if (next.messages > last.messages) alert("New patient message", `${next.messages} unread WhatsApp messages`, "whatsapp_inbox");
+      }
+      first = false;
+      last = next;
+      setPendingCount(next.pending);
+      setMessageCount(next.messages);
+      const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+      const total = next.pending + next.messages;
+      try { if (total > 0) await nav.setAppBadge?.(total); else await nav.clearAppBadge?.(); } catch { /* unsupported */ }
     };
+    let debounce: number | undefined;
+    const soon = () => { window.clearTimeout(debounce); debounce = window.setTimeout(() => void refresh(), 800); };
+    const channel = supabase
+      .channel("admin-badges")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, soon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, soon)
+      .subscribe();
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
     void refresh();
-    const timer = window.setInterval(refresh, 30000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(refresh, 60000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(debounce);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      void supabase.removeChannel(channel);
+    };
   }, [isAdmin]);
+
+  const [notifyPermission, setNotifyPermission] = useState<string>(() => ("Notification" in window ? Notification.permission : "unsupported"));
+  const [offline, setOffline] = useState(() => !navigator.onLine);
+  useEffect(() => {
+    const on = () => setOffline(false); const off = () => setOffline(true);
+    window.addEventListener("online", on); window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  const enableAlerts = async () => { if ("Notification" in window) setNotifyPermission(await Notification.requestPermission()); };
 
   const commandBar = <AdminCommandBar onNavigate={setActiveTab} onOpenPatient={(id) => { setOpenPatientId(id); setActiveTab("patients"); }} onRegisterPatient={() => { setRegisterRequested(true); setActiveTab("patients"); }} onAddAppointment={() => { setAddRequested(true); setActiveTab("appointments"); }} />;
 
