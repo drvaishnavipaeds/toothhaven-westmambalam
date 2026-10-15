@@ -26,6 +26,7 @@ import InvestigationWorkbench from "./InvestigationWorkbench";
 
 const DicomViewer = lazy(() => import("@/components/portal/DicomViewer"));
 const CbctVolumeViewer = lazy(() => import("@/components/portal/CbctVolumeViewer"));
+const MultiplanarCbctViewer = lazy(() => import("@/components/portal/MultiplanarCbctViewer"));
 
 export interface Investigation {
   id: string;
@@ -466,11 +467,14 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
               {isDicom && selected.investigation_type === "cbct" && (selected.series_paths?.length ?? 0) > 1 && (
                 <div className="flex gap-2 px-4 pb-2">
                   <Button size="sm" variant={viewMode === "2d" ? "default" : "outline"} onClick={() => setViewMode("2d")}>2D slices</Button>
+                  <Button size="sm" variant={viewMode === "mpr" ? "default" : "outline"} onClick={() => setViewMode("mpr")}>3 planes</Button>
                   <Button size="sm" variant={viewMode === "3d" ? "default" : "outline"} onClick={() => setViewMode("3d")}>3D volume</Button>
                 </div>
               )}
 
-              {isDicom && viewMode === "3d" ? (
+              {isDicom && viewMode === "mpr" ? (
+                seriesUrls.length === selected.series_paths?.length ? <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>}><MultiplanarCbctViewer urls={seriesUrls} /></Suspense> : <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : isDicom && viewMode === "3d" ? (
                 seriesUrls.length === selected.series_paths?.length ? (
                   <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
                     <CbctVolumeViewer urls={seriesUrls} />

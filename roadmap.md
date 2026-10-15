@@ -1,4 +1,11 @@
 # Roadmap
+- [ ] Upgrade CBCT to orientation-aware axial/coronal/sagittal viewing and add geometry tests
+- [ ] Test real clinic CBCT exports — blocked: no clinic exports uploaded and Cloud paused
+- [ ] Add secure PIN re-entry; retain server-verified staff access
+- [ ] Add passkey re-entry — requires running Cloud for verified credential registration and challenges
+- [ ] Connect Firebase web push and verify closed-app delivery — requires connection and running Cloud
+- [ ] Harden offline fallback and add automated regression coverage
+- [ ] Resume Cloud — resume tool is disabled; user must resume in Cloud settings
 - [x] Add shared medicine dropdowns with Other/new medicine catalogue saving in both prescription screens; seven persistence/reuse/error-handling tests passed and preview build OK
 - [ ] Verify new medicine save and reuse in signed-in clinic UI — requesting user has no clinic auth account; requires admin sign-in in preview
 - [x] Preserve immediate doctor sends to 8925166149; add bounded five-minute failed-send retries and distinct lifecycle alerts; 32 regression tests passed
