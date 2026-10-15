@@ -1,5 +1,6 @@
 import * as dicomParser from "dicom-parser";
 import { canDecodeCompressed, decodeDicomFrame } from "./decodeDicomFrame";
+import { directionLabel, planeForNormal, sortByGeometry, type PlaneName, type Vec3 } from "./dicomGeometry";
 
 export interface DicomVolume {
   data: Uint8Array;
@@ -8,6 +9,8 @@ export interface DicomVolume {
   spacing: [number, number, number];
   windowCenter: number;
   windowWidth: number;
+  planes: { xy: PlaneName; xz: PlaneName; yz: PlaneName };
+  labels: { right: string; down: string; next: string };
 }
 
 interface ParsedSlice {
@@ -15,7 +18,8 @@ interface ParsedSlice {
   rows: number;
   columns: number;
   frames: number;
-  position: number;
+  position: number[];
+  orientation: number[];
   spacing: [number, number];
   sliceThickness: number;
   windowCenter: number;
@@ -78,7 +82,8 @@ async function parseSlice(url: string): Promise<ParsedSlice> {
     rows,
     columns,
     frames,
-    position: position[2] ?? 0,
+    position: frames > 1 && position.length !== 3 ? [0, 0, 0] : position,
+    orientation: numberList(dataset.string("x00200037")),
     spacing: [pixelSpacing[1] ?? 1, pixelSpacing[0] ?? 1],
     sliceThickness: numberValue(dataset.string("x00180050"), 1),
     windowCenter: numberValue(dataset.string("x00281050"), 0),
@@ -91,7 +96,11 @@ export async function loadDicomVolume(urls: string[]): Promise<DicomVolume> {
   const parsed = await Promise.all(urls.map(parseSlice));
   const first = parsed[0];
   if (parsed.some(slice => slice.rows !== first.rows || slice.columns !== first.columns)) throw new Error("All CBCT slices must have matching dimensions");
-  parsed.sort((a, b) => a.position - b.position);
+  const multiframe = parsed.length === 1 && first.frames > 1;
+  if (multiframe && first.orientation.length !== 6) first.orientation = [1, 0, 0, 0, 1, 0];
+  if (multiframe && first.position.length !== 3) first.position = [0, 0, 0];
+  const geometry = sortByGeometry(parsed);
+  parsed.splice(0, parsed.length, ...geometry.slices);
   const sourceDepth = parsed.reduce((total, slice) => total + slice.frames, 0);
   if (sourceDepth < 2) throw new Error("3D viewing requires at least two scan slices");
   if (parsed.reduce((total, slice) => total + slice.values.byteLength, 0) > 512 * 1024 * 1024) throw new Error("This scan is too large for browser 3D viewing");
@@ -122,8 +131,9 @@ export async function loadDicomVolume(urls: string[]): Promise<DicomVolume> {
       targetZ += 1;
     }
   }
-  const positions = parsed.map(slice => slice.position).filter((value, index, all) => index === 0 || value !== all[index - 1]);
-  const sliceSpacing = positions.length > 1 ? Math.abs(positions[positions.length - 1] - positions[0]) / (positions.length - 1) : first.sliceThickness;
+  const sliceSpacing = geometry.spacing || first.sliceThickness;
+  const row = first.orientation.slice(0, 3) as Vec3;
+  const column = first.orientation.slice(3, 6) as Vec3;
   return {
     data,
     dimensions: [width, height, depth],
@@ -131,5 +141,7 @@ export async function loadDicomVolume(urls: string[]): Promise<DicomVolume> {
     spacing: [first.spacing[0] * stepX, first.spacing[1] * stepY, Math.max(sliceSpacing, 0.01) * stepZ],
     windowCenter: first.windowCenter,
     windowWidth: first.windowWidth,
+    planes: { xy: planeForNormal(geometry.normal), xz: planeForNormal(column), yz: planeForNormal(row) },
+    labels: { right: directionLabel(row), down: directionLabel(column), next: directionLabel(geometry.normal) },
   };
 }
