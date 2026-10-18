@@ -91,7 +91,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   const [seriesIndex, setSeriesIndex] = useState(0);
   const [seriesUrl, setSeriesUrl] = useState("");
   const [seriesUrls, setSeriesUrls] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
+  const [viewMode, setViewMode] = useState<"2d" | "mpr" | "3d">("2d");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -321,7 +321,7 @@ const AdminInvestigations = ({ patientId }: { patientId: string }) => {
   useEffect(() => {
     let active = true;
     const paths = selected?.series_paths;
-    if (!paths?.length || viewMode !== "3d") return;
+    if (!paths?.length || (viewMode !== "3d" && viewMode !== "mpr")) return;
     void Promise.all(paths.map(async path => {
       if (path.startsWith("http")) return path;
       const { data, error } = await supabase.storage.from("patient-media").createSignedUrl(path, 3600);
