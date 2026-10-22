@@ -202,7 +202,7 @@ async function handleInbound(value: Record<string, any>) {
       patient_id: patient?.id ?? null,
       raw: storedRaw,
     }).select("id").maybeSingle();
-    if (!error && inserted) await sendAdminPush(admin, { title: `WhatsApp: ${profileName || toE164(phone)}`, body: (storedBody ?? "New message").slice(0, 120), tab: "whatsapp", tag: `wa-${digits}` }).catch(() => null);
+    if (!error && inserted) await sendAdminPush(admin, { title: `WhatsApp: ${profileName || toE164(phone)}`, body: (storedBody ?? "New message").slice(0, 120), tab: "whatsapp_inbox", tag: `wa-${digits}` }).catch(() => null);
 
     if (error) {
       // Duplicate delivery from Meta — already processed.
