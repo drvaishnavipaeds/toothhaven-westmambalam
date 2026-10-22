@@ -46,7 +46,7 @@ const AdminDashboard = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const appointmentId = params.get("appointment") ?? undefined;
-  useEffect(() => { if (params.get("tab") === "appointments" || appointmentId) setActiveTab("appointments"); }, [params, appointmentId]);
+  useEffect(() => { const t = params.get("tab"); if (appointmentId) setActiveTab("appointments"); else if (t) setActiveTab(t as Tab); }, [params, appointmentId]);
 
   useEffect(() => {
     if (!isAdmin) return;
