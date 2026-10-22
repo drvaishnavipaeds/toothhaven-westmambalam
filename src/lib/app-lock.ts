@@ -6,11 +6,11 @@ export const MAX_PIN_ATTEMPTS = 5;
 type Stored = { salt: string; hash: string; attempts: number; passkeyId?: string };
 
 const b64 = (buf: ArrayBuffer | Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(buf as ArrayBuffer)));
-const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const unb64 = (s: string) => new Uint8Array(Array.from(atob(s), (c) => c.charCodeAt(0)));
 
 export const isValidPin = (pin: string) => /^\d{4,8}$/.test(pin);
 
-async function derive(pin: string, salt: Uint8Array) {
+async function derive(pin: string, salt: Uint8Array<ArrayBuffer>) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
   return b64(await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, key, 256));
 }
