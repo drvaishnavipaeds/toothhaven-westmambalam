@@ -4,6 +4,7 @@ import { z } from "npm:zod@3";
 import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus, retryFailedDoctorAlerts } from "../_shared/doctor-alert.ts";
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
+import { sendAdminPush } from "../_shared/web-push.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const gatewayKey = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
@@ -134,6 +135,7 @@ async function notify(id: string, event: string, extra: Record<string, string> =
   return await res.json().catch(() => ({ ok: false }));
 }
 async function alertAdmin(appt: any, message: string) {
+  await sendAdminPush(admin, { title: "Appointment request", body: `${appt?.patient_name ?? "Patient"} · ${appt?.appointment_date ?? ""} ${appt?.appointment_time ?? ""}`.trim(), tab: "appointments", tag: `appt-${appt?.id ?? ""}`, url: `/admin/dashboard?tab=appointments${appt?.id ? `&appointment=${appt.id}` : ""}` }).catch(() => null);
   try { return await sendDoctorAlert(admin, appt, message); }
   catch { return { ok: false, error: "Doctor notification could not be sent" }; }
 }

@@ -4,6 +4,7 @@ import { last10, logMessage, sendText, toE164 } from "../_shared/whatsapp.ts";
 import { patientBookingEntry } from "../_shared/booking-entry.ts";
 import { handleChatBooking } from "../_shared/whatsapp-booking.ts";
 import { validMetaSignature } from "../_shared/webhook-signature.ts";
+import { sendAdminPush } from "../_shared/web-push.ts";
 
 const VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -201,6 +202,7 @@ async function handleInbound(value: Record<string, any>) {
       patient_id: patient?.id ?? null,
       raw: storedRaw,
     }).select("id").maybeSingle();
+    if (!error && inserted) await sendAdminPush(admin, { title: `WhatsApp: ${profileName || toE164(phone)}`, body: (storedBody ?? "New message").slice(0, 120), tab: "whatsapp_inbox", tag: `wa-${digits}` }).catch(() => null);
 
     if (error) {
       // Duplicate delivery from Meta — already processed.

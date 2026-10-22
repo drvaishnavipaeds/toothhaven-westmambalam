@@ -7,6 +7,8 @@ import MobileAdminNavigation from "@/components/admin/MobileAdminNavigation";
 import AdminCommandBar from "@/components/admin/AdminCommandBar";
 import AdminAppLock from "@/components/admin/AdminAppLock";
 import { supabase } from "@/integrations/supabase/client";
+import { isAdminPushSubscribed, subscribeAdminPush } from "@/lib/web-push";
+import { toast } from "@/hooks/use-toast";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import PatientsList from "@/components/admin/PatientsList";
 import AppointmentsList from "@/components/admin/AppointmentsList";
@@ -44,7 +46,7 @@ const AdminDashboard = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const appointmentId = params.get("appointment") ?? undefined;
-  useEffect(() => { if (params.get("tab") === "appointments" || appointmentId) setActiveTab("appointments"); }, [params, appointmentId]);
+  useEffect(() => { const t = params.get("tab"); if (appointmentId) setActiveTab("appointments"); else if (t) setActiveTab(t as Tab); }, [params, appointmentId]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -102,7 +104,14 @@ const AdminDashboard = () => {
     window.addEventListener("online", on); window.addEventListener("offline", off);
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
-  const enableAlerts = async () => { if ("Notification" in window) setNotifyPermission(await Notification.requestPermission()); };
+  const [pushOn, setPushOn] = useState(true);
+  useEffect(() => { isAdminPushSubscribed().then(setPushOn).catch(() => setPushOn(false)); }, []);
+  const enableAlerts = async () => {
+    const res = await subscribeAdminPush();
+    if ("Notification" in window) setNotifyPermission(Notification.permission);
+    setPushOn(res.ok);
+    toast({ title: res.ok ? "Alerts are on for this device" : "Alerts not turned on", description: res.ok ? "You'll get alerts even when the app is closed." : res.reason });
+  };
 
   const commandBar = <AdminCommandBar onNavigate={setActiveTab} onOpenPatient={(id) => { setOpenPatientId(id); setActiveTab("patients"); }} onRegisterPatient={() => { setRegisterRequested(true); setActiveTab("patients"); }} onAddAppointment={() => { setAddRequested(true); setActiveTab("appointments"); }} />;
 
@@ -131,9 +140,9 @@ const AdminDashboard = () => {
         <div className="p-3 sm:p-4 md:p-6">
         <AdminAppLock />
         {offline && <div role="status" className="mb-3 rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">You're offline. Showing the saved app; changes and new data will load when the connection returns.</div>}
-        {notifyPermission === "default" && (
+        {(notifyPermission === "default" || (notifyPermission === "granted" && !pushOn)) && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Get phone alerts for new appointment requests and patient messages.</span>
+            <span className="text-muted-foreground">Get phone alerts for new appointment requests and patient messages, even when the app is closed.</span>
             <button onClick={enableAlerts} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">Turn on alerts</button>
           </div>
         )}
