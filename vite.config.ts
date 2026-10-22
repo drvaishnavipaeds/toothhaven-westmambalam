@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+        importScripts: ["/push-sw.js"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/, /^\/functions\//],
