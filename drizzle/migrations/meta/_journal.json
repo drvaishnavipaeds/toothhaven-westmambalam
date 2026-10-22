@@ -43,6 +43,13 @@
       "when": 1791507075226,
       "tag": "0005_verified_whatsapp_booking_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792697572024,
+      "tag": "0006_admin_badges_realtime",
+      "breakpoints": true
     }
   ]
 }
