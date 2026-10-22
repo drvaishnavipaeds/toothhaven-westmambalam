@@ -50,6 +50,13 @@
       "when": 1792697572024,
       "tag": "0006_admin_badges_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792698288695,
+      "tag": "0007_admin_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }
