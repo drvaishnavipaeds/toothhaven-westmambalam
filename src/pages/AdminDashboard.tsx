@@ -7,6 +7,8 @@ import MobileAdminNavigation from "@/components/admin/MobileAdminNavigation";
 import AdminCommandBar from "@/components/admin/AdminCommandBar";
 import AdminAppLock from "@/components/admin/AdminAppLock";
 import { supabase } from "@/integrations/supabase/client";
+import { isAdminPushSubscribed, subscribeAdminPush } from "@/lib/web-push";
+import { toast } from "@/hooks/use-toast";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import PatientsList from "@/components/admin/PatientsList";
 import AppointmentsList from "@/components/admin/AppointmentsList";
