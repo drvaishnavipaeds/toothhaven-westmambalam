@@ -25,4 +25,9 @@ describe("Bulk patient import rules", () => {
     expect(safeSpreadsheetText("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
     expect(safeSpreadsheetText("Raman")).toBe("Raman");
   });
+  it("round-trips escaped international phone numbers", () => {
+    const result = reviewPatientRows([{ Name: "Raman", Phone: safeSpreadsheetText("+919876543210") }], []);
+    expect(result[0].issue).toBeNull();
+    expect(result[0].patient.phone).toBe("+919876543210");
+  });
 });

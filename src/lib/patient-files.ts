@@ -30,6 +30,8 @@ export function reviewPatientRows(rows: Record<string, unknown>[], existing: { n
       phone: read("phone", "mobile", "phone number", "mobile number"), email: read("email") || null,
       gender: read("gender") || null, address: read("address") || null, date_of_birth: null,
     };
+    // CSV exports escape leading '+' for spreadsheet safety; undo only a valid phone escape.
+    if (/^'\+\d[\d\s-]+$/.test(patient.phone)) patient.phone = patient.phone.slice(1);
     let issue: string | null = null;
     try {
       patient.date_of_birth = dateValue(values.dateofbirth ?? values.dob);
