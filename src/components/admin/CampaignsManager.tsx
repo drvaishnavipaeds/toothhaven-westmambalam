@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Megaphone, RefreshCw, Send, Users } from "lucide-react";
+import MessagingTemplates from "./MessagingTemplates";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Campaign = {
   id: string;
@@ -178,7 +180,10 @@ const CampaignsManager = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="campaigns" className="space-y-4">
+      <TabsList><TabsTrigger value="campaigns">Campaigns</TabsTrigger><TabsTrigger value="templates">Messaging templates</TabsTrigger></TabsList>
+      <TabsContent value="templates"><MessagingTemplates onChanged={() => void loadTemplates(true)} /></TabsContent>
+      <TabsContent value="campaigns" className="space-y-4">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold">Campaigns</h1>
@@ -246,7 +251,7 @@ const CampaignsManager = () => {
             </Select>
             {!marketingTemplates.length && (
               <p className="text-xs text-muted-foreground">
-                Create and get templates approved in WhatsApp Manager, then hit Refresh.
+                No approved templates are available.
               </p>
             )}
           </div>
@@ -303,7 +308,8 @@ const CampaignsManager = () => {
           </div>
         </Card>
       </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 

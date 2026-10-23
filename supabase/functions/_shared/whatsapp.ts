@@ -57,6 +57,7 @@ export type SendResult = {
 };
 
 export type WaTemplate = {
+  id?: string;
   name: string;
   language: string;
   status: string;
@@ -144,7 +145,7 @@ export async function createMessageTemplate(definition: TemplateDefinition): Pro
         components: [{
           type: "BODY",
           text: definition.body,
-          example: { body_text: [definition.examples] },
+          ...(definition.examples.length ? { example: { body_text: [definition.examples] } } : {}),
         }],
       }),
     });
@@ -158,6 +159,37 @@ export async function createMessageTemplate(definition: TemplateDefinition): Pro
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Template creation failed" };
   }
+}
+
+/** Strict administration listing; callers must authorize the staff session first. */
+export async function listManagedTemplates(): Promise<WaTemplate[]> {
+  if (!WA_WABA_ID || !WA_TOKEN) throw new Error("WhatsApp template management is not configured.");
+  const templates: WaTemplate[] = [];
+  let after: string | undefined;
+  do {
+    const url = new URL(await graphUrl(`${WA_WABA_ID}/message_templates`));
+    url.searchParams.set("fields", "id,name,status,language,category,components");
+    url.searchParams.set("limit", "100");
+    if (after) url.searchParams.set("after", after);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(friendlyError(data, res.status).message);
+    templates.push(...(Array.isArray(data.data) ? data.data : []));
+    after = data.paging?.next ? data.paging?.cursors?.after : undefined;
+  } while (after);
+  return templates;
+}
+
+export async function editMessageTemplate(id: string, components: unknown[]): Promise<SendResult> {
+  if (!WA_TOKEN || !/^\d+$/.test(id)) return { ok: false, error: "Invalid template selection." };
+  const res = await fetch(await graphUrl(id), {
+    method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ components }),
+  });
+  const data = await res.json();
+  if (!res.ok) return { ok: false, error: friendlyError(data, res.status).message };
+  templateCache = null;
+  return { ok: true, id };
 }
 
 export function sendText(to: string, body: string): Promise<SendResult> {

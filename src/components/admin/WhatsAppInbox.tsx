@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Send, Bot, RefreshCw, User, Check, CheckCheck, AlertTriangle, FileText } from "lucide-react";
+import MessagingTemplates from "./MessagingTemplates";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Msg = {
   id: string;
@@ -142,7 +144,10 @@ const WhatsAppInbox = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="inbox" className="space-y-4">
+      <TabsList><TabsTrigger value="inbox">Inbox</TabsTrigger><TabsTrigger value="templates">Messaging templates</TabsTrigger></TabsList>
+      <TabsContent value="templates"><MessagingTemplates onChanged={() => void loadTemplates()} /></TabsContent>
+      <TabsContent value="inbox" className="space-y-4">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold">WhatsApp Inbox</h1>
@@ -273,7 +278,8 @@ const WhatsAppInbox = () => {
           </div>
         </Card>
       </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 
