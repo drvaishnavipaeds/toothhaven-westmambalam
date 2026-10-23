@@ -1,4 +1,6 @@
 # Project decisions
+- Both staff appointment entry screens share the patient directory selector and paginated directory loader; patient linkage uses UUIDs and duplicate matching uses name plus normalized phone, never shared phone alone.
+- Patient registration dates are separate from import timestamps, and database-generated clinic codes identify records without exposing contact numbers.
 
 - Staff access changes use the owner-validated staff-management function and atomic service-only assignment RPC; user_roles is authoritative, linked inactive staff lose access, and record mutation audits store identifiers/changed fields rather than private clinical content.
 
