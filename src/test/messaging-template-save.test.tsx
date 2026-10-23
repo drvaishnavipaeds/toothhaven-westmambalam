@@ -9,7 +9,7 @@ describe("Messaging template submission", () => {
   it("submits edits using the selected template ID and preserved variable samples", async () => {
     invoke.mockResolvedValue({ data: { templates: [template], canManage: true }, error: null });
     render(<MessagingTemplates onChanged={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Message", { exact: true }), { target: { value: "Hello {{1}}, your appointment is confirmed with Tooth Haven. Please contact our team for any assistance." } });
     fireEvent.click(screen.getByRole("button", { name: "Submit for Meta review" }));
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("messaging-templates", { body: expect.objectContaining({ action: "edit", id: "123456", name: "th_followup", examples: ["Raman"] }) }));

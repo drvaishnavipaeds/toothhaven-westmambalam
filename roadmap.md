@@ -1,6 +1,7 @@
 # Roadmap
-- [ ] Add WhatsApp messaging template viewing, creation and editing with Meta review status and secure staff/owner access
-- [ ] Verify template validation, signed-in management screens and live template listing; preserve existing notification templates
+- [x] Add WhatsApp template viewing, creation and editing in Inbox/Campaigns, Meta status filters, numbered variable samples and bearer-verified staff/owner access
+- [x] Verify 11 validation/submission/access tests, live listing of 19 templates and signed-in desktop/phone forms; missing bearer returns 401 and invalid authenticated writes return 400
+- [ ] Verify real Meta create/edit acceptance — no template submitted or live notification template changed during verification; approval remains controlled by Meta
 - [x] Add bulk patient CSV/Excel/text-table PDF import with review, validation and family-safe duplicate skipping; export complete paginated demographics, Excel template and printable PDF
 - [x] Verify 13 patient file/identity tests, signed-in CSV/PDF review, Excel family-patient import/read-back, desktop/phone controls and preview build; temporary patients deleted
 - [x] Sync all 10 uploaded patients, preserving original registration dates and assigning clinic patient IDs; existing 441 patients retained
