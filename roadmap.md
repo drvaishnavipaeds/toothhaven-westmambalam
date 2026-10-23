@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Add bulk patient CSV/Excel/text-table PDF import with review, validation and family-safe duplicate skipping; export complete paginated demographics, Excel template and printable PDF
+- [x] Verify 13 patient file/identity tests, signed-in CSV/PDF review, Excel family-patient import/read-back, desktop/phone controls and preview build; temporary patients deleted
 - [x] Sync all 10 uploaded patients, preserving original registration dates and assigning clinic patient IDs; existing 441 patients retained
 - [x] Add searchable patient selection, automatic phone/age/registration/visit-history details and inline registration to both staff appointment forms; permit shared family phone numbers
 - [x] Verify import reconciliation, family matching rules and signed-in appointment selection/registration on desktop/phone; temporary family test patient removed, no appointment or messages sent
