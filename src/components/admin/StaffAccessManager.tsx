@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Pencil, Activity, RefreshCw, ShieldCheck, UserRound, Search } from "lucide-react";
+import { Plus, Pencil, Activity, RefreshCw, ShieldCheck, UserRound, Search, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -51,6 +51,7 @@ export default function StaffAccessManager() {
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState("");
   const [activitySearch, setActivitySearch] = useState("");
+  const [inviting, setInviting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setFailure("");
@@ -87,6 +88,12 @@ export default function StaffAccessManager() {
       setEvents(result.events ?? []); setChanges(result.changes ?? []);
     } catch (error) { setActivityError(error instanceof Error ? error.message : "Unable to load activity"); }
     finally { setActivityLoading(false); }
+  };
+  const invite = async (member: Staff) => {
+    setInviting(member.id);
+    try { const result = await request({ action: "invite", staff_id: member.id }); toast.success(result.message); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Unable to send invitation"); }
+    finally { setInviting(null); }
   };
   const eventList = (items: Event[]) => {
     const filtered = items.filter(event => [event.action, event.entity, event.entity_id].join(" ").toLowerCase().includes(activitySearch.toLowerCase()));
@@ -127,7 +134,7 @@ export default function StaffAccessManager() {
         return <article key={member.id} className="rounded-lg border border-border bg-card p-4 space-y-4">
           <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-primary"><UserRound className="h-5 w-5" /></div><div className="min-w-0 flex-1"><h2 className="font-semibold break-words">{member.name}</h2><p className="text-xs text-muted-foreground break-all">{member.email ?? member.phone ?? "—"}</p></div><Badge variant={member.status === "active" ? "secondary" : "outline"}>{statuses[member.status]?.[lang === "ta" ? 1 : 0] ?? member.status}</Badge></div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm"><span className="font-medium">{roleNames[role]?.[lang === "ta" ? 1 : 0] ?? role}</span><span className="text-muted-foreground">{branches.find(branch => branch.id === member.branch_id)?.name ?? text("No branch assigned", "கிளை ஒதுக்கப்படவில்லை")}</span></div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-muted-foreground">{member.user_id ? text("Login linked", "உள்நுழைவு இணைக்கப்பட்டது") : text("Login not linked", "உள்நுழைவு இணைக்கப்படவில்லை")}</span><div className="flex gap-1"><Button variant="ghost" size="sm" onClick={() => showActivity(member)}><Activity className="mr-1.5 h-4 w-4" />{text("Activity", "செயல்பாடு")}</Button><Button variant="outline" size="sm" onClick={() => edit(member)}><Pencil className="mr-1.5 h-4 w-4" />{text("Edit access", "அணுகலை மாற்று")}</Button></div></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><span className="text-xs text-muted-foreground">{member.user_id ? text("Login linked", "உள்நுழைவு இணைக்கப்பட்டது") : text("Login not linked", "உள்நுழைவு இணைக்கப்படவில்லை")}</span><div className="flex flex-wrap gap-1">{!member.user_id && member.email && member.status === "active" && <Button variant="ghost" size="sm" disabled={inviting === member.id} onClick={() => invite(member)}><Mail className="mr-1.5 h-4 w-4" />{text("Invite", "அழைப்பு")}</Button>}<Button variant="ghost" size="sm" onClick={() => showActivity(member)}><Activity className="mr-1.5 h-4 w-4" />{text("Activity", "செயல்பாடு")}</Button><Button variant="outline" size="sm" onClick={() => edit(member)}><Pencil className="mr-1.5 h-4 w-4" />{text("Edit access", "அணுகலை மாற்று")}</Button></div></div>
         </article>;
       })}
       {!filtered.length && <p className="py-8 text-muted-foreground">{text("No staff found", "பணியாளர்கள் இல்லை")}</p>}

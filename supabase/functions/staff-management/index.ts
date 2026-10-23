@@ -28,6 +28,16 @@ Deno.serve(async req => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return reply({ error: "Invalid request" }, 400);
     if (body.action === "access") return reply({ owner });
     if (!owner) return reply({ error: "Only the clinic owner can manage staff access and view staff activity" }, 403);
+    if (body.action === "invite") {
+      if (typeof body.staff_id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.staff_id)) return reply({ error: "Select a staff member" }, 400);
+      const { data: member, error } = await db.from("staff").select("email,user_id,status").eq("id", body.staff_id).single();
+      if (error || !member?.email || member.user_id || member.status !== "active") return reply({ error: "Select an active staff member without a linked login" }, 400);
+      const { data: invited, error: inviteError } = await db.auth.admin.inviteUserByEmail(member.email, { redirectTo: "https://www.toothhaven.in/admin" });
+      if (inviteError || !invited.user) return reply({ error: inviteError?.message ?? "Unable to invite staff" }, 400);
+      const { error: logError } = await db.from("audit_logs").insert({ actor_id: actor.id, actor_email: actor.email, action: "staff_invited", entity: "staff", entity_id: body.staff_id });
+      if (logError) return reply({ error: "Invitation sent, but activity could not be recorded. Refresh before retrying." }, 500);
+      return reply({ message: "Invitation sent. After they verify their email, edit and save this staff member to activate their assigned role." });
+    }
     if (body.action === "list") {
       const [{ data: staff, error }, { data: branches, error: branchError }, { data: assigned, error: assignedError }] = await Promise.all([
         db.from("staff").select("*").order("name"),
