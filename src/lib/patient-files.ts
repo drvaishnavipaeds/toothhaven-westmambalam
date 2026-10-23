@@ -79,7 +79,8 @@ export async function readPatientFile(file: File): Promise<Record<string, unknow
     const pdf = await import("pdfjs-dist");
     const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
     pdf.GlobalWorkerOptions.workerSrc = worker.default;
-    const doc = await pdf.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+    const loading = pdf.getDocument({ data: await file.arrayBuffer() });
+    const doc = await loading.promise;
     const rows: Record<string, unknown>[] = [];
     try {
       if (doc.numPages > 50) throw new Error("PDF imports are limited to 50 pages");
@@ -96,7 +97,8 @@ export async function readPatientFile(file: File): Promise<Record<string, unknow
         for (const item of items.filter(i => i.transform[5] < headerY - 5)) {
           if (!item.str.trim()) continue;
           const y = Math.round(item.transform[5] / 3) * 3;
-          const col = headers.findLastIndex(h => item.transform[4] >= h.transform[4] - 3);
+          let col = -1;
+          headers.forEach((h, index) => { if (item.transform[4] >= h.transform[4] - 3) col = index; });
           const header = headers[col];
           if (!header) continue;
           const row = lines.get(y) ?? {};
@@ -105,7 +107,7 @@ export async function readPatientFile(file: File): Promise<Record<string, unknow
         }
         rows.push(...[...lines.entries()].sort((a, b) => b[0] - a[0]).map(([, r]) => r).filter(r => r.Name && r.Phone));
       }
-    } finally { await doc.destroy(); }
+    } finally { await loading.destroy(); }
     if (!rows.length) throw new Error("No patient rows found in PDF");
     return rows;
   }
