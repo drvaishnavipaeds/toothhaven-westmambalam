@@ -1,4 +1,6 @@
 # Roadmap
+- [ ] Add owner-controlled staff role/status/branch assignment and individual activity history
+- [ ] Verify staff assignment security and signed-in staff management
 - [ ] Upgrade CBCT to orientation-aware axial/coronal/sagittal viewing and add geometry tests
 - [ ] Test real clinic CBCT exports — blocked: no clinic exports uploaded and Cloud paused
 - [ ] Add secure PIN re-entry; retain server-verified staff access
