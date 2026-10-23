@@ -1,7 +1,8 @@
 # Roadmap
-- [ ] Sync the uploaded patient workbook, preserving original registration dates and assigning patient IDs
-- [ ] Add searchable patient selection, automatic baseline details and inline registration to both staff appointment forms; allow family phone sharing
-- [ ] Verify import reconciliation, family matching rules and signed-in appointment selection/registration
+- [x] Sync all 10 uploaded patients, preserving original registration dates and assigning clinic patient IDs; existing 441 patients retained
+- [x] Add searchable patient selection, automatic phone/age/registration/visit-history details and inline registration to both staff appointment forms; permit shared family phone numbers
+- [x] Verify import reconciliation, family matching rules and signed-in appointment selection/registration on desktop/phone; temporary family test patient removed, no appointment or messages sent
+- [ ] Family-member selection in patient self-service sign-in/chat — existing phone-only sessions cannot distinguish multiple members; staff booking supports each separate patient ID safely
 - [x] Add owner-controlled staff role/status/branch assignment, invitations and individual activity history; retain existing clinical role restrictions
 - [x] Verify signed-in staff create/edit and saved access history on desktop/phone; four role-validation tests pass, unsigned requests and direct client assignment denied, test staff removed
 - [ ] Upgrade CBCT to orientation-aware axial/coronal/sagittal viewing and add geometry tests

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { samePatient, patientAge, patientRegistrationDate } from "@/lib/patient-directory";
+import { samePatient, patientAge, patientRegistrationDate, patientVisitStatus } from "@/lib/patient-directory";
 
 describe("Patient identity and baseline details", () => {
+  it("marks completed-visit patients as returning, rather than relying on import date", () => {
+    expect(patientVisitStatus(true)).toBe("Returning patient");
+    expect(patientVisitStatus(false)).toBe("New patient · no completed visit recorded");
+  });
   it("allows separate family members to share one phone", () => {
     expect(samePatient({ name: "Anitha", phone: "+919876543210" }, { name: "Arjun", phone: "9876543210" })).toBe(false);
   });

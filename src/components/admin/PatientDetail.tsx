@@ -9,7 +9,7 @@ import PatientPrescriptions from "./PatientPrescriptions";
 import PlanBilling from "./PlanBilling";
 import PatientVoiceNotes from "./PatientVoiceNotes";
 import PatientTimeline from "./PatientTimeline";
-import { patientAge, patientRegistrationDate } from "@/lib/patient-directory";
+import { patientAge, patientRegistrationDate, patientVisitStatus } from "@/lib/patient-directory";
 
 interface Patient {
   id: string;
@@ -24,6 +24,7 @@ interface Patient {
   patient_code?: string | null;
   registered_on?: string | null;
   created_at?: string;
+  is_returning?: boolean;
 }
 
 const PatientDetail = ({
@@ -51,6 +52,7 @@ const PatientDetail = ({
       <div className="bg-card rounded-xl border border-border p-4 mb-4">
         <h2 className="text-lg font-bold text-foreground">{patient.name}</h2>
         <p className="text-xs text-muted-foreground break-all">Patient ID: {patient.patient_code || patient.id} · Registered: {patientRegistrationDate(patient)}</p>
+        {patient.is_returning !== undefined && <p className="text-xs text-muted-foreground">{patientVisitStatus(patient.is_returning)}</p>}
         <p className="text-sm text-muted-foreground">
           {patient.phone}{patient.gender ? ` · ${patient.gender}` : ""}{patient.date_of_birth ? ` · DOB ${patient.date_of_birth}` : ""}
         </p>

@@ -27,6 +27,9 @@ export function patientAge(dob: string | null, today = new Date()) {
 export function patientRegistrationDate(patient: Pick<DirectoryPatient, "registered_on" | "created_at">) {
   return patient.registered_on || patient.created_at?.slice(0, 10) || "Not recorded";
 }
+export function patientVisitStatus(isReturning?: boolean) {
+  return isReturning ? "Returning patient" : "New patient · no completed visit recorded";
+}
 export async function loadPatientDirectory(): Promise<DirectoryPatient[]> {
   const rows: DirectoryPatient[] = [];
   for (let offset = 0; ; offset += 500) {

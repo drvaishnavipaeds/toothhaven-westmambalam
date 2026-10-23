@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { z } from "zod";
 import PatientDetail from "./PatientDetail";
-import { samePatient, patientAge, patientRegistrationDate } from "@/lib/patient-directory";
+import { samePatient, patientAge, patientRegistrationDate, loadPatientDirectory, patientVisitStatus } from "@/lib/patient-directory";
 
 interface Patient {
   id: string;
@@ -23,6 +23,7 @@ interface Patient {
   created_at: string;
   patient_code?: string | null;
   registered_on?: string | null;
+  is_returning?: boolean;
 }
 
 const patientSchema = z.object({
@@ -57,7 +58,13 @@ const PatientsList = ({ initialPatientId, registerRequested, onRequestHandled }:
 
   const fetchPatients = async () => {
     const { data } = await supabase.from("patients").select("*").order("created_at", { ascending: false });
-    if (data) setPatients(data as Patient[]);
+    if (data) {
+      try {
+        const directory = await loadPatientDirectory();
+        const history = new Map(directory.map(p => [p.id, p.is_returning]));
+        setPatients((data as Patient[]).map(p => ({ ...p, is_returning: history.get(p.id) })));
+      } catch { setPatients(data as Patient[]); }
+    }
   };
 
   useEffect(() => {
@@ -162,6 +169,7 @@ const PatientsList = ({ initialPatientId, registerRequested, onRequestHandled }:
               <Button variant="link" className="h-auto max-w-full whitespace-normal p-0 text-left font-medium text-foreground" onClick={() => setSelectedPatient(p)}>{p.name}</Button>
               <p className="text-xs text-muted-foreground">{p.phone} {p.email && `• ${p.email}`}</p>
               <p className="text-xs text-muted-foreground">{p.patient_code || p.id} · Registered {patientRegistrationDate(p)} · {patientAge(p.date_of_birth) === null ? "Age not recorded" : `Age ${patientAge(p.date_of_birth)}`}</p>
+              <p className="text-xs text-muted-foreground">{p.is_returning === undefined ? "Visit history unavailable" : patientVisitStatus(p.is_returning)}</p>
             </div>
             <div className="flex shrink-0 gap-1">
               <Button size="icon" variant="ghost" asChild title="Call patient"><a href={`tel:${p.phone}`}><Phone className="h-4 w-4" /></a></Button>
