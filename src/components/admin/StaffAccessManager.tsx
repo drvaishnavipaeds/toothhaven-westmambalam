@@ -94,7 +94,7 @@ export default function StaffAccessManager() {
       {filtered.map(event => {
         const details = event.details && typeof event.details === "object" && !Array.isArray(event.details) ? event.details : null;
         return <div key={event.id} className="py-4 space-y-1">
-          <div className="flex flex-wrap justify-between gap-2"><span className="font-medium capitalize">{event.action.replaceAll("_", " ")} · {event.entity.replaceAll("_", " ")}</span><time className="text-xs text-muted-foreground">{new Date(event.created_at).toLocaleString(lang === "ta" ? "ta-IN" : "en-IN")}</time></div>
+          <div className="flex flex-wrap justify-between gap-2"><span className="font-medium capitalize">{event.action.replace(/_/g, " ")} · {event.entity.replace(/_/g, " ")}</span><time className="text-xs text-muted-foreground">{new Date(event.created_at).toLocaleString(lang === "ta" ? "ta-IN" : "en-IN")}</time></div>
           <p className="text-xs text-muted-foreground break-all">{event.actor_email ?? event.actor_id ?? "—"}</p>
           {typeof details?.reason === "string" && <p className="text-sm">{details.reason}</p>}
           {Array.isArray(details?.changed_fields) && <p className="text-xs text-muted-foreground">{details.changed_fields.join(", ")}</p>}
