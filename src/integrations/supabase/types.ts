@@ -2530,6 +2530,21 @@ export type Database = {
           read_ct: number
         }[]
       }
+      save_staff_assignment: {
+        Args: {
+          _actor: string
+          _branch: string
+          _email: string
+          _id: string
+          _name: string
+          _phone: string
+          _reason: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _status: string
+          _user: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "owner" | "dentist" | "receptionist" | "assistant"
