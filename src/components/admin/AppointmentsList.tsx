@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import AppointmentPatientSelect from "./AppointmentPatientSelect";
+import type { DirectoryPatient } from "@/lib/patient-directory";
 
 interface Appointment {
   id: string;
@@ -46,6 +48,7 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ patient_name: "", patient_phone: "", appointment_date: "", appointment_time: "11:00", treatment_type: "", notes: "", source: "manual" });
   const [saving, setSaving] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<DirectoryPatient | null>(null);
   const [rescheduling, setRescheduling] = useState<Appointment | null>(null);
   const [rescheduleForm, setRescheduleForm] = useState({ appointment_date: "", appointment_time: "" });
   const [cancelling, setCancelling] = useState<Appointment | null>(null);
@@ -115,10 +118,12 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedPatient) { toast({ title: "Select or register a patient", variant: "destructive" }); return; }
     setSaving(true);
     const { data: inserted, error } = await supabase.from("appointments").insert({
-      patient_name: form.patient_name,
-      patient_phone: form.patient_phone,
+      patient_id: selectedPatient.id,
+      patient_name: selectedPatient.name,
+      patient_phone: selectedPatient.phone,
       appointment_date: form.appointment_date,
       appointment_time: form.appointment_time,
       treatment_type: form.treatment_type || null,
@@ -147,6 +152,7 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
       }
       toast({ title: "Appointment added" });
       setShowAdd(false);
+      setSelectedPatient(null);
       setForm({ patient_name: "", patient_phone: "", appointment_date: "", appointment_time: "11:00", treatment_type: "", notes: "", source: "manual" });
     }
     setSaving(false);
@@ -253,11 +259,10 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Appointment</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
-            <Input placeholder="Patient Name *" required value={form.patient_name} onChange={e => setForm({ ...form, patient_name: e.target.value })} />
-            <Input placeholder="Phone *" required value={form.patient_phone} onChange={e => setForm({ ...form, patient_phone: e.target.value })} />
+            <AppointmentPatientSelect value={selectedPatient} onSelect={setSelectedPatient} />
             <Input type="date" required value={form.appointment_date} onChange={e => setForm({ ...form, appointment_date: e.target.value })} />
             <Input type="time" value={form.appointment_time} onChange={e => setForm({ ...form, appointment_time: e.target.value })} />
             <select className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm" value={form.treatment_type} onChange={e => setForm({ ...form, treatment_type: e.target.value })}>
@@ -271,7 +276,7 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
               <option value="website">Website</option>
             </select>
             <Input placeholder="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-            <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving..." : "Add Appointment"}</Button>
+            <Button type="submit" className="w-full" disabled={saving || !selectedPatient}>{saving ? "Saving..." : "Add Appointment"}</Button>
           </form>
         </DialogContent>
       </Dialog>
