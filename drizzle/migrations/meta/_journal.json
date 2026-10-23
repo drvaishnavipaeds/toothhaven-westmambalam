@@ -64,6 +64,13 @@
       "when": 1792731847616,
       "tag": "0008_staff_gate_without_policy_recursion",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792732082401,
+      "tag": "0009_guest_staff_gate_returns_false",
+      "breakpoints": true
     }
   ]
 }
