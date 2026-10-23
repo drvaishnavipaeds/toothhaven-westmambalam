@@ -71,6 +71,13 @@
       "when": 1792732082401,
       "tag": "0009_guest_staff_gate_returns_false",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792735157732,
+      "tag": "0010_patient_registration_identifiers",
+      "breakpoints": true
     }
   ]
 }

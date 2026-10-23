@@ -1743,7 +1743,9 @@ export type Database = {
           medical_history: string | null
           name: string
           notes: string | null
+          patient_code: string | null
           phone: string
+          registered_on: string | null
           updated_at: string
           whatsapp_opt_out: boolean
         }
@@ -1758,7 +1760,9 @@ export type Database = {
           medical_history?: string | null
           name: string
           notes?: string | null
+          patient_code?: string | null
           phone: string
+          registered_on?: string | null
           updated_at?: string
           whatsapp_opt_out?: boolean
         }
@@ -1773,7 +1777,9 @@ export type Database = {
           medical_history?: string | null
           name?: string
           notes?: string | null
+          patient_code?: string | null
           phone?: string
+          registered_on?: string | null
           updated_at?: string
           whatsapp_opt_out?: boolean
         }
