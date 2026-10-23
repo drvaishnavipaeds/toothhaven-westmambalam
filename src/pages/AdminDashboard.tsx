@@ -30,9 +30,10 @@ import CampaignsManager from "@/components/admin/CampaignsManager";
 import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
+import StaffAccessManager from "@/components/admin/StaffAccessManager";
 import {
   TreatmentsManager, MedicinesManager, ClinicalTemplatesManager, MembershipsManager, ExpensesManager, InventoryManager,
-  TutorialsManager, BranchesManager, StaffManager, CommunicationManager,
+   TutorialsManager, BranchesManager, CommunicationManager,
 } from "@/components/admin/SimpleModules";
 
 const AdminDashboard = () => {
@@ -163,7 +164,7 @@ const AdminDashboard = () => {
         {activeTab === "memberships" && <MembershipsManager />}
         {activeTab === "expenses" && <ExpensesManager />}
         {activeTab === "inventory" && <InventoryManager />}
-        {activeTab === "staff" && <StaffManager />}
+        {activeTab === "staff" && <StaffAccessManager />}
         {activeTab === "branches" && <BranchesManager />}
         {activeTab === "tutorials" && <TutorialsManager />}
         {activeTab === "communication" && <CommunicationManager />}
