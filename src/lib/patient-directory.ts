@@ -9,6 +9,7 @@ export interface DirectoryPatient {
   patient_code?: string | null;
   registered_on?: string | null;
   created_at?: string;
+  is_returning?: boolean;
 }
 
 export const normalizedPatientName = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -32,6 +33,18 @@ export async function loadPatientDirectory(): Promise<DirectoryPatient[]> {
     const { data, error } = await supabase.from("patients").select("id,name,phone,date_of_birth,gender,patient_code,registered_on,created_at").order("name").order("id").range(offset, offset + 499);
     if (error) throw error;
     rows.push(...(data ?? []));
-    if (!data || data.length < 500) return rows;
+    if (!data || data.length < 500) break;
   }
+  const visited = new Set<string>();
+  for (const table of ["appointments", "treatments"] as const) {
+    for (let offset = 0; ; offset += 500) {
+      let query = supabase.from(table).select("patient_id").order("id").range(offset, offset + 499);
+      query = query.eq("status", "completed");
+      const { data, error } = await query;
+      if (error) throw error;
+      for (const row of data ?? []) if (row.patient_id) visited.add(row.patient_id);
+      if (!data || data.length < 500) break;
+    }
+  }
+  return rows.map(patient => ({ ...patient, is_returning: visited.has(patient.id) }));
 }
