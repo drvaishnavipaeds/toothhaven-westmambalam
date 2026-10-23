@@ -1,6 +1,6 @@
 # Roadmap
-- [ ] Add owner-controlled staff role/status/branch assignment and individual activity history
-- [ ] Verify staff assignment security and signed-in staff management
+- [x] Add owner-controlled staff role/status/branch assignment, invitations and individual activity history; retain existing clinical role restrictions
+- [x] Verify signed-in staff create/edit and saved access history on desktop/phone; four role-validation tests pass, unsigned requests and direct client assignment denied, test staff removed
 - [ ] Upgrade CBCT to orientation-aware axial/coronal/sagittal viewing and add geometry tests
 - [ ] Test real clinic CBCT exports — blocked: no clinic exports uploaded and Cloud paused
 - [ ] Add secure PIN re-entry; retain server-verified staff access
