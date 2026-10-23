@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Armchair } from "lucide-react";
+import AppointmentPatientSelect from "./AppointmentPatientSelect";
+import type { DirectoryPatient } from "@/lib/patient-directory";
 
 const SLOT_MINUTES = 30;
 const slots = (() => {
@@ -41,23 +43,22 @@ const ScheduleManager = () => {
   const [appts, setAppts] = useState<any[]>([]);
   const [chairs, setChairs] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [patients, setPatients] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<DirectoryPatient | null>(null);
+  const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [chairDialog, setChairDialog] = useState(false);
   const [chairName, setChairName] = useState("");
   const [form, setForm] = useState<any>({});
 
   const load = async () => {
-    const [{ data: a }, { data: c }, { data: s }, { data: p }] = await Promise.all([
+    const [{ data: a }, { data: c }, { data: s }] = await Promise.all([
       supabase.from("appointments").select("*").eq("appointment_date", date).order("appointment_time"),
       supabase.from("chairs").select("*").eq("is_active", true).order("sort_order").order("name"),
       supabase.from("staff").select("id,name,role").eq("status", "active").order("name"),
-      supabase.from("patients").select("id,name,phone").order("name"),
     ]);
     setAppts(a ?? []);
     setChairs(c ?? []);
     setDoctors((s ?? []).filter((x: any) => /doctor|dentist/i.test(x.role ?? "")).length ? (s ?? []).filter((x: any) => /doctor|dentist/i.test(x.role ?? "")) : (s ?? []));
-    setPatients(p ?? []);
   };
   useEffect(() => { load(); }, [date]);
 
@@ -82,6 +83,7 @@ const ScheduleManager = () => {
   };
 
   const openNew = (colId?: string, slot?: string) => {
+    setSelectedPatient(null);
     setForm({
       appointment_date: date,
       appointment_time: slot ?? "11:00",
@@ -94,11 +96,13 @@ const ScheduleManager = () => {
   };
 
   const save = async () => {
-    if (!form.patient_name || !form.patient_phone) return toast.error("Patient name and phone are required");
+    if (!selectedPatient || saving) return;
+    setSaving(true);
+    try {
     const { data: inserted, error } = await supabase.from("appointments").insert({
-      patient_id: form.patient_id || null,
-      patient_name: form.patient_name,
-      patient_phone: form.patient_phone,
+      patient_id: selectedPatient.id,
+      patient_name: selectedPatient.name,
+      patient_phone: selectedPatient.phone,
       appointment_date: form.appointment_date,
       appointment_time: form.appointment_time,
       duration_minutes: Number(form.duration_minutes) || 30,
@@ -122,6 +126,8 @@ const ScheduleManager = () => {
     }
     setOpen(false);
     load();
+    } catch { toast.error("Could not save appointment. Please retry."); }
+    finally { setSaving(false); }
   };
 
   const reassign = async (apptId: string, colId: string) => {
@@ -216,19 +222,8 @@ const ScheduleManager = () => {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Book appointment</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label>Existing patient</Label>
-              <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={form.patient_id ?? ""} onChange={(e) => {
-                const p = patients.find((x) => x.id === e.target.value);
-                setForm({ ...form, patient_id: e.target.value || null, patient_name: p?.name ?? form.patient_name, patient_phone: p?.phone ?? form.patient_phone });
-              }}>
-                <option value="">-- New / walk-in --</option>
-                {patients.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.phone}</option>)}
-              </select>
-            </div>
+            <AppointmentPatientSelect value={selectedPatient} onSelect={setSelectedPatient} />
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Name *</Label><Input value={form.patient_name ?? ""} onChange={(e) => setForm({ ...form, patient_name: e.target.value })} /></div>
-              <div><Label>Phone *</Label><Input value={form.patient_phone ?? ""} onChange={(e) => setForm({ ...form, patient_phone: e.target.value })} /></div>
               <div><Label>Date</Label><Input type="date" value={form.appointment_date ?? ""} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} /></div>
               <div><Label>Time</Label><Input type="time" value={form.appointment_time ?? ""} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></div>
               <div><Label>Duration (min)</Label><Input type="number" step={15} value={form.duration_minutes ?? 30} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} /></div>
@@ -248,7 +243,7 @@ const ScheduleManager = () => {
             </div>
             <Input placeholder="Notes" value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>Book</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} disabled={saving || !selectedPatient}>{saving ? "Saving…" : "Book"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

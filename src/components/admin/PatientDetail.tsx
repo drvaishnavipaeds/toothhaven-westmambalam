@@ -9,6 +9,7 @@ import PatientPrescriptions from "./PatientPrescriptions";
 import PlanBilling from "./PlanBilling";
 import PatientVoiceNotes from "./PatientVoiceNotes";
 import PatientTimeline from "./PatientTimeline";
+import { patientAge, patientRegistrationDate } from "@/lib/patient-directory";
 
 interface Patient {
   id: string;
@@ -20,6 +21,9 @@ interface Patient {
   address: string | null;
   medical_history: string | null;
   notes: string | null;
+  patient_code?: string | null;
+  registered_on?: string | null;
+  created_at?: string;
 }
 
 const PatientDetail = ({
@@ -46,6 +50,7 @@ const PatientDetail = ({
 
       <div className="bg-card rounded-xl border border-border p-4 mb-4">
         <h2 className="text-lg font-bold text-foreground">{patient.name}</h2>
+        <p className="text-xs text-muted-foreground break-all">Patient ID: {patient.patient_code || patient.id} · Registered: {patientRegistrationDate(patient)}</p>
         <p className="text-sm text-muted-foreground">
           {patient.phone}{patient.gender ? ` · ${patient.gender}` : ""}{patient.date_of_birth ? ` · DOB ${patient.date_of_birth}` : ""}
         </p>
@@ -73,6 +78,7 @@ const PatientDetail = ({
               <p><span className="text-muted-foreground">Email:</span> {patient.email || "N/A"}</p>
               <p><span className="text-muted-foreground">Gender:</span> {patient.gender || "N/A"}</p>
               <p><span className="text-muted-foreground">DOB:</span> {patient.date_of_birth || "N/A"}</p>
+              <p><span className="text-muted-foreground">Age:</span> {patientAge(patient.date_of_birth) ?? "Not recorded"}</p>
               <p className="col-span-2"><span className="text-muted-foreground">Address:</span> {patient.address || "N/A"}</p>
               <p className="col-span-2"><span className="text-muted-foreground">Medical History:</span> {patient.medical_history || "N/A"}</p>
               {patient.notes && <p className="col-span-2"><span className="text-muted-foreground">Notes:</span> {patient.notes}</p>}
