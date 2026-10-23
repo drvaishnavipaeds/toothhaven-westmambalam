@@ -1,4 +1,5 @@
 # Project decisions
+- Bulk patient files are parsed locally and imported through staff-protected patient access after validation and duplicate review; exports paginate the full demographic directory and exclude clinical notes to minimize disclosure.
 - Both staff appointment entry screens share the patient directory selector and paginated directory loader; patient linkage uses UUIDs and duplicate matching uses name plus normalized phone, never shared phone alone.
 - Patient registration dates are separate from import timestamps, and database-generated clinic codes identify records without exposing contact numbers.
 

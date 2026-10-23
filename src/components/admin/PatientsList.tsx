@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { z } from "zod";
 import PatientDetail from "./PatientDetail";
+import PatientFileTools from "./PatientFileTools";
 import { samePatient, patientAge, patientRegistrationDate, loadPatientDirectory, patientVisitStatus } from "@/lib/patient-directory";
 
 interface Patient {
@@ -154,7 +155,7 @@ const PatientsList = ({ initialPatientId, registerRequested, onRequestHandled }:
     <div>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h2 className="text-xl font-bold text-foreground">Patients</h2>
-        <Button size="sm" onClick={openRegister}><Plus className="w-4 h-4 mr-1" /> Register Patient</Button>
+        <div className="flex flex-wrap gap-2"><PatientFileTools onImported={fetchPatients} /><Button size="sm" onClick={openRegister}><Plus className="w-4 h-4 mr-1" /> Register Patient</Button></div>
       </div>
 
       <div className="relative mb-4">
