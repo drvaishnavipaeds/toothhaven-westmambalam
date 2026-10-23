@@ -53,7 +53,20 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ authorized: !!data }), {
+    let linkedStaff = false;
+    if (email && !data) {
+      const { data: member, error: staffError } = await supabase.from("staff")
+        .select("user_id").eq("email", email).eq("status", "active").maybeSingle();
+      if (staffError) throw staffError;
+      if (member?.user_id) {
+        const { count, error: roleError } = await supabase.from("user_roles")
+          .select("user_id", { count: "exact", head: true }).eq("user_id", member.user_id);
+        if (roleError) throw roleError;
+        linkedStaff = (count ?? 0) > 0;
+      }
+    }
+
+    return new Response(JSON.stringify({ authorized: !!data || linkedStaff }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

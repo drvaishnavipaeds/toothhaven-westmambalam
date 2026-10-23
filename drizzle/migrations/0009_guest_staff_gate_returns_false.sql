@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION public.is_staff() RETURNS boolean LANGUAGE sql STABLE SET search_path=public,pg_catalog AS $$ SELECT CASE WHEN auth.uid() IS NULL THEN false ELSE app_private.is_active_staff() END; $$;

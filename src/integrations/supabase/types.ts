@@ -104,6 +104,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointment_notifications: {
         Row: {
           appointment_id: string
@@ -2496,6 +2529,21 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      save_staff_assignment: {
+        Args: {
+          _actor: string
+          _branch: string
+          _email: string
+          _id: string
+          _name: string
+          _phone: string
+          _reason: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _status: string
+          _user: string
+        }
+        Returns: string
       }
     }
     Enums: {
