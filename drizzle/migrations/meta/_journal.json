@@ -78,6 +78,13 @@
       "when": 1792735157732,
       "tag": "0010_patient_registration_identifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792851901440,
+      "tag": "0011_staff_recognize_phone_otp_admins",
+      "breakpoints": true
     }
   ]
 }
