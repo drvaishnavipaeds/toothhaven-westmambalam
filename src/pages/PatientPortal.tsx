@@ -196,7 +196,7 @@ const PatientPortalContent = () => {
       const { error } = await supabase.auth.signInWithOtp({ email: e, options: { shouldCreateUser: true } });
       setSending(false);
       if (error) { toast.error(error.message); return; }
-      toast.success(lang === "en" ? "6-digit code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு குறியீடு அனுப்பப்பட்டது");
+      toast.success(lang === "en" ? "Verification code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு குறியீடு அனுப்பப்பட்டது");
       setStep("otp");
     }
   };
@@ -232,14 +232,14 @@ const PatientPortalContent = () => {
         toast.error(error.message);
         return;
       }
-      toast.success(lang === "en" ? "6-digit code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு 6 இலக்க குறியீடு அனுப்பப்பட்டது");
+      toast.success(lang === "en" ? "Verification code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு குறியீடு அனுப்பப்பட்டது");
       setStep("otp");
     }
   };
 
   const verifyOtp = async () => {
-    if (!/^\d{6}$/.test(otp)) {
-      toast.error(lang === "en" ? "Enter the 6-digit code" : "6 இலக்க குறியீட்டை உள்ளிடவும்");
+    if (!/^\d{6,8}$/.test(otp)) {
+      toast.error(lang === "en" ? "Enter the verification code" : "சரிபார்ப்பு குறியீட்டை உள்ளிடவும்");
       return;
     }
     setVerifying(true);
@@ -606,8 +606,8 @@ const PatientPortalContent = () => {
 
                   <p className="text-xs text-muted-foreground mt-3">
                     {method === "whatsapp"
-                      ? (lang === "en" ? "We'll send a 6-digit code to your WhatsApp." : "உங்கள் WhatsApp க்கு 6 இலக்க குறியீடு அனுப்பப்படும்.")
-                      : (lang === "en" ? "We'll email you a 6-digit code." : "உங்கள் மின்னஞ்சலுக்கு 6 இலக்க குறியீடு அனுப்பப்படும்.")}
+                      ? (lang === "en" ? "We'll send a one-time code to your WhatsApp." : "உங்கள் WhatsApp க்கு ஒரு முறை குறியீடு அனுப்பப்படும்.")
+                      : (lang === "en" ? "We'll email you a one-time code." : "உங்கள் மின்னஞ்சலுக்கு ஒரு முறை குறியீடு அனுப்பப்படும்.")}
                   </p>
                 </>
               )}
@@ -624,7 +624,7 @@ const PatientPortalContent = () => {
                       type="text"
                       inputMode="numeric"
                       placeholder="000000"
-                      maxLength={6}
+                      maxLength={8}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                       onKeyDown={(e) => e.key === "Enter" && verifyOtp()}

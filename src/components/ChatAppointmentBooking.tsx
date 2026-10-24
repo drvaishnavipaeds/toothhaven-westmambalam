@@ -116,9 +116,9 @@ export default function ChatAppointmentBooking({ lang, onClose }: { lang: "en" |
         {register && <label className="flex items-start gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>{t("I agree to patient registration and appointment updates under the", "நோயாளி பதிவு மற்றும் அறிவிப்புகளுக்கு ஒப்புக்கொள்கிறேன்:")} <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary">Terms</a> & <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary">Privacy Policy</a>.</span></label>}
         <Button className="w-full" disabled={busy} onClick={sendCode}>{busy ? t("Sending…", "அனுப்புகிறது…") : t("Send verification code", "குறியீடு அனுப்பு")}</Button>
       </> : <>
-        <p className="text-xs text-muted-foreground">{t("Enter the six-digit code sent to your", "6 இலக்க குறியீடு:")} {method === "whatsapp" ? phone : email}.</p>
-        <Input aria-label="Verification code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} />
-        <Button className="w-full" disabled={busy || code.length !== 6} onClick={verify}>{t("Verify and continue", "சரிபார்த்து தொடரவும்")}</Button>
+        <p className="text-xs text-muted-foreground">{t("Enter the code sent to your", "குறியீடு:")} {method === "whatsapp" ? phone : email}.</p>
+        <Input aria-label="Verification code" autoComplete="one-time-code" inputMode="numeric" maxLength={8} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} />
+        <Button className="w-full" disabled={busy || code.length < 6} onClick={verify}>{t("Verify and continue", "சரிபார்த்து தொடரவும்")}</Button>
         <Button variant="ghost" size="sm" disabled={busy} onClick={() => { setOtpSent(false); setCode(""); }}>{t("Change details", "விவரங்களை மாற்று")}</Button>
       </>}
     </div> : <div className="space-y-3">
