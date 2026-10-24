@@ -81,7 +81,7 @@ const AdminLogin = () => {
       toast({ title: "Error", description: error, variant: "destructive" });
     } else {
       setStep("email-otp-code");
-      toast({ title: "Code Sent", description: `Check ${email} for the 6-digit code.` });
+      toast({ title: "Code Sent", description: `Check ${email} for the verification code.` });
     }
   };
 
@@ -138,7 +138,7 @@ const AdminLogin = () => {
                 <KeyRound className="w-5 h-5 text-primary" />
                 <div className="text-left">
                   <p className="text-sm font-medium">Email OTP</p>
-                  <p className="text-xs text-muted-foreground">6-digit code sent to your email</p>
+                  <p className="text-xs text-muted-foreground">Verification code sent to your email</p>
                 </div>
               </Button>
               <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setStep("email")}>
@@ -175,8 +175,8 @@ const AdminLogin = () => {
 
           {step === "email-otp-code" && (
             <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to <strong>{email}</strong></p>
-              <Input type="text" value={emailOtpCode} onChange={e => setEmailOtpCode(e.target.value)} placeholder="Enter 6-digit code" maxLength={6} className="text-center text-lg tracking-widest" />
+              <p className="text-sm text-muted-foreground">Enter the verification code sent to <strong>{email}</strong></p>
+              <Input type="text" value={emailOtpCode} onChange={e => setEmailOtpCode(e.target.value)} placeholder="Enter verification code" maxLength={8} className="text-center text-lg tracking-widest" />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Verifying..." : "Verify & Login"}
               </Button>

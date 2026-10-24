@@ -31,7 +31,7 @@ export const MagicLinkEmail = ({
       <Container style={container}>
         <Heading style={h1}>Your Tooth Haven login code</Heading>
         <Text style={text}>
-          Use the 6-digit code below to sign in to {siteName}. This code will
+          Use the code below to sign in to {siteName}. This code will
           expire shortly.
         </Text>
         {token ? <Text style={codeStyle}>{token}</Text> : null}
