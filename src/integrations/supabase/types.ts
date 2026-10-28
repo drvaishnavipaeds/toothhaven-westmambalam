@@ -1446,6 +1446,65 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_care_messages: {
+        Row: {
+          attempts: number
+          created_at: string
+          due_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          patient_id: string
+          sent_at: string | null
+          source_key: string
+          status: string
+          template_name: string
+          treatment_name: string | null
+          updated_at: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          due_at: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          patient_id: string
+          sent_at?: string | null
+          source_key: string
+          status?: string
+          template_name: string
+          treatment_name?: string | null
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          due_at?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          patient_id?: string
+          sent_at?: string | null
+          source_key?: string
+          status?: string
+          template_name?: string
+          treatment_name?: string | null
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_care_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_consents: {
         Row: {
           consent_text: string | null
