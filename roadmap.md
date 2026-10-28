@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Add automated 6-month recalls and Day 1/3/7 post-treatment WhatsApp check-ins to the five-minute worker; queued until Meta approval
+- [ ] Meta approval for th_recall_6m_v1 and th_postop_checkin_v1 — submitted 28 October 2026
 - [x] Add WhatsApp template viewing, creation and editing in Inbox/Campaigns, Meta status filters, numbered variable samples and bearer-verified staff/owner access
 - [x] Verify 11 validation/submission/access tests, live listing of 19 templates and signed-in desktop/phone forms; missing bearer returns 401 and invalid authenticated writes return 400
 - [ ] Verify real Meta create/edit acceptance — no template submitted or live notification template changed during verification; approval remains controlled by Meta
