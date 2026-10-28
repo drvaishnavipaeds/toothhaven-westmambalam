@@ -5,6 +5,7 @@ import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus, retryFaile
 import { verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 import { sendAdminPush } from "../_shared/web-push.ts";
+import { runCareMessages, submitCareTemplates } from "../_shared/care-messages.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const gatewayKey = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
@@ -168,7 +169,8 @@ async function runLifecycle() {
       }
     } catch (error) { await admin.from("appointments").update({ calendar_sync_status: "failed", calendar_sync_error: error instanceof Error ? error.message : "Lifecycle failed" }).eq("id", appt.id); }
   }
-  return { ok: true, checked: rows?.length ?? 0, processed, doctorAlerts };
+  const care = await runCareMessages(admin, now).catch((e) => ({ error: e instanceof Error ? e.message : "Care messages failed" }));
+  return { ok: true, checked: rows?.length ?? 0, processed, doctorAlerts, care };
 }
 
 Deno.serve(async (req) => {
@@ -184,6 +186,10 @@ Deno.serve(async (req) => {
       if (!await isStaff(req)) return json({ error: "Only clinic staff can configure notifications" }, 403);
       const result = await submitDoctorTemplate();
       return json(result, result.ok ? 200 : 502);
+    }
+    if (raw.action === "setup_care_templates") {
+      if (!await isStaff(req)) return json({ error: "Only clinic staff can configure notifications" }, 403);
+      return json(await submitCareTemplates());
     }
     if (raw.action === "retry_doctor_alert") {
       if (!await isStaff(req)) return json({ error: "Only clinic staff can resend notifications" }, 403);
