@@ -64,3 +64,4 @@
 - [ ] Verify "Other" medicine appears in prescription dropdowns while signed in (blocked: backend paused)
 - [ ] Enable live updates for appointment/message counters (blocked: backend paused)
 - [ ] Closed-app push alerts need a web-push service (not set up)
+- [ ] Send welcome message th_patient_welcome_v1 to all patients via Campaigns (waiting: Meta approval, submitted 29 Oct 2026)
