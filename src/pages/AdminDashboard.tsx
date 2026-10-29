@@ -31,6 +31,7 @@ import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import StaffAccessManager from "@/components/admin/StaffAccessManager";
+import SalaryManager from "@/components/admin/SalaryManager";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import {
   TreatmentsManager, MedicinesManager, ClinicalTemplatesManager, MembershipsManager, ExpensesManager, InventoryManager,
@@ -164,6 +165,7 @@ const AdminDashboard = () => {
         {activeTab === "financials" && <FinancialDashboard />}
         {activeTab === "memberships" && <MembershipsManager />}
         {activeTab === "expenses" && <ExpensesManager />}
+        {activeTab === "salary" && <SalaryManager />}
         {activeTab === "inventory" && <InventoryManager />}
         {activeTab === "staff" && <LanguageProvider><StaffAccessManager /></LanguageProvider>}
         {activeTab === "branches" && <BranchesManager />}
