@@ -394,7 +394,7 @@ export async function createDocumentTemplate(samplePdf: Uint8Array): Promise<Sen
     }).then((r) => r.json());
     if (!session?.id) return { ok: false, error: "Meta sample upload could not start." };
     const uploaded = await fetch(`${GRAPH}/${session.id}`, {
-      method: "POST", headers: { Authorization: `OAuth ${WA_TOKEN}`, file_offset: "0" }, body: samplePdf,
+      method: "POST", headers: { Authorization: `OAuth ${WA_TOKEN}`, file_offset: "0" }, body: new Blob([samplePdf as BlobPart], { type: "application/pdf" }),
     }).then((r) => r.json());
     if (!uploaded?.h) return { ok: false, error: "Meta sample upload failed." };
     const res = await fetch(await graphUrl(`${WA_WABA_ID}/message_templates`), {
