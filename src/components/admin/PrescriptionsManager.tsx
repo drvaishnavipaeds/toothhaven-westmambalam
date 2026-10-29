@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import SendDocumentButton from "./SendDocumentButton";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
 import { ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
 import { PrescriptionMedicineSelect } from "./PrescriptionMedicineSelect";
@@ -152,6 +153,7 @@ const PrescriptionsManager = () => {
                 <td className="p-3">{Array.isArray(r.drugs) ? r.drugs.length : 0}</td>
                 <td className="p-3 flex gap-1 justify-end">
                   <Button variant="ghost" size="icon" onClick={() => printRx(r)}><Printer className="w-4 h-4" /></Button>
+                  <SendDocumentButton kind="prescription" id={r.id} />
                   <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </td>

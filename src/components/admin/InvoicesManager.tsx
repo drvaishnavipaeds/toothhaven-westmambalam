@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import SendDocumentButton from "./SendDocumentButton";
 import { Plus, Trash2, Printer, Pencil } from "lucide-react";
 import { ToothSelect, TreatmentSelect } from "./ClinicalSelectors";
 
@@ -183,6 +184,7 @@ const InvoicesManager = () => {
                 <td className="p-3"><Badge variant={r.status === "paid" ? "default" : r.status === "partial" ? "secondary" : "destructive"}>{r.status}</Badge></td>
                 <td className="p-3 flex gap-1 justify-end">
                   <Button variant="ghost" size="icon" onClick={() => printInv(r)}><Printer className="w-4 h-4" /></Button>
+                  <SendDocumentButton kind="invoice" id={r.id} />
                   <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </td>
