@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import SendDocumentButton from "./SendDocumentButton";
 import { Plus, Trash2, Printer, Pencil, Sparkles } from "lucide-react";
 import { ToothSelect, TreatmentSelect, type MedicineCatalogOption, type TreatmentCatalogOption } from "./ClinicalSelectors";
 import { PrescriptionMedicineSelect } from "./PrescriptionMedicineSelect";
@@ -151,6 +152,7 @@ const PatientPrescriptions = ({ patientId, patientName, patientPhone }: { patien
             </div>
             <div className="flex gap-1 shrink-0">
               <Button variant="ghost" size="icon" onClick={() => printRx(r)}><Printer className="w-4 h-4" /></Button>
+              <SendDocumentButton kind="prescription" id={r.id} />
               <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
               <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
             </div>
