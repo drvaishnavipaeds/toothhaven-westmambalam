@@ -31,6 +31,7 @@ import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import StaffAccessManager from "@/components/admin/StaffAccessManager";
+import RoomBoard from "@/components/admin/RoomBoard";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import {
   TreatmentsManager, MedicinesManager, ClinicalTemplatesManager, MembershipsManager, ExpensesManager, InventoryManager,
@@ -152,6 +153,7 @@ const AdminDashboard = () => {
         {activeTab === "reports" && <ReportsManager />}
         {activeTab === "patients" && <PatientsList initialPatientId={openPatientId} registerRequested={registerRequested} onRequestHandled={() => { setOpenPatientId(null); setRegisterRequested(false); }} />}
         {activeTab === "appointments" && <AppointmentsList initialAppointmentId={appointmentId} addRequested={addRequested} onRequestHandled={() => setAddRequested(false)} />}
+        {activeTab === "room_board" && <RoomBoard />}
         {activeTab === "schedule" && <ScheduleManager />}
         {activeTab === "waitlist" && <WaitlistManager />}
         {activeTab === "recalls" && <RecallsManager />}

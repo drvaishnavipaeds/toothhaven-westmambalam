@@ -280,6 +280,7 @@ export type Database = {
           calendar_sync_status: string
           cancellation_reason: string | null
           chair_id: string | null
+          checked_in_at: string | null
           completed_at: string | null
           confirmation_deadline: string | null
           created_at: string
@@ -297,6 +298,7 @@ export type Database = {
           proposed_alternatives: Json
           reminder_24h_sent_at: string | null
           reminder_2h_sent_at: string | null
+          seated_at: string | null
           source: string
           status: string
           tentative_created_at: string | null
@@ -312,6 +314,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          checked_in_at?: string | null
           completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
@@ -329,6 +332,7 @@ export type Database = {
           proposed_alternatives?: Json
           reminder_24h_sent_at?: string | null
           reminder_2h_sent_at?: string | null
+          seated_at?: string | null
           source?: string
           status?: string
           tentative_created_at?: string | null
@@ -344,6 +348,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          checked_in_at?: string | null
           completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
@@ -361,6 +366,7 @@ export type Database = {
           proposed_alternatives?: Json
           reminder_24h_sent_at?: string | null
           reminder_2h_sent_at?: string | null
+          seated_at?: string | null
           source?: string
           status?: string
           tentative_created_at?: string | null
