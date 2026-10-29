@@ -1,10 +1,13 @@
 export const CHAT_SERVICES = ["General Dentistry", "Dental Implants", "Root Canal", "Orthodontics", "Cosmetic Dentistry", "CBCT Imaging", "Pediatric Dentistry", "Oral Surgery", "Crowns & Bridges", "Digital Smile Design", "Home Visit"];
 export const isBookingIntent = (text: string) => /\b(book|booking|appointment|schedule|reserve)\b|முன்பதிவு|நேரம்.*பதிவு/i.test(text);
 export type BookingState = {
-  step: "identity" | "name" | "consent" | "otp" | "service" | "date" | "time" | "confirm" | "done";
+  step: "identity" | "name" | "consent" | "otp" | "profile" | "service" | "date" | "time" | "confirm" | "done";
   token?: string; expiresAt?: number; name?: string; registration?: boolean;
   service?: string; date?: string; time?: string; slots?: string[]; appointmentId?: string;
+  profiles?: { id: string; name: string }[];
 };
+const servicesPrompt = () => `Choose a service by number:\n${CHAT_SERVICES.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+const profilePrompt = (profiles: { name: string }[]) => `Who is visiting today?\n${profiles.map((p, i) => `${i + 1}. ${p.name}`).join("\n")}\nReply with the number.`;
 type Result = Record<string, any>;
 type Dependencies = {
   otp: (body: Result) => Promise<Result>;
@@ -34,9 +37,20 @@ export async function advanceBooking(state: BookingState | null, text: string, p
       if (!/^\d{6}$/.test(value)) return { state, reply: "Please reply with the six-digit verification code." };
       const verified = await api.otp({ action: state.registration ? "register_verify" : "verify", phone, code: value });
       if (!verified.token || !verified.expiresAt) throw new Error("Verification did not complete. Please start again.");
-      return { state: { step: "service", token: verified.token, expiresAt: verified.expiresAt }, reply: `Verified. Choose a service by number:\n${CHAT_SERVICES.map((s, i) => `${i + 1}. ${s}`).join("\n")}` };
+      // Family members can share one number, so ask who the appointment is for.
+      const listed = await api.workflow({ action: "portal_profiles", portalToken: verified.token });
+      const profiles = (Array.isArray(listed.profiles) ? listed.profiles : []).map((p: Result) => ({ id: String(p.id), name: String(p.name) }));
+      if (profiles.length > 1) return { state: { step: "profile", token: verified.token, expiresAt: verified.expiresAt, profiles }, reply: `Verified. ${profilePrompt(profiles)}` };
+      return { state: { step: "service", token: verified.token, expiresAt: verified.expiresAt }, reply: `Verified. ${servicesPrompt()}` };
     }
     if (!state.token || !state.expiresAt || state.expiresAt <= Date.now()) return { state: null, reply: "Your verification has expired. Reply BOOK to verify again." };
+    if (state.step === "profile") {
+      const pick = /^\d+$/.test(value) ? state.profiles?.[Number(value) - 1] : undefined;
+      if (!pick) return { state, reply: profilePrompt(state.profiles ?? []) };
+      const selected = await api.workflow({ action: "portal_select", portalToken: state.token, patientId: pick.id });
+      if (!selected.token || !selected.expiresAt) throw new Error("The patient could not be selected. Reply EXIT and start again.");
+      return { state: { step: "service", token: selected.token, expiresAt: selected.expiresAt, name: pick.name }, reply: `Booking for ${pick.name}. ${servicesPrompt()}` };
+    }
     if (state.step === "service") {
       const service = CHAT_SERVICES[Number(value) - 1] ?? CHAT_SERVICES.find(s => s.toLowerCase() === value.toLowerCase());
       if (!service) return { state, reply: "Choose a service number from the list." };

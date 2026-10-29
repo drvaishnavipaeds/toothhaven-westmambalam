@@ -47,11 +47,13 @@ serve(async (req) => {
       const { data: auth, error: authError } = await supabase.auth.getUser(bearer);
       const verifiedEmail = auth.user?.email?.trim().toLowerCase();
       if (authError || !verifiedEmail || !auth.user?.email_confirmed_at) return json({ error: "Verify your email to continue" }, 401);
-      const { data: patients, error } = await supabase.from("patients").select("phone").ilike("email", verifiedEmail.replace(/[%_]/g, "\\$&")).limit(2);
+      const { data: patients, error } = await supabase.from("patients").select("phone").ilike("email", verifiedEmail.replace(/[%_]/g, "\\$&")).limit(20);
       if (error) return json({ error: "Could not load patient account" }, 500);
       if (!patients?.length) return json({ error: "No patient record linked to this email. Please register or contact the clinic." }, 404);
-      if (patients.length !== 1 || !validPhone(patients[0].phone)) return json({ error: "Please contact the clinic to verify your patient account" }, 409);
-      return json({ ok: true, ...await issuePortalSession(patients[0].phone, SERVICE_KEY) });
+      // Family members may share one email and phone; the profile picker chooses among them after sign-in.
+      const phones = [...new Set(patients.map((p) => String(p.phone ?? "")))];
+      if (phones.length !== 1 || !validPhone(phones[0])) return json({ error: "Please contact the clinic to verify your patient account" }, 409);
+      return json({ ok: true, ...await issuePortalSession(phones[0], SERVICE_KEY) });
     }
 
     // ---------- REGISTER: send OTP (WhatsApp only; email path uses register_finalize) ----------
@@ -197,9 +199,9 @@ serve(async (req) => {
     if (!validPhone(phone)) return json({ error: "Invalid phone number" }, 400);
 
     if (action === "send") {
-      const { data: patient } = await supabase
-        .from("patients").select("id, name").eq("phone", phone).maybeSingle();
-      if (!patient) return json({ error: "Phone number not registered. Please register or book an appointment first." }, 404);
+      const { data: registered } = await supabase
+        .from("patients").select("id").eq("phone", phone).limit(1);
+      if (!registered?.length) return json({ error: "Phone number not registered. Please register or book an appointment first." }, 404);
 
       const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       const { count } = await supabase

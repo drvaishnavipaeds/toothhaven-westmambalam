@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CHAT_SERVICES } from "../../supabase/functions/_shared/chat-booking-flow";
-import { Calendar, Check, ShieldCheck } from "lucide-react";
+import { Calendar, Check, ShieldCheck, User } from "lucide-react";
 
-type Session = { token: string; expiresAt: number; phone: string };
+type Session = { token: string; expiresAt: number; phone: string; patientId?: string | null };
 function existingSession(): Session | null {
   try {
     const session = JSON.parse(localStorage.getItem("portal_session_v1") ?? "null");
@@ -44,6 +44,8 @@ export default function ChatAppointmentBooking({ lang, onClose }: { lang: "en" |
   const [checked, setChecked] = useState(false);
   const [review, setReview] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [choices, setChoices] = useState<{ id: string; name: string }[]>([]);
+  const [visitor, setVisitor] = useState("");
   const request = useRef(0);
   const submitting = useRef(false);
   const task = async (work: () => Promise<void>) => {
@@ -72,6 +74,22 @@ export default function ChatAppointmentBooking({ lang, onClose }: { lang: "en" |
     if (!data?.token || !data.expiresAt) throw new Error("Patient verification did not complete");
     const verified = { phone: data.phone, token: data.token, expiresAt: data.expiresAt };
     localStorage.setItem("portal_session_v1", JSON.stringify(verified)); setSession(verified);
+  });
+  useEffect(() => {
+    if (!session || session.patientId) return;
+    let live = true;
+    call("appointment-workflow", { action: "portal_profiles", portalToken: session.token })
+      .then((data) => { if (live && Array.isArray(data?.profiles) && data.profiles.length > 1) setChoices(data.profiles); })
+      .catch(() => { /* booking still reports any profile requirement */ });
+    return () => { live = false; };
+  }, [session]);
+  const chooseProfile = (profile: { id: string; name: string }) => task(async () => {
+    if (!session) return;
+    const data = await call("appointment-workflow", { action: "portal_select", portalToken: session.token, patientId: profile.id });
+    if (!data?.token || !data.expiresAt) throw new Error("This profile could not be opened");
+    const next = { phone: data.phone, token: data.token, expiresAt: data.expiresAt, patientId: data.patientId };
+    localStorage.setItem("portal_session_v1", JSON.stringify(next)); setSession(next);
+    setChoices([]); setVisitor(profile.name);
   });
   const checkTimes = async (value: string) => {
     const id = ++request.current;
@@ -121,8 +139,11 @@ export default function ChatAppointmentBooking({ lang, onClose }: { lang: "en" |
         <Button className="w-full" disabled={busy || code.length < 6} onClick={verify}>{t("Verify and continue", "சரிபார்த்து தொடரவும்")}</Button>
         <Button variant="ghost" size="sm" disabled={busy} onClick={() => { setOtpSent(false); setCode(""); }}>{t("Change details", "விவரங்களை மாற்று")}</Button>
       </>}
+    </div> : choices.length > 0 ? <div className="space-y-2">
+      <p className="font-medium">{t("Who is visiting today?", "இன்று யார் வருகிறார்கள்?")}</p>
+      {choices.map(p => <Button key={p.id} variant="outline" className="w-full justify-start gap-2" disabled={busy} onClick={() => chooseProfile(p)}><User className="h-4 w-4 text-primary" />{p.name}</Button>)}
     </div> : <div className="space-y-3">
-      <p className="flex items-center gap-1 text-xs text-primary"><ShieldCheck className="h-4 w-4" />{t("Patient verified", "நோயாளி சரிபார்க்கப்பட்டது")}</p>
+      <p className="flex items-center gap-1 text-xs text-primary"><ShieldCheck className="h-4 w-4" />{t("Patient verified", "நோயாளி சரிபார்க்கப்பட்டது")}{visitor ? ` · ${visitor}` : ""}</p>
       {review ? <>
         <p className="font-medium">{service}<br />{date} · {time}</p><p className="text-xs text-muted-foreground">{t("Send this request to Dr. Karthik for approval? This does not confirm the appointment.", "மருத்துவரின் ஒப்புதலுக்கு அனுப்பவா? இது உறுதியான முன்பதிவு அல்ல.")}</p>
         <Button className="w-full" disabled={busy} onClick={submit}>{busy ? t("Submitting…", "பதிவாகிறது…") : t("Send appointment request", "கோரிக்கை அனுப்பு")}</Button>

@@ -3,7 +3,7 @@ import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, Calendar, User, Clock, FileText, ChevronRight, Shield, LogOut, ArrowLeft } from "lucide-react";
+import { Phone, Calendar, User, Clock, FileText, ChevronRight, Shield, LogOut, ArrowLeft, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import SuccessStoriesSection from "@/components/portal/SuccessStoriesSection";
@@ -26,7 +26,8 @@ const appointmentError = async (error: unknown, fallback: string) => {
 
 const SESSION_KEY = "portal_session_v1";
 
-interface PortalSession { phone: string; token: string; expiresAt: number; }
+interface PortalSession { phone: string; token: string; expiresAt: number; patientId?: string | null; }
+type FamilyProfile = { id: string; name: string };
 
 const loadSession = (): PortalSession | null => {
   try {
@@ -63,6 +64,9 @@ const PatientPortalContent = () => {
   const [bookingBusy, setBookingBusy] = useState(false);
   const [calendarRequired, setCalendarRequired] = useState(false);
   const slotRequest = useRef(0);
+  const [profiles, setProfiles] = useState<FamilyProfile[]>([]);
+  const [profileCount, setProfileCount] = useState(0);
+  const [choosingProfile, setChoosingProfile] = useState(false);
 
   // Registration form fields
   const [regName, setRegName] = useState("");
@@ -86,9 +90,20 @@ const PatientPortalContent = () => {
       body: { action: "portal_data", portalToken: portalSession.token },
     });
     if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Could not load patient records");
+      let body = data;
+      if (error instanceof FunctionsHttpError) {
+        try { body = await error.context.json(); } catch { /* keep default message */ }
+      }
+      if (body?.profileRequired && Array.isArray(body.profiles)) {
+        setPatient(null);
+        setProfiles(body.profiles);
+        return;
+      }
+      toast.error(body?.error || error?.message || "Could not load patient records");
       return;
     }
+    setProfiles([]);
+    setProfileCount(data.profileCount ?? 1);
     setPatient(data.patient);
     setAppointments(data.appointments || []);
     setTreatments(data.treatments || []);
@@ -335,10 +350,43 @@ const PatientPortalContent = () => {
   };
 
 
+  const chooseProfile = async (patientId: string) => {
+    if (!session) return;
+    setChoosingProfile(true);
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "portal_select", portalToken: session.token, patientId },
+    });
+    setChoosingProfile(false);
+    if (error || data?.error || !data?.token) {
+      const detail = error ? await appointmentError(error, "Could not open this profile") : null;
+      toast.error(data?.error || detail?.message || "Could not open this profile");
+      return;
+    }
+    const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: data.expiresAt, patientId: data.patientId };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+    setSession(sess);
+    setBookingOpen(false);
+    await loadPatientData(sess);
+  };
+
+  const switchProfile = async () => {
+    if (!session) return;
+    const { data, error } = await supabase.functions.invoke("appointment-workflow", {
+      body: { action: "portal_profiles", portalToken: session.token },
+    });
+    if (error || data?.error || !Array.isArray(data?.profiles)) {
+      toast.error(data?.error || "Could not load family profiles");
+      return;
+    }
+    setProfiles(data.profiles);
+  };
+
   const signOut = () => {
     localStorage.removeItem(SESSION_KEY);
     setSession(null);
     setPatient(null);
+    setProfiles([]);
+    setProfileCount(0);
     setAppointments([]);
     setTreatments([]);
     setPhone("");
@@ -657,8 +705,32 @@ const PatientPortalContent = () => {
             </div>
           )}
 
+          {step === "in" && profiles.length > 0 && (
+            <div className="bg-card rounded-2xl p-6 shadow-elevated space-y-4">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                {lang === "en" ? "Who is visiting today?" : "இன்று யார் வருகிறார்கள்?"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {lang === "en" ? "Family members share this number. Choose whose records to open." : "இந்த எண்ணை குடும்ப உறுப்பினர்கள் பகிர்கிறார்கள். யாருடைய பதிவுகளைத் திறக்க வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்."}
+              </p>
+              <div className="grid gap-2">
+                {profiles.map((p) => (
+                  <Button key={p.id} variant="outline" className="h-12 justify-start gap-3" disabled={choosingProfile} onClick={() => chooseProfile(p.id)}>
+                    <User className="w-4 h-4 text-primary" />
+                    {p.name}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                {patient ? <Button variant="ghost" size="sm" onClick={() => setProfiles([])}>{lang === "en" ? "Cancel" : "ரத்து"}</Button> : <span />}
+                <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="w-4 h-4 mr-2" />{lang === "en" ? "Sign out" : "வெளியேறு"}</Button>
+              </div>
+            </div>
+          )}
+
           {/* Logged in view */}
-          {step === "in" && (
+          {step === "in" && profiles.length === 0 && (
             <div className="space-y-6">
               {/* Hero greeting */}
               <div className="bg-gradient-primary text-primary-foreground rounded-2xl p-6 shadow-elevated">
@@ -677,9 +749,16 @@ const PatientPortalContent = () => {
                       </button>
                     )}
                   </div>
-                  <button onClick={signOut} className="p-2 rounded-lg bg-white/10 hover:bg-white/20" title="Sign out">
-                    <LogOut className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    {profileCount > 1 && (
+                      <button onClick={switchProfile} className="p-2 rounded-lg bg-white/10 hover:bg-white/20" title={lang === "en" ? "Switch family member" : "குடும்ப உறுப்பினரை மாற்று"} aria-label={lang === "en" ? "Switch family member" : "குடும்ப உறுப்பினரை மாற்று"}>
+                        <Users className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={signOut} className="p-2 rounded-lg bg-white/10 hover:bg-white/20" title="Sign out">
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

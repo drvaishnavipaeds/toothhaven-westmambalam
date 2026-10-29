@@ -2,7 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { sendDoctorAlert, submitDoctorTemplate, doctorTemplateStatus, retryFailedDoctorAlerts } from "../_shared/doctor-alert.ts";
-import { verifyPortalSession } from "../_shared/portal-session.ts";
+import { issuePortalSession, verifyPortalIdentity, verifyPortalSession } from "../_shared/portal-session.ts";
 import { calendarBusyPeriods } from "../_shared/calendar-availability.ts";
 import { sendAdminPush } from "../_shared/web-push.ts";
 import { runCareMessages, submitCareTemplates } from "../_shared/care-messages.ts";
@@ -16,6 +16,8 @@ const TZ = "+05:30";
 const bookingSchema = z.object({ action: z.literal("book"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/), service: z.string().trim().min(2).max(100), durationMinutes: z.number().int().min(30).max(180).default(30), notes: z.string().trim().max(500).optional(), source: z.enum(["patient_portal", "website_chat", "whatsapp"]).default("patient_portal") });
 const availabilitySchema = z.object({ action: z.literal("availability"), portalToken: z.string().min(10), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), durationMinutes: z.number().int().min(30).max(180).default(30) });
 const portalDataSchema = z.object({ action: z.literal("portal_data"), portalToken: z.string().min(10) });
+const portalProfilesSchema = z.object({ action: z.literal("portal_profiles"), portalToken: z.string().min(10).max(512) });
+const portalSelectSchema = z.object({ action: z.literal("portal_select"), portalToken: z.string().min(10).max(512), patientId: z.string().uuid() });
 const portalImagingSchema = z.object({ action: z.literal("portal_investigations"), portalToken: z.string().min(10).max(512) });
 const staffSchema = z.object({ action: z.enum(["confirm", "reschedule", "cancel", "retry"]), appointmentId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), time: z.string().regex(/^\d{2}:\d{2}$/).optional(), reason: z.string().trim().min(2).max(300).optional() });
 
@@ -54,26 +56,55 @@ async function isStaff(req: Request) {
   const { data: row } = await admin.from("admin_phones").select("id").ilike("email", email).maybeSingle();
   return Boolean(row);
 }
-async function portalData(portalToken: string) {
-  const phone = await verifyPortal(portalToken);
-  if (!phone) return { error: "Patient session expired", status: 401 };
-  const { data: patient, error } = await admin.from("patients").select("*").eq("phone", phone).maybeSingle();
+async function familyProfiles(phone: string) {
+  const { data, error } = await admin.from("patients").select("id,name").eq("phone", phone).order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as { id: string; name: string }[];
+}
+/** Family members can share a verified phone; the signed session must name which of them is visiting. */
+async function portalPatient(portalToken: string, columns = "*") {
+  const identity = await verifyPortalIdentity(portalToken, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  if (!identity) return { error: "Patient session expired", status: 401 };
+  const profiles = await familyProfiles(identity.phone);
+  const chosen = identity.patientId ? profiles.find((p) => p.id === identity.patientId) : profiles.length === 1 ? profiles[0] : undefined;
+  if (!chosen) {
+    if (identity.patientId || !profiles.length) return { error: "Patient record not found", status: 404 };
+    return { error: "Choose who is visiting today", status: 409, profileRequired: true, profiles };
+  }
+  const { data: patient, error } = await admin.from("patients").select(columns).eq("id", chosen.id).eq("phone", identity.phone).maybeSingle();
   if (error) throw error;
   if (!patient) return { error: "Patient record not found", status: 404 };
+  return { patient: patient as unknown as { id: string; name: string; phone: string; [key: string]: unknown }, profiles, identity };
+}
+async function portalProfiles(portalToken: string) {
+  const identity = await verifyPortalIdentity(portalToken, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  if (!identity) return { error: "Patient session expired", status: 401 };
+  return { ok: true, profiles: await familyProfiles(identity.phone), selectedId: identity.patientId };
+}
+async function portalSelect(portalToken: string, patientId: string) {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const identity = await verifyPortalIdentity(portalToken, secret);
+  if (!identity) return { error: "Patient session expired", status: 401 };
+  const chosen = (await familyProfiles(identity.phone)).find((p) => p.id === patientId);
+  if (!chosen) return { error: "Patient record not found", status: 404 };
+  return { ok: true, profile: chosen, ...await issuePortalSession(identity.phone, secret, Date.now(), { patientId: chosen.id, expiresAt: identity.expiresAt }) };
+}
+async function portalData(portalToken: string) {
+  const found = await portalPatient(portalToken);
+  if ("status" in found) return found;
+  const { patient, profiles } = found;
   const [appointments, treatments] = await Promise.all([
     admin.from("appointments").select("*").eq("patient_id", patient.id).order("appointment_date", { ascending: false }),
     admin.from("treatments").select("*").eq("patient_id", patient.id).order("treatment_date", { ascending: false }),
   ]);
   if (appointments.error) throw appointments.error;
   if (treatments.error) throw treatments.error;
-  return { ok: true, patient, appointments: appointments.data ?? [], treatments: treatments.data ?? [] };
+  return { ok: true, patient, profileCount: profiles.length, appointments: appointments.data ?? [], treatments: treatments.data ?? [] };
 }
 async function portalInvestigations(portalToken: string) {
-  const phone = await verifyPortal(portalToken);
-  if (!phone) return { error: "Patient session expired", status: 401 };
-  const { data: patient, error: patientError } = await admin.from("patients").select("id").eq("phone", phone).maybeSingle();
-  if (patientError) throw patientError;
-  if (!patient) return { error: "Patient record not found", status: 404 };
+  const found = await portalPatient(portalToken, "id");
+  if ("status" in found) return found;
+  const { patient } = found;
   const { data: rows, error } = await admin.from("patient_investigations")
     .select("id,investigation_type,procedure_category,title,description,url,thumbnail_url,media_type,tooth_number,taken_on,created_at,series_paths,is_series")
     .eq("patient_id", patient.id).eq("is_visible_to_patient", true)
@@ -204,6 +235,15 @@ Deno.serve(async (req) => {
       const result = await portalData(input.portalToken);
       return json(result, "status" in result ? result.status : 200);
     }
+    if (raw.action === "portal_profiles") {
+      const result = await portalProfiles(portalProfilesSchema.parse(raw).portalToken);
+      return json(result, "status" in result ? result.status : 200);
+    }
+    if (raw.action === "portal_select") {
+      const input = portalSelectSchema.parse(raw);
+      const result = await portalSelect(input.portalToken, input.patientId);
+      return json(result, "status" in result ? result.status : 200);
+    }
     if (raw.action === "portal_investigations") {
       const input = portalImagingSchema.parse(raw);
       const result = await portalInvestigations(input.portalToken);
@@ -217,7 +257,8 @@ Deno.serve(async (req) => {
     if (raw.action === "book") {
       const input = bookingSchema.parse(raw); const phone = await verifyPortal(input.portalToken); if (!phone) return json({ error: "Patient session expired" }, 401);
       const slots = await available(input.date, input.durationMinutes); if (!slots.includes(input.time)) return json({ error: "This slot is no longer available", alternatives: slots.slice(0, 3) }, 409);
-      const { data: patient } = await admin.from("patients").select("id,name,phone").eq("phone", phone).maybeSingle(); if (!patient) return json({ error: "Patient record not found" }, 404);
+      const found = await portalPatient(input.portalToken, "id,name,phone"); if ("status" in found) return json(found, found.status);
+      const { patient } = found;
       const { data: appt, error } = await admin.from("appointments").insert({ patient_id: patient.id, patient_name: patient.name, patient_phone: patient.phone, appointment_date: input.date, appointment_time: input.time, duration_minutes: input.durationMinutes, treatment_type: input.service, notes: input.notes ?? null, status: "pending", source: input.source, confirmation_deadline: new Date(Date.now() + 10 * 60000).toISOString(), calendar_sync_status: "not_synced" }).select("*").single();
       if (error) return json({ error: error.message }, error.message.includes("no longer available") ? 409 : 400);
       const adminNotification = await alertAdmin(appt, "New appointment request — please act within 10 minutes.");
