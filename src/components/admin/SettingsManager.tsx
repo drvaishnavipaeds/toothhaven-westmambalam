@@ -62,6 +62,11 @@ const SettingsManager = () => {
           <div><Label>Notification Phone</Label><Input value={settings.notification_phone ?? ""} onChange={(e) => set("notification_phone", e.target.value)} /></div>
           <div><Label>Notification Email</Label><Input value={settings.notification_email ?? ""} onChange={(e) => set("notification_email", e.target.value)} /></div>
         </div>
+        <div>
+          <Label>Google Review Link</Label>
+          <Input type="url" placeholder="https://g.page/r/.../review" value={settings.google_review_url ?? ""} onChange={(e) => set("google_review_url", e.target.value.trim() || null)} />
+          <p className="text-xs text-muted-foreground mt-1">Sent on WhatsApp about 2 hours after an appointment is marked Completed. Leave blank to pause review requests.</p>
+        </div>
         <Button onClick={save}>Save Settings</Button>
       </Card>
     </div>

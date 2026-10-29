@@ -83,7 +83,7 @@ const AppointmentsList = ({ addRequested, onRequestHandled, initialAppointmentId
       const ok = await runWorkflow({ action: "confirm", appointmentId: id });
       if (!ok) return;
     }
-    toast({ title: `Appointment ${status}` });
+    toast({ title: `Appointment ${status}`, ...(status === "completed" ? { description: "A Google review request will go to the patient on WhatsApp in about 2 hours." } : {}) });
     fetchAppointments();
   };
 

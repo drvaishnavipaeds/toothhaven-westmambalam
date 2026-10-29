@@ -280,6 +280,7 @@ export type Database = {
           calendar_sync_status: string
           cancellation_reason: string | null
           chair_id: string | null
+          completed_at: string | null
           confirmation_deadline: string | null
           created_at: string
           doctor_id: string | null
@@ -311,6 +312,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
@@ -342,6 +344,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
@@ -793,6 +796,7 @@ export type Database = {
           created_at: string
           default_gst_rate: number
           gstin: string | null
+          google_review_url: string | null
           id: string
           invoice_counter: number | null
           invoice_prefix: string | null
@@ -811,6 +815,7 @@ export type Database = {
           created_at?: string
           default_gst_rate?: number
           gstin?: string | null
+          google_review_url?: string | null
           id?: string
           invoice_counter?: number | null
           invoice_prefix?: string | null
@@ -829,6 +834,7 @@ export type Database = {
           created_at?: string
           default_gst_rate?: number
           gstin?: string | null
+          google_review_url?: string | null
           id?: string
           invoice_counter?: number | null
           invoice_prefix?: string | null
