@@ -31,6 +31,7 @@ import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import StaffAccessManager from "@/components/admin/StaffAccessManager";
+import FollowupsManager from "@/components/admin/FollowupsManager";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import {
   TreatmentsManager, MedicinesManager, ClinicalTemplatesManager, MembershipsManager, ExpensesManager, InventoryManager,
@@ -155,6 +156,7 @@ const AdminDashboard = () => {
         {activeTab === "schedule" && <ScheduleManager />}
         {activeTab === "waitlist" && <WaitlistManager />}
         {activeTab === "recalls" && <RecallsManager />}
+        {activeTab === "followups" && <FollowupsManager />}
 
         {activeTab === "treatments" && <TreatmentsManager />}
         {activeTab === "medicines" && <MedicinesManager />}

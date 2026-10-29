@@ -1587,6 +1587,76 @@ export type Database = {
           },
         ]
       }
+      patient_followups: {
+        Row: {
+          appointment_id: string | null
+          call_attempts: number
+          call_status: string
+          created_at: string
+          doctor_id: string | null
+          due_date: string
+          followup_type: string
+          id: string
+          last_called_at: string | null
+          notes: string | null
+          patient_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          call_attempts?: number
+          call_status?: string
+          created_at?: string
+          doctor_id?: string | null
+          due_date: string
+          followup_type?: string
+          id?: string
+          last_called_at?: string | null
+          notes?: string | null
+          patient_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          call_attempts?: number
+          call_status?: string
+          created_at?: string
+          doctor_id?: string | null
+          due_date?: string
+          followup_type?: string
+          id?: string
+          last_called_at?: string | null
+          notes?: string | null
+          patient_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_followups_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_followups_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_followups_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_investigations: {
         Row: {
           created_at: string
