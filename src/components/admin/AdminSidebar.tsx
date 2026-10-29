@@ -3,14 +3,14 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen,
+   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Armchair,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
 
 export type Tab =
-  | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
+  | "overview" | "patients" | "appointments" | "room_board" | "schedule" | "waitlist" | "recalls" | "treatments"
   | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
@@ -27,6 +27,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
   { label: "Clinical", items: [
     { id: "patients", label: "Patients", icon: Users },
     { id: "appointments", label: "Appointments", icon: Calendar },
+    { id: "room_board", label: "Room board", icon: Armchair },
     { id: "schedule", label: "Schedule", icon: CalendarClock },
     { id: "waitlist", label: "Waitlist", icon: ListChecks },
     { id: "recalls", label: "Recalls", icon: BellRing },
