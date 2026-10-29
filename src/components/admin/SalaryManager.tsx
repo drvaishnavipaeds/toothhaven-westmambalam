@@ -118,13 +118,8 @@ const SalaryManager = () => {
     const slip = slips[s.id];
     if (!slip || slip.status !== "draft") return toast.error("Create the draft first");
     if (!confirm(`Mark ${money(slip.net_pay)} as paid to ${s.name}? This also records it under Expenses → Salaries.`)) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: expense, error } = await supabase.from("expenses").insert({
-      expense_date: today, category: "salaries", vendor: s.name, amount: slip.net_pay, description: `Salary for ${monthLabel(month)}`,
-    }).select("id").single();
+    const { error } = await supabase.rpc("mark_salary_slip_paid", { _slip_id: slip.id });
     if (error) return toast.error(error.message);
-    const { error: slipError } = await supabase.from("salary_slips").update({ status: "paid", paid_on: today, expense_id: expense.id }).eq("id", slip.id).eq("status", "draft");
-    if (slipError) return toast.error(slipError.message);
     toast.success(`${s.name}'s salary marked paid`);
     void load();
   };

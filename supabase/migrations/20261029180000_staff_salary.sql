@@ -57,3 +57,30 @@ DROP TRIGGER IF EXISTS trg_salary_settings_updated ON public.staff_salary_settin
 CREATE TRIGGER trg_salary_settings_updated BEFORE UPDATE ON public.staff_salary_settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 DROP TRIGGER IF EXISTS trg_salary_slips_updated ON public.salary_slips;
 CREATE TRIGGER trg_salary_slips_updated BEFORE UPDATE ON public.salary_slips FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Paid slips are locked; payment and its expense entry are recorded atomically.
+CREATE OR REPLACE FUNCTION public.lock_paid_salary_slip()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF OLD.status = 'paid' THEN RAISE EXCEPTION 'Salary slip already paid'; END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_lock_paid_salary_slip ON public.salary_slips;
+CREATE TRIGGER trg_lock_paid_salary_slip BEFORE UPDATE ON public.salary_slips FOR EACH ROW EXECUTE FUNCTION public.lock_paid_salary_slip();
+
+CREATE OR REPLACE FUNCTION public.mark_salary_slip_paid(_slip_id uuid, _paid_on date DEFAULT CURRENT_DATE)
+RETURNS uuid LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE s record; _expense_id uuid;
+BEGIN
+  IF NOT public.is_clinic_owner() THEN RAISE EXCEPTION 'Only the clinic owner can pay salaries'; END IF;
+  SELECT sl.*, st.name AS staff_name INTO s FROM public.salary_slips sl JOIN public.staff st ON st.id = sl.staff_id WHERE sl.id = _slip_id FOR UPDATE OF sl;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Salary slip not found'; END IF;
+  IF s.status <> 'draft' THEN RAISE EXCEPTION 'Salary slip already paid'; END IF;
+  INSERT INTO public.expenses (expense_date, category, vendor, amount, description)
+  VALUES (_paid_on, 'salaries', s.staff_name, s.net_pay, 'Salary for ' || to_char(s.period_month, 'FMMonth YYYY'))
+  RETURNING id INTO _expense_id;
+  UPDATE public.salary_slips SET status = 'paid', paid_on = _paid_on, expense_id = _expense_id WHERE id = _slip_id;
+  RETURN _expense_id;
+END $$;
+REVOKE EXECUTE ON FUNCTION public.mark_salary_slip_paid(uuid, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.mark_salary_slip_paid(uuid, date) TO authenticated, service_role;

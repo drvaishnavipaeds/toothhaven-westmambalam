@@ -2688,6 +2688,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      mark_salary_slip_paid: {
+        Args: { _paid_on?: string; _slip_id: string }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
