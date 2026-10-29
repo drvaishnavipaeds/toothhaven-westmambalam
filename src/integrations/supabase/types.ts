@@ -1371,6 +1371,128 @@ export type Database = {
           },
         ]
       }
+      lab_cases: {
+        Row: {
+          cost: number
+          created_at: string
+          delivered_on: string | null
+          doctor_id: string | null
+          due_date: string | null
+          id: string
+          instructions: string | null
+          lab_id: string | null
+          material: string | null
+          notes: string | null
+          patient_id: string
+          received_on: string | null
+          rework_count: number
+          sent_on: string | null
+          shade: string | null
+          status: string
+          tooth_numbers: string | null
+          updated_at: string
+          work_type: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          delivered_on?: string | null
+          doctor_id?: string | null
+          due_date?: string | null
+          id?: string
+          instructions?: string | null
+          lab_id?: string | null
+          material?: string | null
+          notes?: string | null
+          patient_id: string
+          received_on?: string | null
+          rework_count?: number
+          sent_on?: string | null
+          shade?: string | null
+          status?: string
+          tooth_numbers?: string | null
+          updated_at?: string
+          work_type: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          delivered_on?: string | null
+          doctor_id?: string | null
+          due_date?: string | null
+          id?: string
+          instructions?: string | null
+          lab_id?: string | null
+          material?: string | null
+          notes?: string | null
+          patient_id?: string
+          received_on?: string | null
+          rework_count?: number
+          sent_on?: string | null
+          shade?: string | null
+          status?: string
+          tooth_numbers?: string | null
+          updated_at?: string
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_cases_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_cases_lab_id_fkey"
+            columns: ["lab_id"]
+            isOneToOne: false
+            referencedRelation: "lab_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_cases_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_vendors: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+        ]
+      }
       medicine_catalog: {
         Row: {
           category: string | null
