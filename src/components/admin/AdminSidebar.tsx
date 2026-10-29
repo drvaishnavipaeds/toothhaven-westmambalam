@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen,
+   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, FlaskConical,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 export type Tab =
   | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
-  | "prescriptions" | "invoices"
+  | "prescriptions" | "invoices" | "lab_work"
   | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates";
@@ -32,6 +32,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "recalls", label: "Recalls", icon: BellRing },
     { id: "treatments", label: "Treatments", icon: Stethoscope },
     { id: "prescriptions", label: "Prescriptions", icon: Pill },
+    { id: "lab_work", label: "Lab Work", icon: FlaskConical },
     { id: "medicines", label: "Medicine catalogue", icon: Pill },
     { id: "clinical_templates", label: "Clinical templates", icon: BookOpen },
   ]},
