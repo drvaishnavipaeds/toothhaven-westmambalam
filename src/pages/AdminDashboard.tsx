@@ -31,6 +31,7 @@ import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import StaffAccessManager from "@/components/admin/StaffAccessManager";
+import PatientInsights from "@/components/admin/PatientInsights";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import {
   TreatmentsManager, MedicinesManager, ClinicalTemplatesManager, MembershipsManager, ExpensesManager, InventoryManager,
@@ -150,6 +151,7 @@ const AdminDashboard = () => {
         )}
         {activeTab === "overview" && <DashboardOverview onNavigate={setActiveTab} />}
         {activeTab === "reports" && <ReportsManager />}
+        {activeTab === "insights" && <PatientInsights />}
         {activeTab === "patients" && <PatientsList initialPatientId={openPatientId} registerRequested={registerRequested} onRequestHandled={() => { setOpenPatientId(null); setRegisterRequested(false); }} />}
         {activeTab === "appointments" && <AppointmentsList initialAppointmentId={appointmentId} addRequested={addRequested} onRequestHandled={() => setAddRequested(false)} />}
         {activeTab === "schedule" && <ScheduleManager />}
