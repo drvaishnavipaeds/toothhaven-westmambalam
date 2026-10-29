@@ -357,3 +357,68 @@ export async function logMessage(
   });
   if (error) console.error("whatsapp_messages insert failed:", error.message);
 }
+
+export const DOCUMENT_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_DOCUMENT") ?? "th_patient_document_v1";
+
+/** Free-form document message (only inside the 24-hour customer-service window). */
+export function sendDocument(to: string, link: string, filename: string, caption: string): Promise<SendResult> {
+  return post({ messaging_product: "whatsapp", to: toE164(to), type: "document", document: { link, filename, caption } });
+}
+
+/** Approved utility template with a DOCUMENT header; usable outside the 24-hour window. */
+export function sendDocumentTemplate(to: string, link: string, filename: string, params: string[]): Promise<SendResult> {
+  return post({
+    messaging_product: "whatsapp",
+    to: toE164(to),
+    type: "template",
+    template: {
+      name: DOCUMENT_TEMPLATE,
+      language: { code: "en" },
+      components: [
+        { type: "header", parameters: [{ type: "document", document: { link, filename } }] },
+        { type: "body", parameters: params.map((text) => ({ type: "text", text })) },
+      ],
+    },
+  });
+}
+
+/** Submits the document template to Meta, uploading the sample PDF Meta requires for review. */
+export async function createDocumentTemplate(samplePdf: Uint8Array): Promise<SendResult> {
+  if (!WA_WABA_ID || !WA_TOKEN) return { ok: false, error: "WhatsApp template management is not configured." };
+  try {
+    const debug = await fetch(`${GRAPH}/debug_token?input_token=${WA_TOKEN}&access_token=${WA_TOKEN}`).then((r) => r.json());
+    const appId = debug?.data?.app_id;
+    if (!appId) return { ok: false, error: "Could not identify the Meta app for the sample upload." };
+    const session = await fetch(await graphUrl(`${appId}/uploads?file_length=${samplePdf.length}&file_type=application/pdf&file_name=sample.pdf`), {
+      method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}` },
+    }).then((r) => r.json());
+    if (!session?.id) return { ok: false, error: "Meta sample upload could not start." };
+    const uploaded = await fetch(`${GRAPH}/${session.id}`, {
+      method: "POST", headers: { Authorization: `OAuth ${WA_TOKEN}`, file_offset: "0" }, body: samplePdf,
+    }).then((r) => r.json());
+    if (!uploaded?.h) return { ok: false, error: "Meta sample upload failed." };
+    const res = await fetch(await graphUrl(`${WA_WABA_ID}/message_templates`), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: DOCUMENT_TEMPLATE,
+        category: "UTILITY",
+        language: "en",
+        components: [
+          { type: "HEADER", format: "DOCUMENT", example: { header_handle: [uploaded.h] } },
+          {
+            type: "BODY",
+            text: "Hello {{1}}, your {{2}} from Tooth Haven Advanced Dental Care is attached to this message. Please keep it safely for your records, and reply here if you have any questions.",
+            example: { body_text: [["Priya", "invoice TH-0012"]] },
+          },
+        ],
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, ...friendlyError(data, res.status) };
+    templateCache = null;
+    return { ok: true, id: data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Template creation failed" };
+  }
+}
