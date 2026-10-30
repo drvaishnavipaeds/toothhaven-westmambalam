@@ -21,19 +21,21 @@ const InvoicesManager = () => {
   const [patients, setPatients] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
+  const [doctors, setDoctors] = useState<{ id: string; name: string }[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({});
   const [items, setItems] = useState<Item[]>([]);
 
   const load = async () => {
-    const [{ data: inv }, { data: p }, { data: c }, { data: s }] = await Promise.all([
+    const [{ data: inv }, { data: p }, { data: c }, { data: s }, { data: d }] = await Promise.all([
       supabase.from("invoices").select("*, patients(name, phone)").order("invoice_date", { ascending: false }),
       supabase.from("patients").select("id,name,phone").order("name"),
       supabase.from("treatment_catalog").select("*").eq("is_active", true).order("name"),
       supabase.from("clinic_settings").select("*").limit(1).maybeSingle(),
+      supabase.from("staff").select("id,name").eq("role", "dentist").eq("status", "active").order("name"),
     ]);
-    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []); setSettings(s ?? {});
+    setRows(inv ?? []); setPatients(p ?? []); setCatalog(c ?? []); setSettings(s ?? {}); setDoctors(d ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -101,7 +103,7 @@ const InvoicesManager = () => {
     let invoice_number = form.invoice_number;
     if (!editing) invoice_number = await nextInvoiceNumber();
     const payload = {
-      invoice_number, patient_id: form.patient_id, invoice_date: form.invoice_date,
+      invoice_number, patient_id: form.patient_id, doctor_id: form.doctor_id || null, invoice_date: form.invoice_date,
       subtotal: totals.subtotal, discount: Number(form.discount ?? 0), tax: totals.gst,
       cgst: totals.cgst, sgst: totals.sgst, igst: totals.igst,
       place_of_supply: form.place_of_supply || null, patient_gstin: form.patient_gstin || null,
@@ -207,6 +209,13 @@ const InvoicesManager = () => {
                 </select>
               </div>
               <div><Label>Date</Label><Input type="date" value={form.invoice_date ?? ""} onChange={(e) => setForm({ ...form, invoice_date: e.target.value })} /></div>
+              <div><Label>Treating doctor</Label>
+                <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={form.doctor_id ?? ""} onChange={(e) => setForm({ ...form, doctor_id: e.target.value })}>
+                  <option value="">-- Not set --</option>
+                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">Counts towards this doctor's commission.</p>
+              </div>
               <div><Label>Place of supply</Label><Input placeholder="e.g. 33-Tamil Nadu" value={form.place_of_supply ?? ""} onChange={(e) => setForm({ ...form, place_of_supply: e.target.value })} /></div>
               <div><Label>Patient GSTIN</Label><Input value={form.patient_gstin ?? ""} onChange={(e) => setForm({ ...form, patient_gstin: e.target.value })} /></div>
             </div>

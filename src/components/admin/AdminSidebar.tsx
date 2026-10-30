@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen,
+   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Wallet,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 export type Tab =
   | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
   | "prescriptions" | "invoices"
-  | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
+  | "memberships" | "expenses" | "salary" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates";
 
@@ -41,6 +41,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "financials", label: "Payments", icon: IndianRupee },
     { id: "memberships", label: "Memberships", icon: CreditCard },
     { id: "expenses", label: "Expenses", icon: TrendingDown },
+    { id: "salary", label: "Salary", icon: Wallet },
   ]},
   { label: "Operations", items: [
     { id: "inventory", label: "Inventory", icon: Package },
