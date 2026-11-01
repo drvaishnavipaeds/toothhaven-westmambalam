@@ -3,8 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Lightbulb,
-
+  CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Wallet, Lightbulb,
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useNavigate } from "react-router-dom";
@@ -12,10 +11,9 @@ import { useNavigate } from "react-router-dom";
 export type Tab =
   | "overview" | "patients" | "appointments" | "schedule" | "waitlist" | "recalls" | "treatments"
   | "prescriptions" | "invoices"
-  | "memberships" | "expenses" | "inventory" | "tutorials" | "reports" | "insights" | "staff" | "branches"
+  | "memberships" | "expenses" | "salary" | "inventory" | "tutorials" | "reports" | "insights" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
   | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates";
-
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; mobile?: boolean; }
 
@@ -42,6 +40,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "financials", label: "Payments", icon: IndianRupee },
     { id: "memberships", label: "Memberships", icon: CreditCard },
     { id: "expenses", label: "Expenses", icon: TrendingDown },
+    { id: "salary", label: "Salary", icon: Wallet },
   ]},
   { label: "Operations", items: [
     { id: "inventory", label: "Inventory", icon: Package },

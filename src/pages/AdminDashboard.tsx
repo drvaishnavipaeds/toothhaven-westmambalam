@@ -31,6 +31,7 @@ import ReportsManager from "@/components/admin/ReportsManager";
 import AuditLogsManager from "@/components/admin/AuditLogsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import StaffAccessManager from "@/components/admin/StaffAccessManager";
+import SalaryManager from "@/components/admin/SalaryManager";
 import PatientInsights from "@/components/admin/PatientInsights";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import {
@@ -116,7 +117,7 @@ const AdminDashboard = () => {
     toast({ title: res.ok ? "Alerts are on for this device" : "Alerts not turned on", description: res.ok ? "You'll get alerts even when the app is closed." : res.reason });
   };
 
-  const commandBar = <AdminCommandBar onNavigate={setActiveTab} onOpenPatient={(id) => { setOpenPatientId(id); setActiveTab("patients"); }} onRegisterPatient={() => { setRegisterRequested(true); setActiveTab("patients"); }} onAddAppointment={() => { setAddRequested(true); setActiveTab("appointments"); }} />;
+  const commandBar = <AdminCommandBar onNavigate={setActiveTab} onOpenPatient={(id) => { setOpenPatientId(id); setActiveTab("patients"); }} onRegisterPatient={() => { setRegisterRequested(true); setActiveTab("patients"); }} />;
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Loading...</p></div>;
@@ -136,13 +137,13 @@ const AdminDashboard = () => {
           <Link to="/patient-portal" className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-border hover:bg-muted transition-colors">
             <UserCircle className="w-3.5 h-3.5" /> Patient Portal
           </Link>
-          <button onClick={signOut} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity">
+          <button onClick={signOut} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground hover:opacity-90 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> Logout
           </button>
         </div>
         <div className="p-3 sm:p-4 md:p-6">
         <AdminAppLock />
-        {offline && <div role="status" className="mb-3 rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">You're offline. Showing the saved app; changes and new data will load when the connection returns.</div>}
+        {offline && <div role="status" className="mb-3 rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">You're offline. Showing the saved app; changes and new data will sync when online.</div>}
         {(notifyPermission === "default" || (notifyPermission === "granted" && !pushOn)) && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm">
             <span className="text-muted-foreground">Get phone alerts for new appointment requests and patient messages, even when the app is closed.</span>
@@ -166,6 +167,7 @@ const AdminDashboard = () => {
         {activeTab === "financials" && <FinancialDashboard />}
         {activeTab === "memberships" && <MembershipsManager />}
         {activeTab === "expenses" && <ExpensesManager />}
+        {activeTab === "salary" && <SalaryManager />}
         {activeTab === "inventory" && <InventoryManager />}
         {activeTab === "staff" && <LanguageProvider><StaffAccessManager /></LanguageProvider>}
         {activeTab === "branches" && <BranchesManager />}
