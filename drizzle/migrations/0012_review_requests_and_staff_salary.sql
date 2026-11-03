@@ -1,4 +1,28 @@
--- Staff salary & commission: per-staff pay structure, monthly payslips, and doctor attribution on invoices.
+-- Post-visit Google review requests reuse the patient care message queue.
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.clinic_settings ADD COLUMN IF NOT EXISTS google_review_url text;
+
+CREATE OR REPLACE FUNCTION public.set_appointment_completed_at()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF NEW.status = 'completed' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'completed') THEN
+    NEW.completed_at := now();
+  ELSIF NEW.status <> 'completed' THEN
+    NEW.completed_at := NULL;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS set_appointment_completed_at ON public.appointments;
+CREATE TRIGGER set_appointment_completed_at BEFORE INSERT OR UPDATE OF status ON public.appointments
+  FOR EACH ROW EXECUTE FUNCTION public.set_appointment_completed_at();
+
+CREATE INDEX IF NOT EXISTS idx_appointments_completed_at ON public.appointments (completed_at) WHERE completed_at IS NOT NULL;
+
+ALTER TABLE public.patient_care_messages DROP CONSTRAINT IF EXISTS patient_care_messages_kind_check;
+ALTER TABLE public.patient_care_messages ADD CONSTRAINT patient_care_messages_kind_check
+  CHECK (kind IN ('recall_6m','postop_d1','postop_d3','postop_d7','review_request'));
+
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS doctor_id uuid REFERENCES public.staff(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_invoices_doctor_date ON public.invoices (doctor_id, invoice_date) WHERE doctor_id IS NOT NULL;
 
@@ -34,7 +58,6 @@ CREATE TABLE IF NOT EXISTS public.salary_slips (
   UNIQUE (staff_id, period_month)
 );
 
--- Pay is owner-only, matching staff access management.
 CREATE OR REPLACE FUNCTION public.is_clinic_owner()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT public.is_staff() AND public.has_role(auth.uid(), 'owner');
@@ -58,7 +81,6 @@ CREATE TRIGGER trg_salary_settings_updated BEFORE UPDATE ON public.staff_salary_
 DROP TRIGGER IF EXISTS trg_salary_slips_updated ON public.salary_slips;
 CREATE TRIGGER trg_salary_slips_updated BEFORE UPDATE ON public.salary_slips FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Paid slips are locked; payment and its expense entry are recorded atomically.
 CREATE OR REPLACE FUNCTION public.lock_paid_salary_slip()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN

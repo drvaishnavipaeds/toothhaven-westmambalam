@@ -280,6 +280,7 @@ export type Database = {
           calendar_sync_status: string
           cancellation_reason: string | null
           chair_id: string | null
+          completed_at: string | null
           confirmation_deadline: string | null
           created_at: string
           doctor_id: string | null
@@ -311,6 +312,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
@@ -342,6 +344,7 @@ export type Database = {
           calendar_sync_status?: string
           cancellation_reason?: string | null
           chair_id?: string | null
+          completed_at?: string | null
           confirmation_deadline?: string | null
           created_at?: string
           doctor_id?: string | null
@@ -792,6 +795,7 @@ export type Database = {
           clinic_name: string
           created_at: string
           default_gst_rate: number
+          google_review_url: string | null
           gstin: string | null
           id: string
           invoice_counter: number | null
@@ -810,6 +814,7 @@ export type Database = {
           clinic_name?: string
           created_at?: string
           default_gst_rate?: number
+          google_review_url?: string | null
           gstin?: string | null
           id?: string
           invoice_counter?: number | null
@@ -828,6 +833,7 @@ export type Database = {
           clinic_name?: string
           created_at?: string
           default_gst_rate?: number
+          google_review_url?: string | null
           gstin?: string | null
           id?: string
           invoice_counter?: number | null
@@ -1300,6 +1306,7 @@ export type Database = {
           cgst: number
           created_at: string
           discount: number
+          doctor_id: string | null
           id: string
           igst: number
           invoice_date: string
@@ -1320,6 +1327,7 @@ export type Database = {
           cgst?: number
           created_at?: string
           discount?: number
+          doctor_id?: string | null
           id?: string
           igst?: number
           invoice_date?: string
@@ -1340,6 +1348,7 @@ export type Database = {
           cgst?: number
           created_at?: string
           discount?: number
+          doctor_id?: string | null
           id?: string
           igst?: number
           invoice_date?: string
@@ -1356,6 +1365,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_patient_id_fkey"
             columns: ["patient_id"]
@@ -1998,6 +2014,87 @@ export type Database = {
           },
         ]
       }
+      salary_slips: {
+        Row: {
+          bonus: number
+          collected: number
+          commission: number
+          commission_percent: number
+          created_at: string
+          deductions: number
+          expense_id: string | null
+          fixed_pay: number
+          id: string
+          net_pay: number
+          notes: string | null
+          paid_on: string | null
+          patients: number
+          pay_type: string
+          period_month: string
+          staff_id: string
+          status: string
+          treatments: number
+          updated_at: string
+        }
+        Insert: {
+          bonus?: number
+          collected?: number
+          commission?: number
+          commission_percent?: number
+          created_at?: string
+          deductions?: number
+          expense_id?: string | null
+          fixed_pay?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          paid_on?: string | null
+          patients?: number
+          pay_type: string
+          period_month: string
+          staff_id: string
+          status?: string
+          treatments?: number
+          updated_at?: string
+        }
+        Update: {
+          bonus?: number
+          collected?: number
+          commission?: number
+          commission_percent?: number
+          created_at?: string
+          deductions?: number
+          expense_id?: string | null
+          fixed_pay?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          paid_on?: string | null
+          patients?: number
+          pay_type?: string
+          period_month?: string
+          staff_id?: string
+          status?: string
+          treatments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_slips_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_slips_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           branch_id: string | null
@@ -2047,6 +2144,41 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_salary_settings: {
+        Row: {
+          commission_percent: number
+          created_at: string
+          fixed_monthly: number
+          pay_type: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string
+          fixed_monthly?: number
+          pay_type?: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string
+          fixed_monthly?: number
+          pay_type?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_salary_settings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -2576,8 +2708,13 @@ export type Database = {
         Args: { _email?: string; _phone?: string }
         Returns: boolean
       }
+      is_clinic_owner: { Args: never; Returns: boolean }
       is_clinical: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
+      mark_salary_slip_paid: {
+        Args: { _paid_on?: string; _slip_id: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
