@@ -36,8 +36,14 @@ async function requireStaff(req: Request): Promise<string | null> {
 }
 
 function isCron(req: Request): boolean {
-  const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
-  return token === SERVICE_KEY;
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  // Cron may use the dedicated campaign secret or the service-role key stored in Vault.
+  const allowedTokens = [
+    SERVICE_KEY,
+    Deno.env.get("CAMPAIGN_CRON_KEY"),
+    Deno.env.get("CRON_SECRET"),
+  ].filter((value): value is string => Boolean(value));
+  return Boolean(token) && allowedTokens.some((value) => token === value);
 }
 
 /** Resolves the patient list for a campaign audience. */
@@ -193,11 +199,24 @@ Deno.serve(async (req) => {
 
       const { data: campaign } = await admin
         .from("campaigns")
-        .select("id, audience, status, scheduled_at")
+        .select("id, audience, status, scheduled_at, template_name, template_language")
         .eq("id", parsed.data.campaignId)
         .maybeSingle();
       if (!campaign) return json({ error: "Campaign not found" }, 404);
       if (campaign.status !== "draft") return json({ error: "Campaign has already been launched" }, 409);
+
+      // Refuse to queue recipients unless Meta currently reports this exact
+      // template/language as approved. This prevents a stale UI selection or
+      // a pending Meta review from producing a queue of guaranteed failures.
+      const approved = await listApprovedTemplates(true);
+      const templateIsApproved = approved.some(
+        (template) => template.name === campaign.template_name && template.language === campaign.template_language,
+      );
+      if (!templateIsApproved) {
+        return json({
+          error: `WhatsApp template "${campaign.template_name}" (${campaign.template_language}) is not currently approved by Meta. Check its status in Messaging templates and retry after approval.`,
+        }, 400);
+      }
 
       const audience = await buildAudience(campaign.audience, parsed.data.manualPhones);
       const unique = new Map<string, { id: string | null; name: string | null; phone: string }>();
