@@ -10,7 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Megaphone, RefreshCw, Send, Users } from "lucide-react";
+import { Megaphone, Pencil, RefreshCw, Send, Trash2, Users } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import MessagingTemplates from "./MessagingTemplates";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -71,6 +72,10 @@ const CampaignsManager = () => {
   const [variables, setVariables] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
+  const [editing, setEditing] = useState<Campaign | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editWhen, setEditWhen] = useState("");
+  const [editVars, setEditVars] = useState<string[]>([]);
 
   const marketingTemplates = useMemo(
     () => templates.filter((t) => t.category !== "AUTHENTICATION"),
@@ -179,8 +184,86 @@ const CampaignsManager = () => {
     loadCampaigns();
   };
 
+  const toLocalInput = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const openEdit = (c: Campaign) => {
+    setEditing(c);
+    setEditName(c.name);
+    setEditWhen(c.scheduled_at ? toLocalInput(c.scheduled_at) : "");
+    setEditVars(Array.isArray(c.variables) ? (c.variables as unknown[]).map(String) : []);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    if (!editName.trim()) return toast.error("Give the campaign a name");
+    const when = new Date(editWhen);
+    if (!editWhen || isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+      return toast.error("Pick a future date and time");
+    }
+    if (editVars.some((v) => !v.trim())) return toast.error("Fill every template variable");
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("campaigns")
+      .update({ name: editName.trim(), scheduled_at: when.toISOString(), variables: editVars })
+      .eq("id", editing.id)
+      .eq("status", "scheduled")
+      .select("id");
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("This campaign has already started sending and can't be changed");
+    toast.success("Campaign updated");
+    setEditing(null);
+    loadCampaigns();
+  };
+
+  const deleteCampaign = async (c: Campaign) => {
+    if (!window.confirm(`Delete scheduled campaign "${c.name}"? No messages will be sent.`)) return;
+    const { data, error } = await supabase
+      .from("campaigns")
+      .delete()
+      .eq("id", c.id)
+      .eq("status", "scheduled")
+      .select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("This campaign has already started sending and can't be deleted");
+    toast.success("Campaign deleted");
+    loadCampaigns();
+  };
+
   return (
     <Tabs defaultValue="campaigns" className="space-y-4">
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit scheduled campaign</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="edit-name">Name</Label>
+              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="edit-when">Send at</Label>
+              <Input id="edit-when" type="datetime-local" value={editWhen} onChange={(e) => setEditWhen(e.target.value)} />
+            </div>
+            {editVars.map((v, i) => (
+              <div key={i}>
+                <Label>Variable {`{{${i + 1}}}`}</Label>
+                <Input value={v} onChange={(e) => setEditVars((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))} />
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Template and audience can't be changed — delete and create a new campaign for that.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={busy}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <TabsList><TabsTrigger value="campaigns">Campaigns</TabsTrigger><TabsTrigger value="templates">Messaging templates</TabsTrigger></TabsList>
       <TabsContent value="templates"><MessagingTemplates onChanged={() => void loadTemplates(true)} /></TabsContent>
       <TabsContent value="campaigns" className="space-y-4">
@@ -303,6 +386,16 @@ const CampaignsManager = () => {
                   {c.failed_count > 0 && <span className="text-destructive"> · {c.failed_count} failed</span>}
                   {c.scheduled_at && ` · scheduled ${new Date(c.scheduled_at).toLocaleString("en-IN")}`}
                 </p>
+                {c.status === "scheduled" && c.scheduled_at && new Date(c.scheduled_at).getTime() > Date.now() && (
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(c)}>
+                      <Pencil className="w-3 h-3 mr-1" />Edit
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-destructive" onClick={() => deleteCampaign(c)}>
+                      <Trash2 className="w-3 h-3 mr-1" />Delete
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
