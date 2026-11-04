@@ -121,20 +121,42 @@ async function drain() {
         .eq("campaign_id", campaign.id)
         .eq("status", "queued");
       if ((remaining ?? 0) === 0) {
-        await admin.from("campaigns").update({ status: "completed" }).eq("id", campaign.id);
+        const done = (campaign.sent_count ?? 0) === 0 && (campaign.failed_count ?? 0) > 0 ? "failed" : "completed";
+        await admin.from("campaigns").update({ status: done }).eq("id", campaign.id);
       }
       continue;
     }
 
     let sent = 0;
     let failed = 0;
+    let language = campaign.template_language;
+    let languageChecked = false;
     for (const r of recipients) {
-      const result = await sendTemplate({
-        to: r.phone,
-        name: campaign.template_name,
-        language: campaign.template_language,
-        bodyParams: fillVariables(campaign.variables, r.name),
-      });
+      const params = fillVariables(campaign.variables, r.name);
+      let result = await sendTemplate({ to: r.phone, name: campaign.template_name, language, bodyParams: params });
+
+      // Meta error 132001 = template/language not found. Look up the language
+      // Meta actually approved this template under (e.g. en_US vs en) and retry once.
+      if (!result.ok && result.code === 132001 && !languageChecked) {
+        languageChecked = true;
+        const approved = await listApprovedTemplates(true);
+        const match = approved.find((t) => t.name === campaign.template_name && t.language !== language);
+        if (match) {
+          language = match.language;
+          await admin.from("campaigns").update({ template_language: language }).eq("id", campaign.id);
+          result = await sendTemplate({ to: r.phone, name: campaign.template_name, language, bodyParams: params });
+        } else if (!approved.some((t) => t.name === campaign.template_name)) {
+          // Template not approved at all: fail the remaining queue without sending.
+          const reason = `Template "${campaign.template_name}" is not approved by Meta yet. Check Messaging templates.`;
+          await admin.from("campaign_recipients").update({ status: "failed", error: reason })
+            .eq("campaign_id", campaign.id).eq("status", "queued");
+          const { count } = await admin.from("campaign_recipients").select("id", { count: "exact", head: true })
+            .eq("campaign_id", campaign.id).eq("status", "failed");
+          await admin.from("campaigns").update({ status: "failed", failed_count: count ?? 0 }).eq("id", campaign.id);
+          failed = -1;
+          break;
+        }
+      }
 
       if (result.ok) {
         sent++;
@@ -165,12 +187,19 @@ async function drain() {
       if (processed >= BATCH) break;
     }
 
+    if (failed === -1) continue; // already finalized as failed
+
+    const { count: stillQueued } = await admin
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign.id)
+      .eq("status", "queued");
+    const totalSent = (campaign.sent_count ?? 0) + sent;
+    const totalFailed = (campaign.failed_count ?? 0) + failed;
+    const finalStatus = (stillQueued ?? 0) > 0 ? "sending" : totalSent === 0 && totalFailed > 0 ? "failed" : "completed";
     await admin
       .from("campaigns")
-      .update({
-        sent_count: (campaign.sent_count ?? 0) + sent,
-        failed_count: (campaign.failed_count ?? 0) + failed,
-      })
+      .update({ sent_count: totalSent, failed_count: totalFailed, status: finalStatus })
       .eq("id", campaign.id);
 
     if (processed >= BATCH) break;
@@ -209,10 +238,15 @@ Deno.serve(async (req) => {
       // template/language as approved. This prevents a stale UI selection or
       // a pending Meta review from producing a queue of guaranteed failures.
       const approved = await listApprovedTemplates(true);
-      const templateIsApproved = approved.some(
+      const exact = approved.find(
         (template) => template.name === campaign.template_name && template.language === campaign.template_language,
       );
-      if (!templateIsApproved) {
+      const sameName = exact ?? approved.find((template) => template.name === campaign.template_name);
+      if (sameName && !exact) {
+        campaign.template_language = sameName.language;
+        await admin.from("campaigns").update({ template_language: sameName.language }).eq("id", campaign.id);
+      }
+      if (!sameName) {
         return json({
           error: `WhatsApp template "${campaign.template_name}" (${campaign.template_language}) is not currently approved by Meta. Check its status in Messaging templates and retry after approval.`,
         }, 400);
