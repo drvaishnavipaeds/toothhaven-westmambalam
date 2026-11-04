@@ -39,11 +39,29 @@ const AUDIENCES = [
   { value: "manual", label: "Manual phone list" },
 ];
 
+type CampaignStats = { queued: number; sent: number; failed: number; delivered: number; read: number; error: string | null };
+
 const statusTone: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "outline",
   scheduled: "secondary",
   sending: "default",
   completed: "secondary",
+  partial: "outline",
+  failed: "destructive",
+};
+
+/** Status shown to staff, derived from actual recipient outcomes. */
+function displayStatus(c: Campaign, s?: CampaignStats): string {
+  if (c.status === "draft" || c.status === "scheduled") return c.status;
+  if (!s) return c.status;
+  if (s.queued > 0) return "sending";
+  if (s.sent === 0 && s.failed > 0) return "failed";
+  if (s.failed > 0) return "partial";
+  return "completed";
+}
+
+const statusLabel: Record<string, string> = {
+  draft: "Draft", scheduled: "Scheduled", sending: "Sending", completed: "Sent", partial: "Partly sent", failed: "Failed",
 };
 
 /** Number of {{n}} placeholders in a template's BODY component. */
@@ -91,8 +109,31 @@ const CampaignsManager = () => {
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) toast.error(error.message);
-    setCampaigns((data ?? []) as Campaign[]);
+    const list = (data ?? []) as Campaign[];
+    setCampaigns(list);
     setLoading(false);
+    const ids = list.map((c) => c.id);
+    if (!ids.length) return;
+    const [{ data: recips }, { data: msgs }] = await Promise.all([
+      supabase.from("campaign_recipients").select("campaign_id,status,error").in("campaign_id", ids).limit(5000),
+      supabase.from("whatsapp_messages").select("campaign_id,status").in("campaign_id", ids).eq("direction", "outbound").limit(5000),
+    ]);
+    const stats: Record<string, CampaignStats> = {};
+    for (const id of ids) stats[id] = { queued: 0, sent: 0, failed: 0, delivered: 0, read: 0, error: null };
+    for (const r of recips ?? []) {
+      const s = stats[r.campaign_id];
+      if (!s) continue;
+      if (r.status === "queued") s.queued++;
+      else if (r.status === "failed") { s.failed++; s.error ??= r.error; }
+      else s.sent++;
+    }
+    for (const m of msgs ?? []) {
+      const s = m.campaign_id ? stats[m.campaign_id] : undefined;
+      if (!s) continue;
+      if (m.status === "read") { s.read++; s.delivered++; }
+      else if (m.status === "delivered") s.delivered++;
+    }
+    setStats(stats);
   };
 
   const loadTemplates = async (refresh = false) => {
@@ -372,20 +413,30 @@ const CampaignsManager = () => {
             <p className="text-sm text-muted-foreground">No campaigns yet.</p>
           )}
           <div className="space-y-2">
-            {campaigns.map((c) => (
+            {campaigns.map((c) => {
+              const s = stats[c.id];
+              const st = displayStatus(c, s);
+              const sentN = s ? s.sent : c.sent_count;
+              const failedN = s ? s.failed : c.failed_count;
+              return (
               <div key={c.id} className="border rounded-md p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-sm">{c.name}</span>
-                  <Badge variant={statusTone[c.status] ?? "outline"}>{c.status}</Badge>
+                  <Badge variant={statusTone[st] ?? "outline"}>{statusLabel[st] ?? st}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {c.template_name} ({c.template_language}) · {AUDIENCES.find((a) => a.value === c.audience)?.label ?? c.audience}
                 </p>
                 <p className="text-xs mt-1">
-                  Sent {c.sent_count}/{c.total_count}
-                  {c.failed_count > 0 && <span className="text-destructive"> · {c.failed_count} failed</span>}
+                  Sent {sentN}/{c.total_count}
+                  {s && sentN > 0 && ` · delivered ${s.delivered} · read ${s.read}`}
+                  {failedN > 0 && <span className="text-destructive"> · {failedN} failed</span>}
+                  {s && s.queued > 0 && ` · ${s.queued} waiting`}
                   {c.scheduled_at && ` · scheduled ${new Date(c.scheduled_at).toLocaleString("en-IN")}`}
                 </p>
+                {s?.error && failedN > 0 && (
+                  <p className="text-xs text-destructive mt-1">Reason: {s.error}</p>
+                )}
                 {c.status === "scheduled" && c.scheduled_at && new Date(c.scheduled_at).getTime() > Date.now() && (
                   <div className="flex gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={() => openEdit(c)}>
@@ -397,7 +448,8 @@ const CampaignsManager = () => {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
