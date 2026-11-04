@@ -79,6 +79,7 @@ function bodyText(template?: Template): string {
 
 const CampaignsManager = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<Record<string, CampaignStats>>({});
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
