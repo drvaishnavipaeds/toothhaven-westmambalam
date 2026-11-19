@@ -8,6 +8,8 @@ import HavenAIChatbot from "@/components/HavenAIChatbot";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { services } from "@/data/services";
+import ClinicVideoPlayer from "@/components/ClinicVideoPlayer";
+import { useClinicVideos } from "@/components/portal/PortalVideos";
 
 const askHaven = (question: string, lang: "en" | "ta") => {
   window.dispatchEvent(new CustomEvent("haven:ask", { detail: { question, lang } }));
@@ -33,6 +35,7 @@ const ServiceDetailContent = () => {
   const name = lang === "en" ? service.en : service.ta;
   const about = lang === "en" ? service.aboutEn : service.aboutTa;
   const highlights = lang === "en" ? service.highlightsEn : service.highlightsTa;
+  const videos = useClinicVideos("service", service.slug);
 
   return (
     <>
@@ -76,6 +79,17 @@ const ServiceDetailContent = () => {
               ))}
             </ul>
           </section>
+
+          {videos.length > 0 && (
+            <section>
+              <h2 className="text-xl font-bold text-foreground mb-3">
+                {lang === "en" ? "Watch & learn" : "பார்த்து அறியுங்கள்"}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {videos.map((v) => <ClinicVideoPlayer key={v.id} video={v} lang={lang} />)}
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="text-xl font-bold text-foreground mb-3">

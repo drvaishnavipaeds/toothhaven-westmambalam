@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Calendar, IndianRupee, FileText, LogOut, Sparkles, MessageSquareQuote,
   Award, ShieldCheck, Stethoscope, Pill, Receipt, CreditCard, TrendingDown, Package, GraduationCap,
   BarChart3, UserCog, Building2, ScrollText, Send, Settings, ChevronDown, ChevronRight, Inbox,
-   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Wallet,
+   CalendarClock, ListChecks, BellRing, MessageSquare, Megaphone, BookOpen, Wallet, Film,
 
 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -14,7 +14,7 @@ export type Tab =
   | "prescriptions" | "invoices"
   | "memberships" | "expenses" | "salary" | "inventory" | "tutorials" | "reports" | "staff" | "branches"
   | "audit_logs" | "communication" | "whatsapp_inbox" | "campaigns" | "settings" | "financials" | "content" | "case_studies"
-  | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates";
+  | "testimonials" | "achievements" | "consents" | "approvals" | "medicines" | "clinical_templates" | "videos";
 
 
 interface Props { activeTab: Tab; onTabChange: (tab: Tab) => void; mobile?: boolean; }
@@ -56,6 +56,7 @@ const groups: { label: string; items: { id: Tab; label: string; icon: any }[] }[
     { id: "approvals", label: "Approvals", icon: Inbox },
     { id: "content", label: "Content", icon: FileText },
     { id: "case_studies", label: "Success Stories", icon: Sparkles },
+    { id: "videos", label: "Videos", icon: Film },
     { id: "testimonials", label: "Testimonials", icon: MessageSquareQuote },
     { id: "achievements", label: "Achievements", icon: Award },
   ]},

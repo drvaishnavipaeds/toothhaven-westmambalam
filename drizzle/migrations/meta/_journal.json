@@ -92,6 +92,13 @@
       "when": 1793693185490,
       "tag": "0012_review_requests_and_staff_salary",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795106057903,
+      "tag": "0013_create_clinic_videos",
+      "breakpoints": true
     }
   ]
 }

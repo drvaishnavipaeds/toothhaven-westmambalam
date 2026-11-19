@@ -849,6 +849,57 @@ export type Database = {
         }
         Relationships: []
       }
+      clinic_videos: {
+        Row: {
+          captions_en: string | null
+          captions_ta: string | null
+          created_at: string
+          description_en: string | null
+          description_ta: string | null
+          id: string
+          is_published: boolean
+          kind: string
+          service_slug: string | null
+          sort_order: number
+          source: string
+          title_en: string
+          title_ta: string | null
+          video_url: string
+        }
+        Insert: {
+          captions_en?: string | null
+          captions_ta?: string | null
+          created_at?: string
+          description_en?: string | null
+          description_ta?: string | null
+          id?: string
+          is_published?: boolean
+          kind: string
+          service_slug?: string | null
+          sort_order?: number
+          source?: string
+          title_en: string
+          title_ta?: string | null
+          video_url: string
+        }
+        Update: {
+          captions_en?: string | null
+          captions_ta?: string | null
+          created_at?: string
+          description_en?: string | null
+          description_ta?: string | null
+          id?: string
+          is_published?: boolean
+          kind?: string
+          service_slug?: string | null
+          sort_order?: number
+          source?: string
+          title_en?: string
+          title_ta?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       clinical_ai_logs: {
         Row: {
           actor_email: string | null

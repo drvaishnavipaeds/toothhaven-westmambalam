@@ -11,6 +11,7 @@ import PortalTestimonials from "@/components/portal/PortalTestimonials";
 import AchievementsWall from "@/components/portal/AchievementsWall";
 import ClinicFeed from "@/components/portal/ClinicFeed";
 import InvestigationsViewer from "@/components/portal/InvestigationsViewer";
+import PortalVideos from "@/components/portal/PortalVideos";
 import { Button } from "@/components/ui/button";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 
@@ -699,6 +700,7 @@ const PatientPortalContent = () => {
           {step !== "in" && (
             <div className="space-y-6">
               <ClinicFeed />
+              <PortalVideos />
               <SuccessStoriesSection />
               <PortalTestimonials />
               <AchievementsWall />
@@ -845,6 +847,7 @@ const PatientPortalContent = () => {
 
               {patient && session && <InvestigationsViewer portalToken={session.token} />}
 
+               <PortalVideos />
               <SuccessStoriesSection />
               <PortalTestimonials />
               <AchievementsWall />
