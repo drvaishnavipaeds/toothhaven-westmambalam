@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit, Trash2, Upload, Eye, EyeOff, Film } from "lucide-react";
+import { Plus, Edit, Trash2, Upload, Eye, EyeOff, Film, Languages, Mic, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +30,8 @@ const empty = {
   source: "upload" as ClinicVideo["source"],
   captions_en: "",
   captions_ta: "",
+  audio_ta_url: "",
+  audio_ta_source: "" as string,
 };
 
 const VideosManager = () => {
@@ -61,6 +63,8 @@ const VideosManager = () => {
       source: it.source,
       captions_en: it.captions_en || "",
       captions_ta: it.captions_ta || "",
+      audio_ta_url: it.audio_ta_url || "",
+      audio_ta_source: it.audio_ta_source || "",
     });
     setShowForm(true);
   };
@@ -70,6 +74,63 @@ const VideosManager = () => {
     if (!file) return;
     const url = await upload(file, "clinic-videos");
     if (url) setForm((f) => ({ ...f, video_url: url, source: "upload" }));
+    e.target.value = "";
+  };
+
+  const [translating, setTranslating] = useState(false);
+  const [voicing, setVoicing] = useState(false);
+
+  const callTamil = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("video-tamil", { body });
+    if (error) {
+      let msg = error.message;
+      try { msg = JSON.parse(await (error as any).context.text()).error || msg; } catch { /* keep */ }
+      throw new Error(msg);
+    }
+    return data;
+  };
+
+  const autoTranslate = async () => {
+    if (!form.title_en && !form.description_en && !form.captions_en) {
+      toast({ title: "Write the English text first", variant: "destructive" });
+      return;
+    }
+    setTranslating(true);
+    try {
+      const d = await callTamil({ action: "translate", title: form.title_en, description: form.description_en, captions: form.captions_en });
+      setForm((f) => ({
+        ...f,
+        title_ta: d.title || f.title_ta,
+        description_ta: d.description || f.description_ta,
+        captions_ta: d.captions || f.captions_ta,
+      }));
+      toast({ title: "Tamil text added", description: "Please review before saving." });
+    } catch (e: any) {
+      toast({ title: "Translation failed", description: e.message, variant: "destructive" });
+    } finally { setTranslating(false); }
+  };
+
+  const generateVoice = async () => {
+    const text = form.captions_ta || form.description_ta;
+    if (!text) {
+      toast({ title: "Add Tamil captions first", description: "Use Auto-translate, then generate the voice.", variant: "destructive" });
+      return;
+    }
+    setVoicing(true);
+    try {
+      const d = await callTamil({ action: "voice", text });
+      setForm((f) => ({ ...f, audio_ta_url: d.url, audio_ta_source: "ai" }));
+      toast({ title: "Tamil voice-over ready", description: "Listen below, then save." });
+    } catch (e: any) {
+      toast({ title: "Voice generation failed", description: e.message, variant: "destructive" });
+    } finally { setVoicing(false); }
+  };
+
+  const onAudioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await upload(file, "clinic-videos/audio");
+    if (url) setForm((f) => ({ ...f, audio_ta_url: url, audio_ta_source: "upload" }));
     e.target.value = "";
   };
 
@@ -91,6 +152,8 @@ const VideosManager = () => {
       source: form.source,
       captions_en: form.captions_en || null,
       captions_ta: form.captions_ta || null,
+      audio_ta_url: form.audio_ta_url || null,
+      audio_ta_source: form.audio_ta_url ? form.audio_ta_source || "upload" : null,
     };
     const { error } = editing
       ? await videosTable().update(payload).eq("id", editing.id)
@@ -197,6 +260,9 @@ const VideosManager = () => {
               </div>
             )}
             <Input placeholder="Title (English) *" required value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} />
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={autoTranslate} disabled={translating}>
+              <Languages className="w-4 h-4 mr-1" /> {translating ? "Translating…" : "Auto-translate to Tamil with AI"}
+            </Button>
             <Input placeholder="Title (Tamil)" value={form.title_ta} onChange={(e) => setForm({ ...form, title_ta: e.target.value })} />
             <Textarea placeholder="Description (English)" value={form.description_en} onChange={(e) => setForm({ ...form, description_en: e.target.value })} />
             <Textarea placeholder="Description (Tamil)" value={form.description_ta} onChange={(e) => setForm({ ...form, description_ta: e.target.value })} />
@@ -226,7 +292,31 @@ const VideosManager = () => {
             <Textarea placeholder="Captions (English) — shown when the viewer taps CC" value={form.captions_en} onChange={(e) => setForm({ ...form, captions_en: e.target.value })} />
             <Textarea placeholder="Captions (Tamil)" value={form.captions_ta} onChange={(e) => setForm({ ...form, captions_ta: e.target.value })} />
 
-            <Button type="submit" className="w-full" disabled={saving || uploading}>
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-xs font-medium text-foreground flex items-center gap-1.5"><Mic className="w-3.5 h-3.5" /> Tamil voice-over (plays when patients choose Tamil)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={generateVoice} disabled={voicing}>
+                  {voicing ? "Generating…" : "Generate with AI"}
+                </Button>
+                <label className="cursor-pointer">
+                  <input type="file" accept="audio/*" className="hidden" onChange={onAudioFile} disabled={uploading} />
+                  <span className="flex items-center justify-center gap-1.5 text-xs h-9 px-3 rounded-md border border-input bg-background hover:bg-muted">
+                    <Upload className="w-3 h-3" /> Upload recording
+                  </span>
+                </label>
+              </div>
+              <p className="text-[11px] text-muted-foreground">AI voice reads the Tamil captions (or description). Best for narrated/explainer videos.</p>
+              {form.audio_ta_url && (
+                <div className="flex items-center gap-2">
+                  <audio src={form.audio_ta_url} controls className="w-full h-9" />
+                  <button type="button" onClick={() => setForm({ ...form, audio_ta_url: "", audio_ta_source: "" })} className="p-1.5 rounded hover:bg-muted" title="Remove Tamil voice">
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={saving || uploading || voicing}>
               {saving ? "Saving…" : editing ? "Update" : "Add video"}
             </Button>
           </form>

@@ -18,3 +18,5 @@
 - Both prescription screens share catalogue-backed medicine selection and explicit new-medicine persistence through the existing staff-protected catalogue; patient regimens never become shared defaults.- The offline app shell uses vite-plugin-pwa generateSW registered only through src/lib/register-sw.ts, because service workers must never run in dev, preview, or iframes.
 
 - Closed-app staff alerts use standard Web Push (VAPID) via public/push-sw.js imported into the generated service worker; subscriptions are per staff device and sends go through supabase/functions/_shared/web-push.ts, never Firebase.
+
+- Video Tamil translation and voice-over run in the staff-only video-tamil function (AI Gateway SDK for text, ElevenLabs connector for speech); the player mutes the original track and syncs the Tamil audio, because API keys must stay server-side.

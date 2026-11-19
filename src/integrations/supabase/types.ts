@@ -851,6 +851,8 @@ export type Database = {
       }
       clinic_videos: {
         Row: {
+          audio_ta_source: string | null
+          audio_ta_url: string | null
           captions_en: string | null
           captions_ta: string | null
           created_at: string
@@ -867,6 +869,8 @@ export type Database = {
           video_url: string
         }
         Insert: {
+          audio_ta_source?: string | null
+          audio_ta_url?: string | null
           captions_en?: string | null
           captions_ta?: string | null
           created_at?: string
@@ -883,6 +887,8 @@ export type Database = {
           video_url: string
         }
         Update: {
+          audio_ta_source?: string | null
+          audio_ta_url?: string | null
           captions_en?: string | null
           captions_ta?: string | null
           created_at?: string
