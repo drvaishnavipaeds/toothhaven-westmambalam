@@ -25,6 +25,11 @@ const appointmentError = async (error: unknown, fallback: string) => {
   return { message: fallback, calendarAuthorizationRequired: false, alternatives: undefined };
 };
 
+const functionErrorBody = async (error: unknown): Promise<Record<string, unknown> | null> => {
+  if (!(error instanceof FunctionsHttpError)) return null;
+  try { return await error.context.json(); } catch { return null; }
+};
+
 const SESSION_KEY = "portal_session_v1";
 
 interface PortalSession { phone: string; token: string; expiresAt: number; patientId?: string | null; }
@@ -50,7 +55,12 @@ const PatientPortalContent = () => {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone" | "otp" | "in">("phone");
+  const [step, setStep] = useState<"phone" | "otp" | "link" | "in">("phone");
+  const [linkToken, setLinkToken] = useState("");
+  const [linkName, setLinkName] = useState("");
+  const [linkPhone, setLinkPhone] = useState("");
+  const [linkDob, setLinkDob] = useState("");
+  const [linking, setLinking] = useState(false);
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -230,7 +240,9 @@ const PatientPortalContent = () => {
       });
       setSending(false);
       if (error || data?.error) {
-        toast.error(data?.error || error?.message || "Failed to send OTP");
+        const detail = await functionErrorBody(error);
+        toast.error(data?.error || (typeof detail?.error === "string" ? detail.error : "Failed to send OTP"));
+        if (detail?.configuration_required) setMethod("email");
         return;
       }
       toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP WhatsApp மூலம் அனுப்பப்பட்டது");
@@ -251,6 +263,31 @@ const PatientPortalContent = () => {
       toast.success(lang === "en" ? "Verification code sent to your email" : "உங்கள் மின்னஞ்சலுக்கு குறியீடு அனுப்பப்பட்டது");
       setStep("otp");
     }
+  };
+
+  const linkEmail = async () => {
+    if (!/^\d{10}$/.test(linkPhone.trim()) || linkName.trim().length < 2 || !linkDob) {
+      toast.error(lang === "en" ? "Enter your registered phone, name and date of birth" : "பதிவு செய்த எண், பெயர், பிறந்த தேதியை உள்ளிடவும்");
+      return;
+    }
+    setLinking(true);
+    const { data, error } = await supabase.functions.invoke("portal-otp", {
+      headers: { Authorization: `Bearer ${linkToken}` },
+      body: { action: "link_email", phone: linkPhone.trim(), name: linkName.trim(), dob: linkDob },
+    });
+    setLinking(false);
+    if (error || data?.error || !data?.token) {
+      const detail = await functionErrorBody(error);
+      toast.error(data?.error || (typeof detail?.error === "string" ? detail.error : "Could not link this email"));
+      return;
+    }
+    const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: data.expiresAt };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+    setSession(sess);
+    setLinkToken("");
+    setStep("in");
+    await loadPatientData(sess);
+    toast.success(lang === "en" ? "Email linked. Next time just sign in with email." : "மின்னஞ்சல் இணைக்கப்பட்டது");
   };
 
   const verifyOtp = async () => {
@@ -337,8 +374,13 @@ const PatientPortalContent = () => {
       });
       setVerifying(false);
       if (exchangeError || data?.error || !data?.token) {
-        const detail = exchangeError ? await appointmentError(exchangeError, "Could not verify patient account") : null;
-        toast.error(data?.error || detail?.message || "Could not verify patient account");
+        const detail = await functionErrorBody(exchangeError);
+        if (detail?.link_available) {
+          setLinkToken(verifyData.session.access_token);
+          setStep("link");
+          return;
+        }
+        toast.error(data?.error || (typeof detail?.error === "string" ? detail.error : "Could not verify patient account"));
         return;
       }
       const sess: PortalSession = { phone: data.phone, token: data.token, expiresAt: data.expiresAt };
@@ -691,6 +733,30 @@ const PatientPortalContent = () => {
                     {lang === "en" ? "Change" : "மாற்று"}
                   </button>
                 </>
+              )}
+
+              {step === "link" && (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-foreground">
+                    {lang === "en" ? "Already a Tooth Haven patient? Link this email to your record." : "ஏற்கனவே நோயாளியா? இந்த மின்னஞ்சலை உங்கள் பதிவுடன் இணைக்கவும்."}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "en" ? "Enter the details exactly as registered at the clinic." : "கிளினிக்கில் பதிவு செய்தபடி விவரங்களை உள்ளிடவும்."}
+                  </p>
+                  <input aria-label="Registered phone number" inputMode="numeric" maxLength={10} placeholder={lang === "en" ? "Registered phone number" : "பதிவு செய்த எண்"} value={linkPhone} onChange={(e) => setLinkPhone(e.target.value.replace(/\D/g, ""))} className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <input aria-label="Patient name" placeholder={lang === "en" ? "Patient name" : "நோயாளி பெயர்"} value={linkName} onChange={(e) => setLinkName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <label className="block text-xs text-muted-foreground">{lang === "en" ? "Date of birth" : "பிறந்த தேதி"}
+                    <input aria-label="Date of birth" type="date" value={linkDob} onChange={(e) => setLinkDob(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </label>
+                  <button onClick={linkEmail} disabled={linking} className="w-full bg-gradient-primary text-primary-foreground px-5 py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50">
+                    {linking ? "..." : (lang === "en" ? "Link and sign in" : "இணைத்து உள்நுழை")}
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "en" ? "New patient? " : "புதிய நோயாளியா? "}
+                    <button onClick={() => { setStep("phone"); setMode("register"); setOtp(""); }} className="text-primary hover:underline">{lang === "en" ? "Register instead" : "பதிவு செய்யவும்"}</button>
+                    {lang === "en" ? " · Date of birth not on file? Call 8925166149." : " · உதவிக்கு 8925166149"}
+                  </p>
+                </div>
               )}
 
             </div>

@@ -20,3 +20,4 @@
 - Closed-app staff alerts use standard Web Push (VAPID) via public/push-sw.js imported into the generated service worker; subscriptions are per staff device and sends go through supabase/functions/_shared/web-push.ts, never Firebase.
 
 - Video Tamil translation and voice-over run in the staff-only video-tamil function (AI Gateway SDK for text, ElevenLabs connector for speech); the player mutes the original track and syncs the Tamil audio, because API keys must stay server-side.
+- Patients self-link a verified email to an existing phone record only when that record has no email and name plus date of birth match, with one generic mismatch reply; staff edit anything else, because the phone-OTP channel may be unavailable and records must not be claimable by phone alone.

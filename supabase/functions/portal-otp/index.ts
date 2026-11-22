@@ -49,11 +49,40 @@ serve(async (req) => {
       if (authError || !verifiedEmail || !auth.user?.email_confirmed_at) return json({ error: "Verify your email to continue" }, 401);
       const { data: patients, error } = await supabase.from("patients").select("phone").ilike("email", verifiedEmail.replace(/[%_]/g, "\\$&")).limit(20);
       if (error) return json({ error: "Could not load patient account" }, 500);
-      if (!patients?.length) return json({ error: "No patient record linked to this email. Please register or contact the clinic." }, 404);
+      if (!patients?.length) return json({ error: "No patient record linked to this email yet.", link_available: true }, 404);
       // Family members may share one email and phone; the profile picker chooses among them after sign-in.
       const phones = [...new Set(patients.map((p) => String(p.phone ?? "")))];
       if (phones.length !== 1 || !validPhone(phones[0])) return json({ error: "Please contact the clinic to verify your patient account" }, 409);
       return json({ ok: true, ...await issuePortalSession(phones[0], SERVICE_KEY) });
+    }
+
+    // Self-service link: a verified email claims an existing phone record only when
+    // the record has no email yet and the name plus date of birth on file match.
+    if (action === "link_email") {
+      const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      if (!bearer) return json({ error: "Unauthorized" }, 401);
+      const { data: auth, error: authError } = await supabase.auth.getUser(bearer);
+      const verifiedEmail = auth.user?.email?.trim().toLowerCase();
+      if (authError || !verifiedEmail || !auth.user?.email_confirmed_at) return json({ error: "Verify your email to continue" }, 401);
+      const phone = String(body.phone || "").trim();
+      const name = String(body.name || "").trim();
+      const dob = String(body.dob || "").trim();
+      if (!validPhone(phone)) return json({ error: "Enter your registered 10-digit phone number" }, 400);
+      if (!validName(name)) return json({ error: "Enter the patient name as registered" }, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return json({ error: "Enter the date of birth" }, 400);
+      const { data: taken } = await supabase.from("patients").select("id").ilike("email", verifiedEmail.replace(/[%_]/g, "\\$&")).limit(1);
+      if (taken?.length) return json({ error: "This email is already linked. Please sign in again." }, 409);
+      const { data: rows, error } = await supabase.from("patients").select("id, name, email, date_of_birth").eq("phone", phone).limit(20);
+      if (error) return json({ error: "Could not load patient account" }, 500);
+      const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9\u0B80-\u0BFF]/g, "");
+      const match = (rows ?? []).filter((r) => norm(r.name ?? "") === norm(name) && r.date_of_birth === dob);
+      // Same generic reply for every mismatch so details on file are never revealed.
+      if (match.length !== 1) return json({ error: "We could not match these details. Please check them or contact the clinic on 8925166149." }, 404);
+      if (match[0].email) return json({ error: "This patient already has a different email. Please contact the clinic to change it." }, 409);
+      const { error: upErr } = await supabase.from("patients").update({ email: verifiedEmail }).eq("id", match[0].id).is("email", null);
+      if (upErr) return json({ error: "Could not link this email. Please try again." }, 500);
+      await supabase.from("audit_logs").insert({ actor_id: auth.user.id, action: "patient_email_linked", entity: "patients", entity_id: match[0].id, details: { fields: ["email"] } });
+      return json({ ok: true, ...await issuePortalSession(phone, SERVICE_KEY) });
     }
 
     // ---------- REGISTER: send OTP (WhatsApp only; email path uses register_finalize) ----------
