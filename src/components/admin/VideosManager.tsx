@@ -79,6 +79,18 @@ const VideosManager = () => {
 
   const [translating, setTranslating] = useState(false);
   const [voicing, setVoicing] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+
+  const transcribe = async () => {
+    setTranscribing(true);
+    try {
+      const d = await callTamil({ action: "transcribe", video_url: form.video_url });
+      setForm((f) => ({ ...f, captions_en: d.captions || f.captions_en, description_en: f.description_en || d.description || "" }));
+      toast({ title: "English captions added", description: "Review them, then tap Auto-translate to Tamil." });
+    } catch (e: any) {
+      toast({ title: "Transcription failed", description: e.message, variant: "destructive" });
+    } finally { setTranscribing(false); }
+  };
 
   const callTamil = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("video-tamil", { body });
@@ -289,6 +301,14 @@ const VideosManager = () => {
               )}
             </div>
 
+            {form.video_url && form.source === "upload" && (
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={transcribe} disabled={transcribing}>
+                <Mic className="w-4 h-4 mr-1" /> {transcribing ? "Listening to the video…" : "Create English captions & description from video audio"}
+              </Button>
+            )}
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={autoTranslate} disabled={translating}>
+              <Languages className="w-4 h-4 mr-1" /> {translating ? "Translating…" : "Auto-translate all to Tamil"}
+            </Button>
             <Textarea placeholder="Captions (English) — shown when the viewer taps CC" value={form.captions_en} onChange={(e) => setForm({ ...form, captions_en: e.target.value })} />
             <Textarea placeholder="Captions (Tamil)" value={form.captions_ta} onChange={(e) => setForm({ ...form, captions_ta: e.target.value })} />
 
@@ -316,7 +336,7 @@ const VideosManager = () => {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={saving || uploading || voicing}>
+            <Button type="submit" className="w-full" disabled={saving || uploading || voicing || transcribing}>
               {saving ? "Saving…" : editing ? "Update" : "Add video"}
             </Button>
           </form>

@@ -48,6 +48,44 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (body.action === "transcribe") {
+      const videoUrl = String(body.video_url ?? "");
+      const base = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/clinic-media/`;
+      if (!videoUrl.startsWith(base)) return json({ error: "Only videos uploaded to the clinic library can be transcribed." }, 400);
+      const key = Deno.env.get("ELEVENLABS_API_KEY");
+      if (!key) return json({ error: "Voice service is not connected." }, 500);
+      const vid = await fetch(videoUrl);
+      if (!vid.ok) return json({ error: "Could not read the video file." }, 400);
+      const blob = await vid.blob();
+      if (blob.size > 200 * 1024 * 1024) return json({ error: "Video is too large to transcribe (max 200 MB)." }, 400);
+      const fd = new FormData();
+      fd.append("file", blob, "video.mp4");
+      fd.append("model_id", "scribe_v2");
+      fd.append("language_code", "eng");
+      fd.append("tag_audio_events", "false");
+      const stt = await fetch("https://api.elevenlabs.io/v1/speech-to-text", { method: "POST", headers: { "xi-api-key": key }, body: fd });
+      if (!stt.ok) {
+        const t = await stt.text();
+        console.error("stt failed", stt.status, t);
+        return json({ error: "Transcription failed", status: stt.status, details: t }, stt.status);
+      }
+      const transcript = String((await stt.json()).text ?? "").trim();
+      if (!transcript) return json({ error: "No speech was found in this video." }, 422);
+      try {
+        const r: any = await generateResponse({
+          model: "openai/gpt-6-astra",
+          instructions: "You receive the raw English speech transcript of a dental patient-education video. Return ONLY JSON {\"captions\":\"\",\"description\":\"\"}. captions: the transcript cleaned up (fix punctuation, remove filler words, keep meaning and wording) split into short subtitle lines separated by newlines. description: a friendly 2-3 sentence patient summary of the video. Do not invent clinical claims.",
+          input: transcript.slice(0, 12000),
+        });
+        const text = (r.output ?? []).flatMap((o: any) => o.content ?? []).filter((c: any) => c.type === "output_text").map((c: any) => c.text).join("");
+        const out = JSON.parse(text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim());
+        return json({ captions: out.captions || transcript, description: out.description || "", transcript });
+      } catch (e) {
+        console.error("format failed", e);
+        return json({ captions: transcript, description: "", transcript });
+      }
+    }
+
     if (body.action === "voice") {
       const text = String(body.text ?? "").trim().slice(0, 4500);
       if (!text) return json({ error: "Add Tamil captions or description first." }, 400);
