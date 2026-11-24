@@ -1,0 +1,37 @@
+export async function sendOtpTemplate(phone: string, code: string): Promise<SendResult> {
+  if (!isConfigured()) {
+    console.log("WhatsApp not configured; OTP suppressed for", last10(phone));
+    return { ok: false, error: "WhatsApp is not configured.", configurationRequired: true };
+  }
+
+  const approved = await listApprovedTemplates(true);
+  const template = approved.find((t) =>
+    t.name === TEMPLATES.otp &&
+    t.language === "en" &&
+    t.category === "AUTHENTICATION"
+  );
+
+  if (!template) {
+    return {
+      ok: false,
+      code: 132001,
+      configurationRequired: true,
+      error: "Approved WhatsApp OTP template th_otp (English / AUTHENTICATION) was not found. Publish it in Meta WhatsApp Manager and retry.",
+    };
+  }
+
+  const button = (template.components as any[] | undefined)?.find((component) =>
+    component?.type === "BUTTONS" && Array.isArray(component.buttons)
+  );
+  const copyCodeButton = button?.buttons?.find((item: any) =>
+    item?.type === "COPY_CODE" || item?.type === "copy_code"
+  );
+
+  return sendTemplate({
+    to: phone,
+    name: template.name,
+    language: template.language,
+    bodyParams: [code],
+    ...(copyCodeButton ? { buttonParam: code, buttonType: "copy_code" as const } : {}),
+  });
+}
