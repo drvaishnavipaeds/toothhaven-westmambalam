@@ -202,7 +202,7 @@ export function sendTemplate(opts: {
   language?: string;
   bodyParams?: string[];
   bodyParamNames?: string[];
-  /** Copy-code / URL button parameter (authentication templates). */
+  /** Dynamic URL button parameter. Authentication copy-code buttons need no send-time button component. */
   buttonParam?: string;
 }): Promise<SendResult> {
   const components: Record<string, unknown>[] = [];
@@ -262,57 +262,37 @@ export async function listApprovedTemplates(force = false, includeUnapproved = f
   }
 }
 
-/**
- * Sends an authentication template carrying a one-time code. Falls back to any
- * other approved AUTHENTICATION template if the configured one is unavailable,
- * so a template rename in Meta never locks people out of sign-in.
- */
+/** Sends the configured approved authentication template with the OTP in its body. */
 export async function sendOtpTemplate(phone: string, code: string): Promise<SendResult> {
   if (!isConfigured()) {
     console.log("WhatsApp not configured; OTP suppressed for", last10(phone));
     return { ok: false, error: "WhatsApp is not configured.", configurationRequired: true };
   }
 
-  const approved = await listApprovedTemplates();
-  const configured = approved.filter((t) => t.name === TEMPLATES.otp);
-  const authFallback = approved.filter((t) => t.category === "AUTHENTICATION");
-  const candidates = (configured.length ? configured : authFallback).map((t) => ({
-    name: t.name,
-    language: t.language,
-  }));
-  const attempts = [...candidates];
-  for (const language of [DEFAULT_LANG, "en_US", "en_GB"]) {
-    if (!attempts.some((a) => a.name === TEMPLATES.otp && a.language === language)) {
-      attempts.push({ name: TEMPLATES.otp, language });
-    }
-  }
-
-  let last: SendResult = { ok: false, error: "WhatsApp send failed" };
-  for (const attempt of attempts) {
-    // Authentication templates in Meta carry a copy-code button; if the
-    // template has none, the body-only variant is accepted.
-    for (const withButton of [true, false]) {
-      last = await sendTemplate({
-        to: phone,
-        name: attempt.name,
-        language: attempt.language,
-        bodyParams: [code],
-        buttonParam: withButton ? code : undefined,
-      });
-      if (last.ok) return last;
-      if (last.code === 132001) break; // wrong template/language — try the next one
-    }
-  }
-  if (last.code === 132001) {
+  // Use only the configured template and an approved language for that exact
+  // template. Never guess another template name or attach a URL button payload:
+  // Meta renders the COPY_CODE button from the approved template definition.
+  const approved = await listApprovedTemplates(true);
+  const matching = approved.filter((template) =>
+    template.name === TEMPLATES.otp && template.category === "AUTHENTICATION"
+  );
+  const template = matching.find((candidate) => candidate.language === DEFAULT_LANG) ?? matching[0];
+  if (!template) {
     return {
       ok: false,
       code: 132001,
       configurationRequired: true,
-      error:
-        "No approved WhatsApp authentication template was found. Please use Email OTP or contact the clinic.",
+      error: `WhatsApp OTP template "${TEMPLATES.otp}" is not listed as approved for language "${DEFAULT_LANG}". Check the template name, AUTHENTICATION category, and approved language in WhatsApp Manager.`,
     };
   }
-  return last;
+
+  // COPY_CODE is defined in the approved template; send only the body variable.
+  return sendTemplate({
+    to: phone,
+    name: template.name,
+    language: template.language,
+    bodyParams: [code],
+  });
 }
 
 /** True when the patient messaged us within the last 24 hours (free-text allowed). */
