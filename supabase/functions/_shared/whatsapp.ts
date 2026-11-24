@@ -280,9 +280,12 @@ export async function sendOtpTemplate(phone: string, code: string): Promise<Send
     name: t.name,
     language: t.language,
   }));
-  const attempts = candidates.length
-    ? candidates
-    : [{ name: TEMPLATES.otp, language: DEFAULT_LANG }];
+  const attempts = [...candidates];
+  for (const language of [DEFAULT_LANG, "en_US", "en_GB"]) {
+    if (!attempts.some((a) => a.name === TEMPLATES.otp && a.language === language)) {
+      attempts.push({ name: TEMPLATES.otp, language });
+    }
+  }
 
   let last: SendResult = { ok: false, error: "WhatsApp send failed" };
   for (const attempt of attempts) {

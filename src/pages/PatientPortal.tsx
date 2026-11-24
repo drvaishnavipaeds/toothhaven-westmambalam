@@ -213,7 +213,17 @@ const PatientPortalContent = () => {
           switchToSignIn({ phone: phone.trim() });
           return;
         }
-        toast.error(data?.error || error?.message || "Failed to send OTP");
+        const detail = await functionErrorBody(error);
+        if (detail?.already_exists) {
+          toast.error(String(detail.error));
+          switchToSignIn({ phone: phone.trim() });
+          return;
+        }
+        const unavailable = detail?.configuration_required || !detail?.error;
+        toast.error(data?.error || (unavailable
+          ? (lang === "en" ? "WhatsApp code is temporarily unavailable — please use Email instead." : "WhatsApp குறியீடு தற்போது கிடைக்கவில்லை — மின்னஞ்சலைப் பயன்படுத்தவும்.")
+          : String(detail.error)));
+        if (unavailable) setMethod("email");
         return;
       }
       toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP அனுப்பப்பட்டது");
@@ -241,8 +251,11 @@ const PatientPortalContent = () => {
       setSending(false);
       if (error || data?.error) {
         const detail = await functionErrorBody(error);
-        toast.error(data?.error || (typeof detail?.error === "string" ? detail.error : "Failed to send OTP"));
-        if (detail?.configuration_required) setMethod("email");
+        const unavailable = detail?.configuration_required || typeof detail?.error !== "string";
+        toast.error(data?.error || (unavailable
+          ? (lang === "en" ? "WhatsApp code is temporarily unavailable — please use Email instead." : "WhatsApp குறியீடு தற்போது கிடைக்கவில்லை — மின்னஞ்சலைப் பயன்படுத்தவும்.")
+          : detail.error));
+        if (unavailable) setMethod("email");
         return;
       }
       toast.success(lang === "en" ? "OTP sent via WhatsApp" : "OTP WhatsApp மூலம் அனுப்பப்பட்டது");
