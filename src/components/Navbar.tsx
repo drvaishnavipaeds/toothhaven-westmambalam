@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Phone, UserCircle, LogIn, Shield, ChevronDown } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,6 +20,18 @@ const Navbar = () => {
   const isHome = location.pathname === "/";
   const hrefFor = (anchor: string) => (isHome ? anchor : `/${anchor}`);
   const [isOpen, setIsOpen] = useState(false);
+  const [patientIn, setPatientIn] = useState(false);
+  const [adminIn, setAdminIn] = useState(false);
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem("portal_session_v1") ?? "null");
+      setPatientIn(!!s && s.expiresAt > Date.now());
+    } catch { setPatientIn(false); }
+    supabase.auth.getSession().then(({ data }) => setAdminIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => setAdminIn(!!sess));
+    return () => sub.subscription.unsubscribe();
+  }, [location.pathname]);
+  const signedIn = patientIn || adminIn;
 
   const navItems = [
     { key: "nav.home", href: "#home" },
@@ -61,22 +74,22 @@ const Navbar = () => {
           <DropdownMenu>
             <DropdownMenuTrigger className="hidden md:inline-flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors">
               <LogIn className="w-4 h-4" />
-              Login
+              {signedIn ? "My Account" : "Login"}
               <ChevronDown className="w-3 h-3" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-background z-50">
-              <DropdownMenuLabel>Sign in as</DropdownMenuLabel>
+              <DropdownMenuLabel>{signedIn ? "Go to" : "Sign in as"}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/patient-portal" className="cursor-pointer">
                   <UserCircle className="w-4 h-4 mr-2" />
-                  Patient Portal
+                  {patientIn ? "My Patient Portal" : "Patient Portal"}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/admin" className="cursor-pointer">
                   <Shield className="w-4 h-4 mr-2" />
-                  Admin / Staff
+                  {adminIn ? "Admin Dashboard" : "Admin / Staff"}
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -117,7 +130,7 @@ const Navbar = () => {
             className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
           >
             <UserCircle className="w-4 h-4" />
-            Patient Login
+            {patientIn ? "My Patient Portal" : "Patient Login"}
           </Link>
           <Link
             to="/admin"
@@ -125,7 +138,7 @@ const Navbar = () => {
             className="mt-2 flex items-center justify-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg text-sm font-semibold"
           >
             <Shield className="w-4 h-4" />
-            Admin Login
+            {adminIn ? "Admin Dashboard" : "Admin Login"}
           </Link>
           <a
             href={hrefFor("#appointment")}

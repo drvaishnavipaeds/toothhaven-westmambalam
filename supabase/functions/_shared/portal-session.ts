@@ -1,5 +1,5 @@
 /** One patient-session format shared by WhatsApp, verified email and records. */
-const SESSION_MS = 30 * 60 * 1000;
+const SESSION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, until logout
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type PortalIdentity = { phone: string; patientId: string | null };
