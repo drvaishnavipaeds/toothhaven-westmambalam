@@ -2650,6 +2650,225 @@ export type Database = {
         }
         Relationships: []
       }
+      website_homepage: {
+        Row: {
+          about_body_en: string
+          about_body_ta: string | null
+          about_image_url: string | null
+          about_title_en: string
+          about_title_ta: string | null
+          created_at: string
+          hero_image_url: string | null
+          hero_subtitle_en: string
+          hero_subtitle_ta: string | null
+          hero_title_en: string
+          hero_title_ta: string | null
+          hidden_sections: Json
+          id: string
+          section_order: Json
+          updated_at: string
+        }
+        Insert: {
+          about_body_en?: string
+          about_body_ta?: string | null
+          about_image_url?: string | null
+          about_title_en: string
+          about_title_ta?: string | null
+          created_at?: string
+          hero_image_url?: string | null
+          hero_subtitle_en?: string
+          hero_subtitle_ta?: string | null
+          hero_title_en: string
+          hero_title_ta?: string | null
+          hidden_sections?: Json
+          id?: string
+          section_order?: Json
+          updated_at?: string
+        }
+        Update: {
+          about_body_en?: string
+          about_body_ta?: string | null
+          about_image_url?: string | null
+          about_title_en?: string
+          about_title_ta?: string | null
+          created_at?: string
+          hero_image_url?: string | null
+          hero_subtitle_en?: string
+          hero_subtitle_ta?: string | null
+          hero_title_en?: string
+          hero_title_ta?: string | null
+          hidden_sections?: Json
+          id?: string
+          section_order?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      website_pages: {
+        Row: {
+          content_en: string
+          content_ta: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          is_published: boolean
+          show_in_menu: boolean
+          slug: string
+          sort_order: number
+          title_en: string
+          title_ta: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          content_en?: string
+          content_ta?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          show_in_menu?: boolean
+          slug: string
+          sort_order?: number
+          title_en: string
+          title_ta?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          content_en?: string
+          content_ta?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          show_in_menu?: boolean
+          slug?: string
+          sort_order?: number
+          title_en?: string
+          title_ta?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      website_sections: {
+        Row: {
+          body_en: string
+          body_ta: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          is_published: boolean
+          items: Json
+          section_key: string
+          show_in_menu: boolean
+          sort_order: number
+          title_en: string
+          title_ta: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          body_en?: string
+          body_ta?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          items?: Json
+          section_key: string
+          show_in_menu?: boolean
+          sort_order?: number
+          title_en: string
+          title_ta?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          body_en?: string
+          body_ta?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          items?: Json
+          section_key?: string
+          show_in_menu?: boolean
+          sort_order?: number
+          title_en?: string
+          title_ta?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      website_services: {
+        Row: {
+          about_en: string
+          about_ta: string | null
+          created_at: string
+          faqs: Json
+          highlights_en: Json
+          highlights_ta: Json
+          icon: string
+          id: string
+          image_url: string | null
+          is_published: boolean
+          name_en: string
+          name_ta: string | null
+          price_label_en: string | null
+          price_label_ta: string | null
+          short_description_en: string
+          short_description_ta: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          about_en?: string
+          about_ta?: string | null
+          created_at?: string
+          faqs?: Json
+          highlights_en?: Json
+          highlights_ta?: Json
+          icon?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          name_en: string
+          name_ta?: string | null
+          price_label_en?: string | null
+          price_label_ta?: string | null
+          short_description_en?: string
+          short_description_ta?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          about_en?: string
+          about_ta?: string | null
+          created_at?: string
+          faqs?: Json
+          highlights_en?: Json
+          highlights_ta?: Json
+          icon?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          name_en?: string
+          name_ta?: string | null
+          price_label_en?: string | null
+          price_label_ta?: string | null
+          short_description_en?: string
+          short_description_ta?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_booking_sessions: {
         Row: {
           expires_at: string

@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Finish Admin → Website editor for bilingual services, homepage content/order, custom sections, new pages and uploaded media
+- [ ] Render saved services, sections and pages publicly with menu links and existing video playback
+- [ ] Apply staff-only website content access, add regression tests, and verify signed-in editing plus phone/desktop display
 - [x] Add automated 6-month recalls and Day 1/3/7 post-treatment WhatsApp check-ins to the five-minute worker; queued until Meta approval
 - [ ] Meta approval for th_recall_6m_v1 and th_postop_checkin_v1 — submitted 28 October 2026
 - [x] Add WhatsApp template viewing, creation and editing in Inbox/Campaigns, Meta status filters, numbered variable samples and bearer-verified staff/owner access
